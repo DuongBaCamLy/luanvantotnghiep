@@ -1,0 +1,32 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+target/
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# IDE
+.vscode/
+.idea/
+*.iml
+
+# Java / Maven
+*.class
+
+# Logs
+*.log
+
+# Database backups / dumps
+backup_*.sql
+curriculum_*.sql
+password_reset_token.sql
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,0 +1,61 @@
+import { useMemo, useState, type ReactNode } from "react"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { useNavigate } from "react-router-dom"
+import { CheckCircle2, ChevronLeft, Copy, GraduationCap, Loader2, PlusCircle } from "lucide-react"
+import { cohortApi } from "@/api/cohortApi"
+import { curriculumApi } from "@/api/curriculumApi"
+import { departmentApi } from "@/api/departmentApi"
+import { programApi } from "@/api/programApi"
+import type { Cohort, CreateCurriculumRequest } from "@/types/admin"
+import { Button } from "@/components/ui/button"
+import { Card } from "@/components/ui/card"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Textarea } from "@/components/ui/textarea"
+
+const initialForm = { code: "", name: "", nameVn: "", majorId: "", programTypeId: "", departmentId: "", accreditationBody: "", totalCredits: "135", durationYears: "4", validFrom: new Date().toISOString().slice(0, 10), cohortName: "", entryYear: String(new Date().getFullYear()), description: "", sourceProgramId: "", sourceCohortId: "" }
+type FormState = typeof initialForm
+type Notice = { type: "success" | "error"; message: string } | null
+
+export default function CreateCurriculumPage() {
+  const navigate = useNavigate()
+  const queryClient = useQueryClient()
+  const [form, setForm] = useState<FormState>(initialForm)
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [notice, setNotice] = useState<Notice>(null)
+  const { data: departments = [] } = useQuery({ queryKey: ["departments"], queryFn: departmentApi.getAll })
+  const { data: majors = [] } = useQuery({ queryKey: ["majors"], queryFn: programApi.getMajors })
+  const { data: programTypes = [] } = useQuery({ queryKey: ["program-types"], queryFn: programApi.getProgramTypes })
+  const { data: programs = [] } = useQuery({ queryKey: ["programs"], queryFn: programApi.getAll })
+  const { data: cohorts = [] } = useQuery<Cohort[]>({ queryKey: ["cohorts"], queryFn: cohortApi.getAll })
+  const sourceCohorts = useMemo(() => cohorts.filter((cohort) => String(cohort.programId) === form.sourceProgramId), [cohorts, form.sourceProgramId])
+  const update = (key: keyof FormState, value: string) => setForm((current) => ({ ...current, [key]: key === "sourceProgramId" && value === "none" ? "" : value, ...(key === "sourceProgramId" ? { sourceCohortId: "" } : {}) }))
+  const validationMessage = () => {
+    if (!form.code.trim() || !form.name.trim() || !form.nameVn.trim()) return "Enter the program code and names."
+    if (!form.majorId || !form.programTypeId || !form.departmentId) return "Select the major, program type, and department."
+    if (!form.totalCredits || Number(form.totalCredits) <= 0 || !form.durationYears || Number(form.durationYears) <= 0) return "Credits and duration must be greater than zero."
+    if (!form.validFrom || !form.cohortName.trim() || !form.entryYear) return "Enter the validity date and cohort information."
+    if (form.sourceProgramId && !form.sourceCohortId) return "Select a source cohort or clear the clone option."
+    return null
+  }
+  const createMutation = useMutation({
+    mutationFn: (payload: CreateCurriculumRequest) => curriculumApi.create(payload),
+    onSuccess: (result) => { queryClient.invalidateQueries({ queryKey: ["programs"] }); queryClient.invalidateQueries({ queryKey: ["cohorts"] }); queryClient.invalidateQueries({ queryKey: ["course-programs"] }); setConfirmOpen(false); setNotice({ type: "success", message: result.clone ? `Created ${result.program.code}, ${result.cohort.name}, and copied ${result.clone.copiedCount} curriculum courses.` : `Created ${result.program.code} and cohort ${result.cohort.name}.` }); setForm(initialForm) },
+    onError: (error: any) => { setConfirmOpen(false); setNotice({ type: "error", message: error?.response?.data?.message || "The curriculum could not be created. No partial data was saved." }) },
+  })
+  const submit = (event: React.FormEvent) => { event.preventDefault(); const message = validationMessage(); if (message) { setNotice({ type: "error", message }); return }; setConfirmOpen(true) }
+  const confirmCreate = () => createMutation.mutate({ program: { code: form.code.trim(), name: form.name.trim(), nameVn: form.nameVn.trim(), majorId: Number(form.majorId), programTypeId: Number(form.programTypeId), departmentId: Number(form.departmentId), accreditationBody: form.accreditationBody.trim() || "ASIIN", totalCredits: Number(form.totalCredits), durationYears: Number(form.durationYears), validFrom: form.validFrom }, cohort: { entryYear: Number(form.entryYear), name: form.cohortName.trim(), description: form.description.trim() || undefined }, cloneSource: form.sourceProgramId ? { programId: Number(form.sourceProgramId), cohortId: Number(form.sourceCohortId) } : undefined })
+
+  return <div className="min-h-screen -m-6 space-y-6 bg-[#FDFDF9] p-6 md:-m-10 md:p-10"><div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"><div><p className="mb-2 text-[11px] font-bold uppercase tracking-widest text-slate-500">SCSE / Curriculum setup</p><h1 className="font-heading text-3xl font-bold text-slate-900">Create a complete <span className="text-orange-600">Curriculum</span></h1><p className="mt-1 text-sm text-slate-500">Create the program and its cohort together, with an optional curriculum copy in one safe operation.</p></div><Button variant="outline" onClick={() => navigate(-1)}><ChevronLeft className="size-4" /> Back</Button></div>
+    {notice && <div role={notice.type === "error" ? "alert" : "status"} className={`fixed right-5 top-5 z-50 max-w-md rounded-lg border px-4 py-3 text-sm shadow-lg ${notice.type === "success" ? "border-emerald-200 bg-emerald-50 text-emerald-900" : "border-rose-200 bg-rose-50 text-rose-900"}`}><p className="font-semibold">{notice.type === "success" ? "Curriculum created" : "Please review the form"}</p><p className="mt-1">{notice.message}</p></div>}
+    <form onSubmit={submit} className="mx-auto max-w-5xl space-y-6"><Section icon={<GraduationCap className="size-5" />} title="Program details" description="The major, program type, and owning department define this curriculum."><div className="grid grid-cols-1 gap-4 md:grid-cols-2"><Field label="Program code *"><Input value={form.code} onChange={(e) => update("code", e.target.value)} placeholder="e.g. IT2026" /></Field><Field label="Accreditation body"><Input value={form.accreditationBody} onChange={(e) => update("accreditationBody", e.target.value)} placeholder="e.g. ASIIN" /></Field><Field label="Program name (English) *"><Input value={form.name} onChange={(e) => update("name", e.target.value)} /></Field><Field label="Program name (Vietnamese) *"><Input value={form.nameVn} onChange={(e) => update("nameVn", e.target.value)} /></Field><Field label="Major *"><Select value={form.majorId} onValueChange={(value) => update("majorId", value)}><SelectTrigger><SelectValue placeholder="Select major" /></SelectTrigger><SelectContent>{majors.map((major) => <SelectItem key={major.id} value={String(major.id)}>{major.code} — {major.nameVn || major.name}</SelectItem>)}</SelectContent></Select></Field><Field label="Program type *"><Select value={form.programTypeId} onValueChange={(value) => update("programTypeId", value)}><SelectTrigger><SelectValue placeholder="Select program type" /></SelectTrigger><SelectContent>{programTypes.map((type) => <SelectItem key={type.id} value={String(type.id)}>{type.code} — {type.name}</SelectItem>)}</SelectContent></Select></Field><Field label="Department *"><Select value={form.departmentId} onValueChange={(value) => update("departmentId", value)}><SelectTrigger><SelectValue placeholder="Select department" /></SelectTrigger><SelectContent>{departments.map((department) => <SelectItem key={department.id} value={String(department.id)}>{department.code} — {department.nameVn || department.name}</SelectItem>)}</SelectContent></Select></Field><Field label="Valid from *"><Input type="date" value={form.validFrom} onChange={(e) => update("validFrom", e.target.value)} /></Field><Field label="Total credits *"><Input type="number" min="1" value={form.totalCredits} onChange={(e) => update("totalCredits", e.target.value)} /></Field><Field label="Duration (years) *"><Input type="number" min="1" value={form.durationYears} onChange={(e) => update("durationYears", e.target.value)} /></Field></div></Section>
+      <Section icon={<PlusCircle className="size-5" />} title="Cohort details" description="This cohort will be linked to the program created above."><div className="grid grid-cols-1 gap-4 md:grid-cols-2"><Field label="Cohort name *"><Input value={form.cohortName} onChange={(e) => update("cohortName", e.target.value)} placeholder="e.g. K2026" /></Field><Field label="Entry year *"><Input type="number" min="2000" max="2100" value={form.entryYear} onChange={(e) => update("entryYear", e.target.value)} /></Field><div className="md:col-span-2"><Field label="Description"><Textarea value={form.description} onChange={(e) => update("description", e.target.value)} placeholder="Optional note about this cohort" /></Field></div></div></Section>
+      <Section icon={<Copy className="size-5" />} title="Copy curriculum data (optional)" description="Copy course assignments, types, suggested years/semesters, and requirement flags from an existing program cohort."><div className="grid grid-cols-1 gap-4 md:grid-cols-2"><Field label="Source program"><Select value={form.sourceProgramId || "none"} onValueChange={(value) => update("sourceProgramId", value)}><SelectTrigger><SelectValue placeholder="Do not copy curriculum data" /></SelectTrigger><SelectContent><SelectItem value="none">Do not copy curriculum data</SelectItem>{programs.map((program) => <SelectItem key={program.id} value={String(program.id)}>{program.code} — {program.nameVn || program.name}</SelectItem>)}</SelectContent></Select></Field><Field label="Source cohort"><Select value={form.sourceCohortId} onValueChange={(value) => update("sourceCohortId", value)} disabled={!form.sourceProgramId}><SelectTrigger><SelectValue placeholder={form.sourceProgramId ? "Select source cohort" : "Select a source program first"} /></SelectTrigger><SelectContent>{sourceCohorts.map((cohort) => <SelectItem key={cohort.id} value={String(cohort.id)}>{cohort.name} — {cohort.entryYear}</SelectItem>)}</SelectContent></Select></Field></div></Section>
+      <div className="flex justify-end"><Button type="submit" className="bg-primary text-white hover:bg-primary/90" disabled={createMutation.isPending}><CheckCircle2 className="size-4" /> Review and create</Button></div></form>
+    <Dialog open={confirmOpen} onOpenChange={(open) => !createMutation.isPending && setConfirmOpen(open)}><DialogContent className="bg-white"><DialogHeader><DialogTitle>Confirm curriculum creation</DialogTitle><DialogDescription>The program, cohort{form.sourceProgramId ? ", and copied curriculum data" : ""} are saved together. If any step fails, the full operation is rolled back.</DialogDescription></DialogHeader><DialogFooter><Button variant="outline" onClick={() => setConfirmOpen(false)} disabled={createMutation.isPending}>Cancel</Button><Button onClick={confirmCreate} disabled={createMutation.isPending}>{createMutation.isPending && <Loader2 className="size-4 animate-spin" />} Create curriculum</Button></DialogFooter></DialogContent></Dialog></div>
+}
+
+function Field({ label, children }: { label: string; children: ReactNode }) { return <div className="space-y-1.5"><Label>{label}</Label>{children}</div> }
+function Section({ icon, title, description, children }: { icon: ReactNode; title: string; description: string; children: ReactNode }) { return <Card className="border-slate-200 bg-white p-5 shadow-sm md:p-7"><div className="mb-5 flex items-center gap-3"><span className="rounded-lg bg-orange-50 p-2 text-orange-600">{icon}</span><div><h2 className="font-semibold text-slate-900">{title}</h2><p className="text-sm text-slate-500">{description}</p></div></div>{children}</Card> }

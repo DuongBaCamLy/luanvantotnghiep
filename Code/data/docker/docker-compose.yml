@@ -1,0 +1,39 @@
+services:
+  mysql:
+    image: mysql:8
+    container_name: curriculum_mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: curriculum_iu
+      TZ: Asia/Ho_Chi_Minh
+    ports:
+      - "3306:3306"
+    volumes:
+      - curriculum_mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-proot"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # SMTP sandbox dùng để kiểm thử FR-05.4 ở local.
+  # Web inbox: http://localhost:8025
+  # SMTP: localhost:1025
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: curriculum_mailpit
+    restart: unless-stopped
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    environment:
+      MP_MAX_MESSAGES: 5000
+      MP_DATABASE: /data/mailpit.db
+      TZ: Asia/Ho_Chi_Minh
+    volumes:
+      - curriculum_mailpit_data:/data
+
+volumes:
+  curriculum_mysql_data:
+  curriculum_mailpit_data:

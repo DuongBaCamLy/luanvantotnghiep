@@ -1,0 +1,682 @@
+SOFTWARE REQUIREMENTS SPECIFICATION (SRS)
+Hệ thống Quản lý Syllabus và Chương trình Đào tạo
+Curriculum Management & Compliance Dashboard
+Đơn vị: School of Computer Science and Engineering (SCSE)Trường: Vietnam National University – Ho Chi Minh City, International University (IU)Phiên bản: 1.0Ngày: 2025Tác giả: [Tên sinh viên]Giảng viên hướng dẫn: [Tên GVHD]Loại tài liệu: Software Requirements Specification (IEEE 830)
+MỤC LỤC
+Giới thiệu
+Mô tả tổng quan hệ thống
+Phân tích bối cảnh thực tế
+Kết quả phỏng vấn stakeholder
+Các đối tượng sử dụng (Actors)
+Functional Requirements
+Non-Functional Requirements
+Use Cases
+Ràng buộc hệ thống
+Phụ lục
+1. GIỚI THIỆU
+1.1 Mục đích tài liệu
+Tài liệu này mô tả toàn bộ yêu cầu phần mềm (Software Requirements Specification – SRS) cho hệ thống Curriculum Management & Compliance Dashboard tại School of Computer Science and Engineering (SCSE), International University, VNU-HCM. Tài liệu được xây dựng dựa trên:
+Phỏng vấn trực tiếp các stakeholder của SCSE
+Phân tích các tài liệu thực tế: Program Specification (CS, IT, DS), Module Handbook, Quyết định điều chỉnh CTĐT
+Khảo sát thực trạng quản lý syllabus hiện tại của khoa
+1.2 Phạm vi hệ thống
+Tên hệ thống: SCSE Curriculum & Syllabus Management System (CSMS)
+Phạm vi: Hệ thống phục vụ toàn bộ hoạt động quản lý syllabus và chương trình đào tạo của SCSE, bao gồm 4 ngành đào tạo: - Bachelor of Science in Computer Science (CS) - Bachelor of Science in Information Technology (IT) - Bachelor of Science in Data Science (DS) - (Ngành thứ 4 theo thực tế khoa)
+Ngoài phạm vi (Out of Scope): - Tích hợp với hệ thống quản lý điểm - Quản lý thời khóa biểu - Hệ thống đăng ký môn học của sinh viên - Mobile application
+1.3 Định nghĩa và viết tắt
+Ký hiệu
+Định nghĩa
+SCSE
+School of Computer Science and Engineering
+IU
+International University, VNU-HCM
+CTĐT
+Chương trình đào tạo
+CLO
+Course Learning Outcome – Chuẩn đầu ra môn học
+PLO / ILO
+Program/Intended Learning Outcome – Chuẩn đầu ra chương trình
+AUN-QA
+ASEAN University Network Quality Assurance
+ABET
+Accreditation Board for Engineering and Technology
+SRS
+Software Requirements Specification
+FR
+Functional Requirement
+NFR
+Non-Functional Requirement
+UC
+Use Case
+RBAC
+Role-Based Access Control
+TK
+Trưởng khoa
+TBM
+Trưởng bộ môn
+GV
+Giảng viên
+TKK
+Thư ký khoa
+1.4 Tài liệu tham khảo
+CS Program Specification – Bachelor of Science in Computer Science, SCSE, 09/2022
+IT Program Specification – Bachelor of Science in Information Technology, SCSE, 07/2022
+DS Program Specification – Bachelor of Science in Data Science, SCSE, 09/2022
+Module Handbook – Bachelor of Science in Data Science, SCSE
+Quyết định số 1051 – Điều chỉnh CTĐT ngành Công nghệ Thông tin, IU
+HCMIU CSE Handbook 2023–2024
+IEEE Std 830-1998 – IEEE Recommended Practice for Software Requirements Specifications
+2. MÔ TẢ TỔNG QUAN HỆ THỐNG
+2.1 Bối cảnh sản phẩm
+SCSE hiện quản lý 4 ngành đào tạo bậc Cử nhân Khoa học. Mỗi ngành có chương trình riêng và liên tục được cập nhật qua từng khóa học. Ví dụ thực tế từ tài liệu khoa:
+Ngành CS – Lịch sử cập nhật CTĐT: | Khóa (Cohort) | Thay đổi chính | |—|—| | 2017–2021 | Không thay đổi | | 2018–2022 | Không thay đổi | | 2019–2023 | Đổi các môn Chính trị (PE011→PE015, PE012→PE016, PE013→PE017, thêm PE018–PE020); Đổi tên IT116IU; Thêm IT138IU | | 2020–2024 | Tiếp tục cập nhật English pathway | | 2021–2025 | Thêm IT160IU (Data Mining), IT157IU, IT158IU; Tái cấu trúc elective |
+Ngành DS – Lịch sử cập nhật: Tương tự, với các thay đổi từ 2019–2023 đến 2021–2025 bao gồm đổi tên IT132IU → IT160IU, cập nhật Intensive English pathway.
+Tình trạng này dẫn đến việc tồn tại nhiều phiên bản CTĐT song song cho cùng một ngành – mỗi khóa sinh viên có thể học theo CTĐT khác nhau.
+2.2 Cấu trúc Chương trình Đào tạo (thực tế từ tài liệu)
+Mỗi CTĐT của SCSE gồm các nhóm môn học:
+CHƯƠNG TRÌNH ĐÀO TẠO (VD: DS – 138 tín chỉ)├── PART 1: COMPULSORY (Môn bắt buộc)│   ├── IT013IU – Algorithms and Data Structure (4 TC)│   ├── IT058IU – Thesis (Luận văn)│   ├── IT069IU – Object-Oriented Programming (4 TC)│   ├── IT079IU – Principle of Database Management│   ├── IT082IU – Internship│   ├── IT083IU – Special Study of the Field│   ├── IT135IU – Introduction to Data Science│   ├── IT136IU – Regression Analysis│   ├── IT137IU – Data Analysis│   ├── IT138IU – Data Science and Data Visualization│   ├── IT139IU – Scalable and Distributed Computing│   ├── IT140IU – Fundamentals Concepts of Data Security│   ├── IT142IU – Analytics for Observational Data│   ├── IT159IU – Artificial Intelligence│   ├── IT160IU – Data Mining│   └── IT161IU – Big Data Technology│├── PART 2: ELECTIVE (Môn tự chọn)│   ├── IT056IU – IT Project Management│   ├── IT094IU – Information System Management│   ├── IT144IU – Business Process Analysis│   ├── IT145IU – Decision Support Systems│   ├── IT157IU – Deep Learning│   ├── IT162IU – Machine Learning Platform│   └── ... (và các môn elective khác)│└── PART 3: GENERAL (Môn đại cương)    ├── MA001IU – Calculus 1    ├── MA026IU – Probability, Statistic & Random Process    ├── PH013IU – Physics 1    ├── CH011IU – Chemistry    ├── EN007IU – Writing AE1    ├── PE015IU – Philosophy Marx-Lenin    └── ... (Tiếng Anh, Thể chất, Chính trị, v.v.)
+2.3 Cấu trúc Syllabus (Module Handbook)
+Dựa trên Module Handbook DS thực tế, mỗi syllabus tại SCSE có cấu trúc chuẩn gồm các trường:
+Trường
+Ví dụ (IT013IU)
+Module designation
+“Introduces students to basic data structures and algorithms”
+Semester(s) taught
+4, 6
+Person responsible
+Dr. Tran Thanh Tung
+Language
+English
+Relation to curriculum
+Compulsory (All programs)
+Teaching methods
+Lecture, lesson, project, seminar
+Workload
+Total: 182.5h; Lecture: 37.5h; Lab: 25h; Self-study: 120h
+Credit points
+4 credits (Theory: 3 + Practice: 1); 6.64 ECTS
+Prerequisites
+Object-Oriented Programming
+CLOs
+CLO1: Understand…; CLO2: Analyze…; CLO3: Design…
+Competency level
+Knowledge: CLO1; Skill: CLO2, CLO3; Attitude: CLO3
+Content/Topics
+Table: Topic – Weight (hours) – Level (I/T/U)
+Examination forms
+Short-answer questions
+Study requirements
+Min 80% attendance; > 50/100 to pass
+Reading list
+Textbooks with author, title, year
+2.4 Chuẩn đầu ra chương trình (ILO/PLO)
+CS Program – 6 ILOs (a–f / ILO1–ILO6): - ILO1: Analyze complex computing problems, apply computing principles - ILO2: Design, implement, evaluate computing-based solutions - ILO3: Communicate effectively in professional contexts - ILO4: Recognize professional responsibilities, make informed judgments - ILO5: Function effectively as member/leader of a team - ILO6: Apply CS theory and software development fundamentals
+IT Program – 6 ILOs: - ILO1: Apply knowledge of math, science, engineering tools to solve problems - ILO2: Design systems/components/processes for broadly-defined engineering problems - ILO3: Apply written, oral, graphical communication; identify technical literature - ILO4: Analyze and interpret results to improve processes - ILO5: Function effectively as member/leader on technical teams - ILO6: Conduct standard tests, measurements, and experiments
+DS Program: Tương tự CS với định hướng Data Science
+3. PHÂN TÍCH BỐI CẢNH THỰC TẾ
+3.1 Vấn đề hiện tại của SCSE
+3.1.1 Vấn đề về Quản lý Phiên bản CTĐT
+SCSE hiện tồn tại nhiều phiên bản CTĐT song song theo từng cohort (2017–2021, 2018–2022, …, 2021–2025). Mỗi phiên bản có danh sách môn, mã môn, và số tín chỉ khác nhau. Việc tra cứu “sinh viên khóa X học CTĐT nào, môn Y có trong CTĐT đó không” hiện chỉ có thể thực hiện bằng cách tra thủ công trên file Word/PDF.
+3.1.2 Vấn đề về Quản lý Syllabus
+Syllabus được lưu dưới dạng file Word/PDF phân tán trên Google Drive cá nhân của giảng viên hoặc folder chung của khoa
+Không có cơ chế version control → không rõ đâu là bản mới nhất
+Không có workflow phê duyệt rõ ràng → giảng viên gửi file qua email/Zalo cho trưởng bộ môn
+Mỗi học kỳ giảng viên phải soạn lại từ đầu hoặc copy-paste từ file cũ
+Không có cảnh báo khi CLO không đúng định dạng hoặc không mapping với PLO
+3.1.3 Vấn đề về Ma trận CLO–PLO
+Ma trận CLO-PLO toàn khoa được duy trì thủ công trong file Excel
+Khi giảng viên cập nhật CLO trong syllabus, thư ký phải cập nhật lại file Excel tổng
+Quá trình này mất nhiều tuần, dễ sai sót và không đồng bộ
+Đây là tài liệu bắt buộc trong đợt kiểm định AUN-QA và ABET
+3.1.4 Vì sao các hệ thống trước không được dùng
+Qua phỏng vấn stakeholder (xem Mục 4), các lý do chính gồm: 1. Thiếu tính năng cốt lõi: Không có diff view, không có export báo cáo kiểm định 2. UX không phù hợp: Giao diện phức tạp, người không rành kỹ thuật không dùng được 3. Không có kế hoạch vận hành: Sau khi sinh viên tốt nghiệp, không ai maintain 4. Dữ liệu không đủ: Hệ thống rỗng, không có dữ liệu mẫu để demo thực tế
+3.2 Mục tiêu hệ thống mới
+#
+Mục tiêu
+Chỉ số đo lường
+G1
+Tập trung hóa toàn bộ syllabus và CTĐT
+100% syllabus của SCSE được nhập vào hệ thống
+G2
+Giảm thời gian chuẩn bị báo cáo kiểm định
+Từ 2 tuần → dưới 1 giờ (export tự động)
+G3
+Đảm bảo tính nhất quán CLO–PLO
+Hệ thống cảnh báo 100% PLO chưa được cover
+G4
+Chuẩn hóa workflow phê duyệt syllabus
+Loại bỏ hoàn toàn việc gửi file qua email/Zalo
+G5
+Hệ thống dùng được lâu dài
+Có tài liệu vận hành, Admin được đào tạo
+4. KẾT QUẢ PHỎNG VẤN STAKEHOLDER
+Phương pháp: Phỏng vấn bán cấu trúc (semi-structured interview) với 4 đối tượng đại diện. Thời lượng: 30–45 phút/người. Hình thức: trực tiếp hoặc online.
+4.1 Trưởng Khoa (Dean)
+Vai trò trong hệ thống: Người phê duyệt cuối cùng, người chịu trách nhiệm kiểm định, báo cáo BGH và VNU-HCM.
+Vấn đề hiện tại: - Không có cái nhìn tổng thể về trạng thái syllabus toàn khoa trong thời gian thực - Việc chuẩn bị ma trận CLO-PLO cho đợt kiểm định AUN-QA/ABET tốn nhiều tuần - Không thể so sánh nhanh sự thay đổi giữa các phiên bản CTĐT qua từng cohort - Phụ thuộc vào thư ký để có thông tin tổng hợp
+Nhu cầu với hệ thống: - Dashboard trực quan: biết ngay tỷ lệ syllabus đã/chưa duyệt theo ngành, học kỳ - Xuất báo cáo CLO-PLO matrix bằng 1 thao tác (1-click export) - Xem lịch sử thay đổi CTĐT theo từng cohort - Giao diện đủ đơn giản để tự dùng, không cần nhờ thư ký
+Điều kiện sử dụng hệ thống: > “Nếu bất kỳ lúc nào tôi cũng mở lên xem được toàn bộ trạng thái CTĐT của 4 ngành, và đến đợt kiểm định thì bấm một cái ra luôn báo cáo — thì tôi dùng.”
+4.2 Trưởng Bộ môn (Department Head)
+Vai trò trong hệ thống: Review và approve/reject syllabus của các giảng viên trong tổ trước khi trình Trưởng khoa.
+Vấn đề hiện tại: - Phải nhắn tin Zalo từng giảng viên để hỏi tiến độ nộp syllabus đầu kỳ - Nhận file Word/PDF qua nhiều kênh khác nhau (email, Zalo, Teams), khó theo dõi - Không có cách nào biết giảng viên có thực sự cập nhật nội dung hay chỉ đổi ngày tháng - Review toàn bộ syllabus mất nhiều giờ mỗi học kỳ trong khi còn nhiều công việc khác
+Nhu cầu với hệ thống: - Xem ngay danh sách môn học trong tổ và trạng thái syllabus của từng môn - Diff view: hệ thống tự highlight phần nội dung thay đổi so với kỳ trước - Approve/reject trực tiếp trên hệ thống kèm comment → không cần email qua lại - Nhận thông báo tự động khi có syllabus mới cần review - Hệ thống nhắc deadline cho giảng viên, thay cho việc nhắn Zalo thủ công
+4.3 Giảng viên (Faculty Member)
+Vai trò trong hệ thống: Soạn thảo, cập nhật và nộp syllabus môn học được phân công.
+Vấn đề hiện tại: - Mỗi kỳ phải copy file Word cũ, sửa tay từng chỗ → dễ bỏ sót, dễ còn sót nội dung cũ - Không rõ quy trình: nộp syllabus cho ai, theo định dạng nào, deadline khi nào - Hay bị trả về vì CLO không đúng format Bloom’s Taxonomy hoặc không đủ mapping PLO - Không biết syllabus đang ở bước duyệt nào sau khi nộp
+Nhu cầu với hệ thống: - Clone syllabus từ học kỳ trước, chỉ sửa phần cần cập nhật - Form có cấu trúc sẵn (General Info, CLO, Topics, Assessment, Reading List) → không bỏ sót - Checklist CLO theo Bloom’s Taxonomy levels (Knowledge/Skill/Attitude) - Submit bằng 1 nút → hệ thống tự chuyển đúng người duyệt - Tracking: xem syllabus đang ở trạng thái nào, ai đang review
+Điều kiện sử dụng: > “Nếu tôi clone được syllabus kỳ trước, sửa phần cần sửa, rồi submit luôn không cần gửi email — thì tôi dùng. Quan trọng là đừng bắt tôi nhập lại từ đầu.”
+4.4 Thư ký Khoa (School Secretary)
+Vai trò trong hệ thống: Vận hành hành chính, tổng hợp tài liệu, hỗ trợ kiểm định.
+Vấn đề hiện tại: - Đầu mỗi học kỳ: nhắn tin nhắc từng giảng viên nộp syllabus (30–40 người) - Nhận file từ nhiều nguồn khác nhau, đặt lại tên file theo quy tắc, upload lên Drive - Tổng hợp ma trận CLO-PLO toàn khoa vào Excel: mất khoảng 2 tuần mỗi đợt kiểm định - Khi một giảng viên cập nhật CLO → phải cập nhật lại toàn bộ bảng Excel - Trưởng khoa hỏi “môn nào chưa có syllabus?” → phải đếm tay từng môn
+Nhu cầu với hệ thống: - Dashboard: xem ngay ai đã nộp, ai chưa nộp syllabus - Hệ thống tự động nhắc deadline qua email/notification - Export báo cáo tổng hợp, ma trận CLO-PLO tự động: bấm là ra file - Giao diện phải đơn giản → không có background kỹ thuật - Có thể nhập/chỉnh sửa thông tin cơ bản (thêm môn mới, thêm giảng viên)
+4.5 Tổng hợp Pain Points & Giải pháp
+Pain Point
+Stakeholder bị ảnh hưởng
+Giải pháp trong hệ thống
+Không biết trạng thái tổng thể syllabus toàn khoa
+TK, TKK
+Dashboard real-time theo ngành/học kỳ
+Mất 2 tuần tổng hợp CLO-PLO matrix thủ công
+TKK, TK
+Auto-generate & export 1-click
+Chase giảng viên qua Zalo để nhắc nộp syllabus
+TBM, TKK
+Hệ thống tự nhắc deadline qua email
+Không biết nội dung syllabus có thực sự thay đổi không
+TBM
+Diff view highlight thay đổi
+Giảng viên phải nhập lại syllabus từ đầu mỗi kỳ
+GV
+Clone từ kỳ trước
+CLO viết sai format, không đủ PLO coverage
+GV
+Checklist + validation khi submit
+Không rõ workflow: nộp cho ai, deadline khi nào
+GV
+Workflow rõ ràng, submit 1 nút
+Nhiều phiên bản CTĐT, khó tra cứu
+Tất cả
+Quản lý CTĐT theo cohort
+Syllabus lưu phân tán, không có version control
+Tất cả
+Hệ thống tập trung + versioning
+5. CÁC ĐỐI TƯỢNG SỬ DỤNG (ACTORS)
+5.1 Sơ đồ Actors
+                    ┌─────────────────────────────┐                    │   CSMS – Curriculum &        │                    │   Syllabus Management System  │                    └─────────────────────────────┘                               │         ┌─────────────────────┼──────────────────────┐         │                     │                      │    ┌────▼────┐          ┌─────▼─────┐         ┌─────▼──────┐    │  Admin  │          │ Trưởng    │         │  Trưởng    │    │ (Thư ký │          │  Khoa     │         │  Bộ môn    │    │  + IT)  │          │  (Dean)   │         │            │    └─────────┘          └───────────┘         └────────────┘                                                      │                                               ┌──────▼──────┐                                               │  Giảng viên  │                                               │  (Faculty)   │                                               └─────────────┘
+5.2 Mô tả chi tiết từng Actor
+Actor
+Mô tả
+Quyền hạn chính
+Admin
+Thư ký khoa hoặc cán bộ IT được phân quyền quản trị
+Quản lý user, CTĐT, môn học, cấu hình hệ thống; xem tất cả báo cáo
+Trưởng Khoa
+Dean of SCSE
+Xem dashboard toàn khoa; approve syllabus bước cuối; xem & export báo cáo kiểm định
+Trưởng Bộ môn
+Head của từng bộ môn trong SCSE
+Xem & review syllabus trong tổ; approve/reject bước 1; xem dashboard của tổ
+Giảng viên
+Faculty member phụ trách môn học
+Soạn/sửa/nộp syllabus môn được phân công; xem trạng thái duyệt
+6. FUNCTIONAL REQUIREMENTS
+6.1 FR-01: Quản lý Người dùng & Phân quyền
+ID
+Mô tả
+Độ ưu tiên
+FR-01.1
+Admin có thể tạo, sửa, vô hiệu hóa tài khoản người dùng
+Must Have
+FR-01.2
+Hệ thống hỗ trợ 4 role: Admin, Dean, DeptHead, Faculty
+Must Have
+FR-01.3
+Đăng nhập bằng email/password hoặc SSO (Google Workspace IU)
+Must Have
+FR-01.4
+Admin phân công giảng viên phụ trách môn học theo học kỳ
+Must Have
+FR-01.5
+Giảng viên chỉ thấy và chỉnh sửa syllabus môn được phân công
+Must Have
+FR-01.6
+Trưởng BM chỉ thấy syllabus thuộc bộ môn của mình
+Must Have
+FR-01.7
+Hệ thống log lại mọi thao tác chỉnh sửa (audit trail)
+Should Have
+6.2 FR-02: Quản lý Chương trình Đào tạo (CTĐT)
+ID
+Mô tả
+Độ ưu tiên
+FR-02.1
+Admin có thể tạo CTĐT mới theo ngành và cohort (vd: CS 2021–2025)
+Must Have
+FR-02.2
+Mỗi CTĐT có metadata: tên ngành, cohort, tổng tín chỉ, trạng thái (active/archived)
+Must Have
+FR-02.3
+Admin có thể thêm/bớt môn học vào CTĐT, phân loại: Compulsory / Elective / General
+Must Have
+FR-02.4
+Hệ thống lưu thông tin môn học: mã môn (vd: IT013IU), tên, số tín chỉ (theory + practice), học kỳ khuyến nghị, môn tiên quyết
+Must Have
+FR-02.5
+Hệ thống tự động kiểm tra: tổng tín chỉ CTĐT có đúng quy định không
+Should Have
+FR-02.6
+Hệ thống phát hiện vòng lặp prerequisite (A yêu cầu B, B yêu cầu A)
+Should Have
+FR-02.7
+Admin có thể clone CTĐT từ cohort trước để tạo cohort mới
+Should Have
+FR-02.8
+Hệ thống hiển thị diff giữa 2 phiên bản CTĐT (thêm/bớt/đổi môn)
+Should Have
+FR-02.9
+Cho phép xem CTĐT theo dạng timeline học kỳ (Semester view)
+Could Have
+6.3 FR-03: Quản lý Syllabus
+ID
+Mô tả
+Độ ưu tiên
+FR-03.1
+Giảng viên tạo syllabus mới cho môn được phân công trong học kỳ hiện tại
+Must Have
+FR-03.2
+Giảng viên clone syllabus từ học kỳ trước (copy toàn bộ nội dung, đổi học kỳ)
+Must Have
+FR-03.3
+Form syllabus gồm các trường theo chuẩn Module Handbook SCSE: General Info, CLOs, Content/Topics, Assessment, Reading List
+Must Have
+FR-03.4
+Mỗi syllabus có trạng thái: Draft → Submitted → Under Review → Approved / Rejected
+Must Have
+FR-03.5
+Hệ thống lưu version history: mỗi lần submit tạo một version mới, không xóa version cũ
+Must Have
+FR-03.6
+Giảng viên có thể xem lại tất cả version cũ của syllabus
+Must Have
+FR-03.7
+Hệ thống hiển thị diff giữa version hiện tại và version trước (highlight thay đổi)
+Must Have
+FR-03.8
+Khi Trưởng BM/Trưởng khoa reject, giảng viên nhận được comment giải thích lý do
+Must Have
+FR-03.9
+Giảng viên có thể lưu Draft và tiếp tục chỉnh sửa trước khi submit
+Must Have
+FR-03.10
+Hệ thống validate trước khi submit: thiếu trường bắt buộc → cảnh báo không cho submit
+Must Have
+FR-03.11
+Giảng viên có thể xem preview syllabus dưới dạng PDF trước khi submit
+Should Have
+FR-03.12
+Hỗ trợ import syllabus từ file Word/Excel (migration từ hệ thống cũ)
+Could Have
+6.4 FR-04: Quản lý CLO và Ma trận CLO–PLO
+ID
+Mô tả
+Độ ưu tiên
+FR-04.1
+Admin/Dean định nghĩa danh sách PLO/ILO cho từng chương trình (vd: CS có ILO1–ILO6)
+Must Have
+FR-04.2
+Giảng viên khai báo CLO cho môn học và mapping CLO → PLO với mức độ (I: Introduce / D: Develop / A: Achieve)
+Must Have
+FR-04.3
+Hệ thống tự động tổng hợp và hiển thị ma trận CLO–PLO toàn CTĐT dưới dạng bảng/heatmap
+Must Have
+FR-04.4
+Hệ thống cảnh báo khi có PLO chưa được cover bởi bất kỳ CLO nào trong CTĐT
+Must Have
+FR-04.5
+Hệ thống cảnh báo khi có CLO không được mapping với PLO nào
+Must Have
+FR-04.6
+Hệ thống hỗ trợ phân loại CLO theo Bloom’s Taxonomy (Knowledge / Skill / Attitude)
+Should Have
+FR-04.7
+Admin/Dean có thể export ma trận CLO-PLO ra file Excel hoặc PDF
+Must Have
+FR-04.8
+Có thể lọc ma trận theo: ngành, cohort, học kỳ, nhóm môn (Compulsory/Elective)
+Should Have
+6.5 FR-05: Workflow Phê duyệt Syllabus
+ID
+Mô tả
+Độ ưu tiên
+FR-05.1
+Sau khi GV submit, hệ thống tự động chuyển syllabus đến Trưởng BM tương ứng
+Must Have
+FR-05.2
+Trưởng BM có thể Approve (chuyển Dean) hoặc Reject (kèm comment, trả GV)
+Must Have
+FR-05.3
+Trưởng khoa có thể Approve (hoàn thành) hoặc Reject (kèm comment, trả GV)
+Must Have
+FR-05.4
+Mỗi bước thay đổi trạng thái → hệ thống gửi email notification cho các bên liên quan
+Must Have
+FR-05.5
+Hệ thống hiển thị in-app notification cho các tác vụ cần xử lý
+Should Have
+FR-05.6
+Admin có thể cấu hình deadline nộp syllabus; hệ thống tự nhắc trước deadline
+Must Have
+FR-05.7
+Khi quá deadline, hệ thống tự động escalate: gửi thông báo đến Trưởng BM và Trưởng khoa
+Should Have
+FR-05.8
+Trưởng BM/khoa có thể xem lịch sử tất cả các lần review/comment của một syllabus
+Must Have
+6.6 FR-06: Dashboard & Thống kê
+ID
+Mô tả
+Độ ưu tiên
+FR-06.1
+Dashboard Trưởng khoa: tỷ lệ % syllabus đã/chưa duyệt theo ngành và học kỳ
+Must Have
+FR-06.2
+Dashboard Trưởng BM: danh sách môn trong tổ, trạng thái từng syllabus, tên GV phụ trách
+Must Have
+FR-06.3
+Dashboard GV: danh sách môn phụ trách, trạng thái syllabus, deadline còn lại
+Must Have
+FR-06.4
+Dashboard Admin/TKK: tổng quan toàn khoa, ai chưa nộp, thống kê theo nhóm môn
+Must Have
+FR-06.5
+Biểu đồ phân bổ tín chỉ theo nhóm (Compulsory / Elective / General)
+Should Have
+FR-06.6
+Heatmap CLO-PLO coverage: màu sắc thể hiện mức độ phủ của từng PLO
+Must Have
+FR-06.7
+Lịch sử cập nhật CTĐT: timeline hiển thị các thay đổi qua từng cohort
+Should Have
+6.7 FR-07: Báo cáo & Export
+ID
+Mô tả
+Độ ưu tiên
+FR-07.1
+Export ma trận CLO-PLO toàn CTĐT ra file Excel (.xlsx)
+Must Have
+FR-07.2
+Export ma trận CLO-PLO ra file PDF
+Should Have
+FR-07.3
+Export danh sách syllabus theo học kỳ (trạng thái, GV phụ trách, ngày duyệt)
+Must Have
+FR-07.4
+Export nội dung từng syllabus ra PDF theo template chuẩn SCSE
+Should Have
+FR-07.5
+Báo cáo “PLO Coverage Report”: thống kê mức độ phủ của từng PLO theo toàn CTĐT
+Should Have
+FR-07.6
+Báo cáo “Curriculum Change Report”: liệt kê thay đổi giữa 2 cohort
+Could Have
+7. NON-FUNCTIONAL REQUIREMENTS
+7.1 NFR-01: Hiệu năng (Performance)
+ID
+Yêu cầu
+Ngưỡng
+NFR-01.1
+Thời gian tải Dashboard chính
+< 2 giây
+NFR-01.2
+Thời gian tải syllabus editor
+< 1.5 giây
+NFR-01.3
+Thời gian generate CLO-PLO matrix (toàn CTĐT ~100 môn)
+< 5 giây
+NFR-01.4
+Thời gian export file Excel/PDF
+< 10 giây
+NFR-01.5
+Hỗ trợ đồng thời tối thiểu
+50 concurrent users
+7.2 NFR-02: Khả năng sử dụng (Usability)
+ID
+Yêu cầu
+Ngưỡng
+NFR-02.1
+Người dùng không có background kỹ thuật (thư ký, giảng viên lớn tuổi) hoàn thành task cơ bản mà không cần training
+SUS Score ≥ 70
+NFR-02.2
+Thời gian để giảng viên submit syllabus (clone + chỉnh sửa) lần đầu
+≤ 30 phút
+NFR-02.3
+Hệ thống cung cấp thông báo lỗi rõ ràng bằng tiếng Anh/Việt
+100% error states có message
+NFR-02.4
+Responsive design: dùng được trên máy tính và tablet
+✓
+7.3 NFR-03: Bảo mật (Security)
+ID
+Yêu cầu
+NFR-03.1
+Phân quyền RBAC chặt chẽ: mỗi role chỉ truy cập được dữ liệu phù hợp
+NFR-03.2
+Mật khẩu được hash bằng bcrypt (salt ≥ 10 rounds)
+NFR-03.3
+JWT token có expiry 24h; refresh token 7 ngày
+NFR-03.4
+Tất cả API endpoint đều yêu cầu authentication
+NFR-03.5
+Validate và sanitize tất cả input để chống SQL Injection và XSS
+NFR-03.6
+HTTPS bắt buộc cho toàn bộ traffic
+7.4 NFR-04: Độ tin cậy (Reliability)
+ID
+Yêu cầu
+Ngưỡng
+NFR-04.1
+Uptime trong thời gian học kỳ
+≥ 95%
+NFR-04.2
+Không mất dữ liệu syllabus đã được approve
+Versioning bất biến
+NFR-04.3
+Tự động backup database
+Hàng ngày
+7.5 NFR-05: Khả năng bảo trì (Maintainability)
+ID
+Yêu cầu
+NFR-05.1
+Code có comment đầy đủ; có tài liệu API (Swagger/OpenAPI)
+NFR-05.2
+Có tài liệu hướng dẫn vận hành cho Admin (không cần background lập trình)
+NFR-05.3
+Có tài liệu hướng dẫn sử dụng cho từng role
+NFR-05.4
+Cấu trúc project rõ ràng, dễ bàn giao cho người maintain sau
+7.6 NFR-06: Tương thích (Compatibility)
+ID
+Yêu cầu
+NFR-06.1
+Hoạt động trên Chrome, Firefox, Edge (phiên bản 2 năm gần nhất)
+NFR-06.2
+Không yêu cầu cài đặt phần mềm phía client
+NFR-06.3
+Export file tương thích với Microsoft Excel 2016+ và Adobe Reader
+8. USE CASES
+8.1 Sơ đồ Use Case Tổng quan
+┌─────────────────────────────────────────────────────────────────┐│                    CSMS System                                   ││                                                                  ││  UC-01 Đăng nhập                                                ││  UC-02 Quản lý CTĐT (Admin)                                     ││  UC-03 Quản lý Môn học (Admin)                                  ││  UC-04 Phân công GV dạy môn (Admin)                             ││  UC-05 Soạn & nộp Syllabus (GV)                                 ││  UC-06 Clone Syllabus kỳ trước (GV)                             ││  UC-07 Khai báo CLO & mapping PLO (GV)                          ││  UC-08 Review & Phê duyệt Syllabus (TBM)                        ││  UC-09 Phê duyệt cuối / Reject (Dean)                           ││  UC-10 Xem Dashboard toàn khoa (Dean/Admin)                     ││  UC-11 Xem Dashboard bộ môn (TBM)                               ││  UC-12 Xem & phân tích CLO-PLO Matrix (Dean/Admin)              ││  UC-13 Export báo cáo kiểm định (Dean/Admin)                    ││  UC-14 Xem Diff giữa 2 phiên bản Syllabus (TBM/Dean)           ││  UC-15 Cấu hình Deadline (Admin)                                 │└─────────────────────────────────────────────────────────────────┘
+8.2 Chi tiết Use Cases quan trọng
+UC-05: Soạn và Nộp Syllabus
+Trường
+Nội dung
+UC ID
+UC-05
+Tên
+Soạn và Nộp Syllabus
+Actor
+Giảng viên (Primary)
+Mô tả
+Giảng viên tạo mới hoặc cập nhật syllabus cho môn học được phân công trong học kỳ hiện tại, sau đó nộp lên hệ thống để phê duyệt
+Tiền điều kiện
+GV đã đăng nhập; GV được Admin phân công phụ trách môn học trong học kỳ đang mở
+Hậu điều kiện (Success)
+Syllabus được tạo với trạng thái “Submitted”; Trưởng BM nhận notification
+Hậu điều kiện (Failure)
+Syllabus được lưu dưới dạng Draft, không chuyển đến TBM
+Luồng chính (Main Flow): 1. GV đăng nhập, vào trang “My Courses” – xem danh sách môn được phân công học kỳ này 2. GV chọn môn cần soạn syllabus → Hệ thống hiển thị trạng thái hiện tại (chưa có syllabus / đang Draft) 3. GV chọn “Tạo mới” hoặc “Clone từ kỳ trước” 4. Hệ thống mở syllabus editor với các section: General Info, CLOs, Course Content, Assessment, Reading List 5. GV điền/chỉnh sửa nội dung từng section 6. GV nhấn “Lưu Draft” – hệ thống lưu tạm, không chuyển đến TBM 7. GV hoàn chỉnh nội dung → nhấn “Submit để duyệt” 8. Hệ thống validate: kiểm tra các trường bắt buộc, CLO có mapping PLO không 9. Nếu validation pass: syllabus chuyển sang trạng thái “Submitted”, hệ thống gửi email notification đến Trưởng BM 10. Hệ thống hiển thị thông báo thành công; GV thấy tracking status
+Luồng thay thế: - 3a. Clone từ kỳ trước: Hệ thống hiển thị danh sách syllabus cũ của môn này theo thứ tự học kỳ. GV chọn version muốn clone → hệ thống copy toàn bộ nội dung → GV chỉnh sửa phần cần thay đổi → tiếp tục từ bước 5 - 8a. Validation fail: Hệ thống hiển thị danh sách lỗi cụ thể (vd: “CLO2 chưa được mapping với PLO nào”; “Thiếu Reading List”) → GV quay lại sửa → thử submit lại
+UC-08: Review và Phê duyệt Syllabus (Trưởng Bộ môn)
+Trường
+Nội dung
+UC ID
+UC-08
+Tên
+Review và Phê duyệt Syllabus
+Actor
+Trưởng Bộ môn (Primary)
+Mô tả
+Trưởng BM xem xét syllabus do giảng viên trong tổ nộp và quyết định approve hoặc reject
+Tiền điều kiện
+TBM đã đăng nhập; có ít nhất 1 syllabus ở trạng thái “Submitted” trong tổ của TBM
+Hậu điều kiện (Approve)
+Syllabus chuyển sang “Under Review by Dean”; Dean nhận notification
+Hậu điều kiện (Reject)
+Syllabus trả về trạng thái “Draft”; GV nhận notification kèm comment
+Luồng chính: 1. TBM nhận email notification hoặc vào hệ thống thấy badge “3 syllabus cần review” 2. TBM vào “Review Queue” – thấy danh sách syllabus pending theo thứ tự nộp 3. TBM chọn một syllabus → hệ thống mở trang review 4. Trang review hiển thị: nội dung syllabus hiện tại + diff so với version kỳ trước (highlighted) 5. TBM đọc nội dung, xem phần thay đổi được highlight 6. TBM chọn một trong hai: - Approve: xác nhận → syllabus chuyển đến Dean; Dean nhận email - Reject: nhập comment giải thích → xác nhận → syllabus trả GV; GV nhận email kèm comment 7. TBM thấy trạng thái đã được cập nhật trong dashboard
+UC-12: Xem và Phân tích CLO–PLO Matrix
+Trường
+Nội dung
+UC ID
+UC-12
+Tên
+Xem và Phân tích CLO–PLO Matrix
+Actor
+Dean, Admin
+Mô tả
+Người dùng xem ma trận ánh xạ CLO–PLO của toàn chương trình, phân tích mức độ phủ của từng PLO, phát hiện PLO chưa được cover đủ
+Tiền điều kiện
+Đã đăng nhập với role Dean hoặc Admin; đã có ít nhất một CTĐT với syllabus được approve
+Luồng chính: 1. Người dùng vào module “CLO–PLO Matrix” 2. Chọn: Ngành (CS / IT / DS) + Cohort (vd: 2021–2025) + Học kỳ (All / Semester X) 3. Hệ thống tổng hợp dữ liệu từ tất cả syllabus approved của CTĐT đã chọn 4. Hiển thị heatmap: hàng = PLO (ILO1–ILO6), cột = môn học, ô = mức độ (I/D/A) màu sắc phân biệt 5. Hệ thống hiển thị cảnh báo: “PLO3 chưa được cover bởi bất kỳ môn nào” (nếu có) 6. Hiển thị summary: tổng số CLO, số PLO được cover, % coverage 7. Người dùng có thể click vào một ô để xem chi tiết CLO của môn đó 8. Người dùng nhấn “Export Excel” hoặc “Export PDF” → tải file về
+UC-13: Export Báo cáo Kiểm định
+Trường
+Nội dung
+UC ID
+UC-13
+Tên
+Export Báo cáo Kiểm định
+Actor
+Dean, Admin (Thư ký)
+Mô tả
+Người dùng tạo và tải về các báo cáo phục vụ kiểm định AUN-QA / ABET
+Tiền điều kiện
+Đã đăng nhập; có dữ liệu syllabus và CTĐT
+Luồng chính: 1. Người dùng vào module “Báo cáo” 2. Chọn loại báo cáo: - CLO–PLO Matrix (Excel/PDF) - Danh sách syllabus theo học kỳ (trạng thái, GV, ngày duyệt) - PLO Coverage Report 3. Cấu hình tham số: ngành, cohort, học kỳ 4. Nhấn “Generate” → hệ thống xử lý (progress bar) 5. File được tạo → nút “Download” hiện ra 6. Người dùng tải file về
+9. RÀNG BUỘC HỆ THỐNG
+9.1 Ràng buộc kỹ thuật
+Hệ thống là web application, không cần cài đặt thêm phần mềm
+Backend: Node.js + Express (hoặc tương đương)
+Frontend: React.js với Tailwind CSS
+Database: PostgreSQL
+Triển khai: có thể chạy trên server nội bộ của IU hoặc cloud (Railway/Render)
+Không phụ thuộc vào service trả phí ngoài (ngoại trừ email SMTP)
+9.2 Ràng buộc nghiệp vụ
+Syllabus đã được Approve không thể bị xóa, chỉ có thể archive
+Mỗi môn học trong một học kỳ chỉ có 1 syllabus active
+Workflow phê duyệt tuân thủ đúng thứ tự: GV → TBM → Dean
+Dữ liệu ILO/PLO của từng ngành phải được Admin nhập trước khi GV có thể mapping CLO
+9.3 Ràng buộc triển khai (1 học kỳ, 1 sinh viên)
+Chỉ hỗ trợ 1 khoa (SCSE) trong phiên bản MVP
+Không có module Student Portal
+Không có AI/ML features
+Tập trung vào 4 nghiệp vụ cốt lõi: Quản lý CTĐT, Syllabus, CLO-PLO Matrix, Báo cáo
+10. PHỤ LỤC
+10.1 Cấu trúc Syllabus chuẩn SCSE (từ Module Handbook DS)
+Dựa trên Module Handbook thực tế, mỗi syllabus trong CSMS có cấu trúc:
+SYLLABUS – [Mã môn] [Tên môn]│├── 1. GENERAL INFORMATION│   ├── Module designation (mô tả tổng quát)│   ├── Semester(s) taught│   ├── Person responsible (Giảng viên phụ trách)│   ├── Language of instruction│   ├── Relation to curriculum (Compulsory / Elective / General)│   ├── Teaching methods (Lecture / Lab / Seminar / Project)│   ├── Workload (Total hours / Contact hours / Self-study hours)│   └── Credit points (Theory + Practice; ECTS equivalent)│├── 2. PREREQUISITES│   └── Danh sách môn tiên quyết (linked đến hệ thống)│├── 3. COURSE LEARNING OUTCOMES (CLOs)│   ├── CLO1: [mô tả] – Bloom's level│   ├── CLO2: [mô tả] – Bloom's level│   └── Competency level table (Knowledge / Skill / Attitude → CLO mapping)│├── 4. PLO MAPPING│   └── CLO × PLO matrix (level: I/D/A)│├── 5. COURSE CONTENT│   └── Table: Topic | Weight (hours) | Teaching Level (I/T/U)│├── 6. ASSESSMENT│   ├── Examination forms│   ├── Attendance requirement (min 80%)│   └── Passing criteria (> 50/100)│└── 7. READING LIST    └── Danh sách tài liệu tham khảo (Author, Title, Year, Edition)
+10.2 Danh sách PLO/ILO của các ngành (từ Program Specification)
+CS Program – 6 ILOs (ký hiệu a–f): - ILO-a: Analyze complex computing problems, apply principles of computing - ILO-b: Design, implement, evaluate computing-based solutions - ILO-c: Communicate effectively in professional contexts - ILO-d: Recognize professional responsibilities, make informed judgments - ILO-e: Function effectively as member/leader of a team - ILO-f: Apply CS theory and software development fundamentals
+IT Program – 6 ILOs (ký hiệu ILO1–ILO6): - ILO1: Apply knowledge of math, science, engineering tools to engineering problems - ILO2: Design systems/components/processes for broadly-defined problems - ILO3: Apply written, oral, graphical communication; identify technical literature - ILO4: Analyze and interpret results to improve processes - ILO5: Function effectively as member/leader on technical teams - ILO6: Conduct standard tests, measurements, and experiments
+DS Program: Tương tự CS, với định hướng Data Science
+10.3 Ví dụ CLO–PLO Mapping thực tế (IT013IU)
+CLO
+ILO-a
+ILO-b
+ILO-c
+ILO-d
+ILO-e
+ILO-f
+CLO1 (Understand DS&A)
+X
+CLO2 (Analyze & Evaluate)
+X
+CLO3 (Design & Select)
+X
+10.4 Danh sách các môn học mẫu (từ tài liệu thực tế)
+Mã môn
+Tên môn
+Tín chỉ
+Loại
+IT013IU
+Algorithms and Data Structure
+4 (3T+1P)
+Compulsory
+IT058IU
+Thesis
+-
+Compulsory
+IT069IU
+Object-Oriented Programming
+4
+Compulsory
+IT079IU
+Principle of Database Management
+-
+Compulsory
+IT082IU
+Internship
+-
+Compulsory
+IT135IU
+Introduction to Data Science
+-
+Compulsory (DS)
+IT159IU
+Artificial Intelligence
+-
+Compulsory
+IT160IU
+Data Mining
+4
+Compulsory
+IT161IU
+Big Data Technology
+-
+Compulsory (DS)
+IT056IU
+IT Project Management
+-
+Elective
+IT157IU
+Deep Learning
+4
+Elective
+IT164IU
+Cloud Computing
+-
+Elective
+MA001IU
+Calculus 1
+-
+General
+MA026IU
+Probability, Statistic & Random Process
+-
+General
+10.5 Bảng câu hỏi phỏng vấn stakeholder (để sinh viên dùng)
+Dành cho Trưởng khoa: 1. Hiện tại thầy/cô theo dõi tình trạng syllabus của toàn khoa bằng cách nào? 2. Đợt kiểm định gần nhất, việc chuẩn bị tài liệu CLO-PLO mất bao lâu? 3. Thầy/cô cần thấy thông tin gì ngay khi mở hệ thống lên? 4. Điều kiện nào để thầy/cô thực sự đưa hệ thống vào sử dụng?
+Dành cho Trưởng Bộ môn: 1. Quy trình review syllabus của tổ hiện tại diễn ra như thế nào? 2. Tính năng nào sẽ tiết kiệm thời gian nhất cho thầy/cô? 3. Thầy/cô có muốn so sánh syllabus kỳ này với kỳ trước không? Theo cách nào?
+Dành cho Giảng viên: 1. Thầy/cô thường mất bao lâu để soạn/cập nhật syllabus mỗi học kỳ? 2. Thầy/cô hay gặp vấn đề gì khi viết CLO? 3. Quy trình nộp syllabus hiện tại (gửi cho ai, qua kênh nào)? 4. Điều gì sẽ khiến thầy/cô sẵn sàng dùng một tool mới?
+Dành cho Thư ký: 1. Chị mất bao nhiêu thời gian để tổng hợp tài liệu kiểm định mỗi đợt? 2. Những thao tác nào chiếm nhiều thời gian nhất? 3. Giao diện như thế nào là dễ dùng với chị?
+Tài liệu này được xây dựng dựa trên dữ liệu thực tế từ Program Specification và Module Handbook của SCSE, International University, VNU-HCM. Phiên bản 1.0 – [Năm]
+END OF DOCUMENT
