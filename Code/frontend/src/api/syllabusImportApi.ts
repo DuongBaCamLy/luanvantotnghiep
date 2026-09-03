@@ -1,18 +1,71 @@
 import { api } from "./axios"
+
+import type {
+  BulkSyllabusImportPreviewResponse,
+  BulkConfirmSyllabusImportRequest,
+  ConfirmSyllabusImportRequest,
+  SyllabusImportPreviewResponse
+} from "@/types/syllabusImport"
 import type { Syllabus } from "@/types/syllabus"
-import type { SyllabusImportData, SyllabusImportMode, SyllabusImportPreviewResponse } from "@/types/syllabusImport"
+
+
 
 export const syllabusImportApi = {
-  preview: async (syllabusId: number, file: File): Promise<SyllabusImportPreviewResponse> => {
-    const form = new FormData()
-    form.append("file", file)
-    const response = await api.post(`/api/syllabuses/${syllabusId}/import/preview`, form, {
-      headers: { "Content-Type": "multipart/form-data" },
-    })
+
+
+  preview: async (
+    file: File
+  ): Promise<SyllabusImportPreviewResponse> => {
+
+
+    const formData = new FormData()
+
+
+    formData.append(
+      "file",
+      file
+    )
+
+
+    const response =
+      await api.post<SyllabusImportPreviewResponse>(
+        "/api/syllabus-import/preview",
+        formData,
+        {
+          headers:{
+            "Content-Type":
+              "multipart/form-data"
+          }
+        }
+      )
+
+
+    return response.data
+
+  },
+
+  previewBulk: async (file: File, programId: number, cohortId: number): Promise<BulkSyllabusImportPreviewResponse> => {
+    const formData = new FormData()
+    formData.append("file", file)
+    const response = await api.post<BulkSyllabusImportPreviewResponse>(
+      `/api/syllabus-import/preview-bulk?programId=${programId}&cohortId=${cohortId}`,
+      formData,
+      {
+        headers: { "Content-Type": "multipart/form-data" },
+        // A programme specification can contain hundreds of PDF pages.
+        // Keep the request alive while the backend separates every syllabus.
+        timeout: 180_000,
+      },
+    )
     return response.data
   },
-  confirm: async (syllabusId: number, data: SyllabusImportData, importMode: SyllabusImportMode = "MERGE"): Promise<Syllabus> => {
-    const response = await api.post(`/api/syllabuses/${syllabusId}/import/confirm`, { data, importMode })
+  confirm: async (request: ConfirmSyllabusImportRequest): Promise<Syllabus> => {
+    const response = await api.post<Syllabus>("/api/syllabus-import/confirm", request)
     return response.data
   },
+  confirmBulkItem: async (request: BulkConfirmSyllabusImportRequest): Promise<Syllabus> => {
+    const response = await api.post<Syllabus>("/api/syllabus-import/confirm-bulk-item", request)
+    return response.data
+  },
+
 }

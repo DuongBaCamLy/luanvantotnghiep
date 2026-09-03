@@ -24,13 +24,13 @@ import com.scse.curriculum.approval.entity.ApprovalStatus;
 import com.scse.curriculum.approval.entity.ApprovalStep;
 import com.scse.curriculum.approval.repository.ApprovalRequestRepository;
 import com.scse.curriculum.course.entity.Course;
+import com.scse.curriculum.courseprogram.repository.CourseProgramRepository;
+import com.scse.curriculum.classsection.repository.ClassSectionRepository;
 import com.scse.curriculum.email.WorkflowNotificationService;
 import com.scse.curriculum.syllabus.entity.Syllabus;
 import com.scse.curriculum.syllabus.entity.SyllabusStatus;
 import com.scse.curriculum.syllabus.repository.SyllabusRepository;
 import com.scse.curriculum.syllabus.service.SyllabusAccessService;
-import com.scse.curriculum.syllabus.service.SyllabusService;
-import com.scse.curriculum.syllabus.dto.SyllabusResponse;
 import com.scse.curriculum.user.entity.UserAccount;
 import com.scse.curriculum.user.entity.UserRole;
 import com.scse.curriculum.user.repository.UserAccountRepository;
@@ -49,8 +49,9 @@ class ApprovalRequestServiceImplTest {
     @Mock
     private SyllabusAccessService syllabusAccessService;
     @Mock
-    private SyllabusService syllabusService;
-
+    private CourseProgramRepository courseProgramRepository;
+    @Mock
+    private ClassSectionRepository classSectionRepository;
     @InjectMocks
     private ApprovalRequestServiceImpl service;
 
@@ -230,22 +231,10 @@ void deanRevisionNotifiesCreatorAndForwardingDepartmentHead() {
     when(repository.save(any(ApprovalRequest.class)))
             .thenAnswer(invocation -> invocation.getArgument(0));
 
-    when(syllabusService.createRevisionDraft(
-            eq(100),
-            eq("Bổ sung mapping CLO-PLO")))
-            .thenReturn(
-                    SyllabusResponse.builder()
-                            .id(101)
-                            .versionNumber(3)
-                            .versionLabel("v3.0")
-                            .status(SyllabusStatus.DRAFT.name())
-                            .build()
-            );
-
     var response = service.review(22, request);
 
     assertThat(syllabus.getStatus())
-        .isEqualTo(SyllabusStatus.REJECTED);
+        .isEqualTo(SyllabusStatus.REVISION_REQUESTED);
     verify(workflowNotificationService)
             .notifyRevisionRequested(
                     eq(syllabus),
@@ -254,16 +243,11 @@ void deanRevisionNotifiesCreatorAndForwardingDepartmentHead() {
                     eq(ApprovalStep.STEP3_DEAN),
                     eq(List.of(deptHead)));
 
-    verify(syllabusService)
-            .createRevisionDraft(
-                    eq(100),
-                    eq("Bổ sung mapping CLO-PLO"));
-
     assertThat(response.getRevisionDraftId())
-            .isEqualTo(101);
+            .isNull();
 
     assertThat(response.getRevisionDraftVersionLabel())
-            .isEqualTo("v3.0");
+            .isNull();
 }
     private Syllabus syllabus(SyllabusStatus status) {
         return Syllabus.builder()

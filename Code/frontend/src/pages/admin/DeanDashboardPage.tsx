@@ -36,6 +36,7 @@ import {
   type DeanCourseProgress,
   type DeanDashboardWarning,
 } from "@/api/dashboardApi"
+import { approvalRequestApi } from "@/api/approvalRequestApi"
 import DashboardHero from "@/components/dashboard/DashboardHero"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -90,6 +91,13 @@ export default function DeanDashboardPage() {
     refetchInterval: 60_000,
     staleTime: 30_000,
   })
+  const finalReviewQuery = useQuery({
+    queryKey: ["approval-requests", "pending", "STEP3_DEAN"],
+    queryFn: () => approvalRequestApi.getPendingByStep("STEP3_DEAN"),
+    staleTime: 15_000,
+    refetchInterval: 30_000,
+  })
+  const pendingFinalReviews = finalReviewQuery.data ?? []
 
   const dashboard = dashboardQuery.data
   const selectedMajor = majorId ?? dashboard?.scope.majorId ?? undefined
@@ -166,9 +174,9 @@ export default function DeanDashboardPage() {
       iconClass: "bg-emerald-50 text-emerald-700",
     },
     {
-      label: "Chưa phê duyệt",
-      value: summary.notApprovedSyllabuses,
-      note: `${summary.pendingReviewSyllabuses} đang chờ xử lý`,
+      label: "Pending Final Reviews",
+      value: pendingFinalReviews.length,
+      note: "Awaiting the Dean's final decision",
       icon: Clock3,
       iconClass: "bg-blue-50 text-blue-700",
     },
@@ -337,6 +345,37 @@ export default function DeanDashboardPage() {
         })}
       </section>
 
+      <section className="overflow-hidden rounded-2xl border border-blue-200 bg-white">
+        <div className="flex items-center justify-between border-b border-blue-100 bg-blue-50/60 px-5 py-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-blue-600">Dean Review Queue</p>
+            <h2 className="mt-1 text-lg font-semibold text-slate-950">Needs Final Approval</h2>
+          </div>
+          <Badge className="bg-blue-600 text-white">{pendingFinalReviews.length} pending</Badge>
+        </div>
+        <div className="divide-y divide-slate-100">
+          {pendingFinalReviews.map((request) => {
+            return (
+              <div key={request.id} className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="font-mono text-xs font-bold text-[#007d84]">{request.courseCode}</p>
+                  <p className="font-semibold text-slate-900">{request.courseName}</p>
+                  <p className="mt-1 text-xs text-slate-500">
+                    Program: {request.programCode ?? "—"} · Cohort: {request.cohortName ?? "—"} · Semester: {request.semester ?? "—"} · Instructor: {request.instructorUsername ?? "—"} · Reviewed by: {request.requestedByUsername ?? "—"}
+                  </p>
+                </div>
+                <Button size="sm" onClick={() => navigate(`/dean/syllabus/${request.syllabusId}`)}>
+                  Review <ChevronRight className="size-4" />
+                </Button>
+              </div>
+            )
+          })}
+          {!finalReviewQuery.isLoading && pendingFinalReviews.length === 0 && (
+            <p className="px-5 py-8 text-center text-sm text-slate-500">No syllabus is waiting for final approval.</p>
+          )}
+        </div>
+      </section>
+
       <section className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
         <Card className="border-slate-200 shadow-none">
           <CardContent className="p-5">
@@ -356,12 +395,12 @@ export default function DeanDashboardPage() {
               <Badge
                 variant="outline"
                 className={
-                  summary.underReviewSyllabuses > 0
+                  pendingFinalReviews.length > 0
                     ? "border-amber-200 bg-amber-50 text-amber-700"
                     : "border-emerald-200 bg-emerald-50 text-emerald-700"
                 }
               >
-                {summary.underReviewSyllabuses} final review pending
+                {pendingFinalReviews.length} final review pending
               </Badge>
             </div>
 
@@ -437,7 +476,7 @@ export default function DeanDashboardPage() {
             <div className="mt-5 flex items-end justify-between gap-4 rounded-2xl bg-slate-50 p-5">
               <div>
                 <p className="text-4xl font-semibold tracking-tight text-slate-950">
-                  {summary.underReviewSyllabuses}
+                  {pendingFinalReviews.length}
                 </p>
                 <p className="mt-1 text-sm text-slate-500">
                   under review at Dean step
@@ -687,7 +726,7 @@ export default function DeanDashboardPage() {
                     course.syllabusId
                       ? navigate(`/dean/syllabus/${course.syllabusId}`)
                       : navigate(
-                          `/dean/syllabus?major=${dashboard.scope.majorCode ?? ""}&cohort=${dashboard.scope.cohortName ?? ""}`,
+                          `/dean/syllabus?programId=${dashboard.scope.programId ?? ""}&cohortId=${dashboard.scope.cohortId ?? ""}`,
                         )
                   }
                 />

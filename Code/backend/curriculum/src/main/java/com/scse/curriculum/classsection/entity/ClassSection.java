@@ -1,6 +1,8 @@
 package com.scse.curriculum.classsection.entity;
 
 import com.scse.curriculum.course.entity.Course;
+import com.scse.curriculum.program.entity.Program;
+import com.scse.curriculum.cohort.entity.Cohort;
 import com.scse.curriculum.instructor.entity.Instructor;
 import com.scse.curriculum.syllabus.entity.Syllabus;
 import jakarta.persistence.*;
@@ -22,6 +24,14 @@ public class ClassSection {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "course_id", nullable = false)
     private Course course;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "program_id")
+    private Program program;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "cohort_id")
+    private Cohort cohort;
 
     /**
      * FR-03.1: phân công phải tồn tại trước khi giảng viên tạo đề cương.

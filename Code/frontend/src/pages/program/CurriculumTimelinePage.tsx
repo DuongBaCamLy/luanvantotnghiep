@@ -41,8 +41,8 @@ function baseProgramCode(value: unknown): string {
   )
 }
 
-function getRoleBase(pathname: string): "/admin" | "/dean" {
-  return pathname.startsWith("/dean") ? "/dean" : "/admin"
+function getRoleBase(pathname: string): string {
+  return `/${pathname.split("/")[1] || "admin"}`
 }
 
 function getErrorMessage(error: unknown): string {

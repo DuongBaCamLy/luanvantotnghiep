@@ -23,7 +23,7 @@ public class SyllabusDiffResponse {
     private ListDiff<TopicCloMappingDiff> topicCloDiff;
     private ListDiff<AssessmentDiff> assessmentDiff;
     private ListDiff<AssessmentCloMappingDiff> assessmentCloDiff;
-    private ListDiff<ReadingListDiff> readingListDiff;
+    private ListDiff<readingsDiff> readingsDiff;
 
     @Data
     @Builder
@@ -107,7 +107,7 @@ public class SyllabusDiffResponse {
 
     @Data
     @Builder
-    public static class ReadingListDiff {
+    public static class readingsDiff {
         private Integer bookId;
         private String title;
         private String author;

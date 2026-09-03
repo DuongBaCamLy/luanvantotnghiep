@@ -140,8 +140,8 @@ public class SyllabusDiffService {
                         assessmentIdentities,
                         cloIdentities);
 
-        SyllabusDiffResponse.ListDiff<SyllabusDiffResponse.ReadingListDiff>
-                readingListDiff = compareReadingList(
+        SyllabusDiffResponse.ListDiff<SyllabusDiffResponse.readingsDiff>
+                readingsDiff = comparereadings(
                         syllabusBookRepository.findBySyllabus_Id(oldId),
                         syllabusBookRepository.findBySyllabus_Id(newId));
 
@@ -152,7 +152,7 @@ public class SyllabusDiffService {
                 || hasEntries(topicCloDiff)
                 || hasEntries(assessmentDiff)
                 || hasEntries(assessmentCloDiff)
-                || hasEntries(readingListDiff);
+                || hasEntries(readingsDiff);
 
         return SyllabusDiffResponse.builder()
                 .oldSyllabusId(oldId)
@@ -167,7 +167,7 @@ public class SyllabusDiffService {
                 .topicCloDiff(topicCloDiff)
                 .assessmentDiff(assessmentDiff)
                 .assessmentCloDiff(assessmentCloDiff)
-                .readingListDiff(readingListDiff)
+                .readingsDiff(readingsDiff)
                 .build();
     }
 
@@ -589,8 +589,8 @@ public class SyllabusDiffService {
                 .build();
     }
 
-    private SyllabusDiffResponse.ListDiff<SyllabusDiffResponse.ReadingListDiff>
-            compareReadingList(
+    private SyllabusDiffResponse.ListDiff<SyllabusDiffResponse.readingsDiff>
+            comparereadings(
                     List<SyllabusBook> oldItems,
                     List<SyllabusBook> newItems) {
 
@@ -637,12 +637,12 @@ public class SyllabusDiffService {
                 });
     }
 
-    private SyllabusDiffResponse.ReadingListDiff readingSnapshot(
+    private SyllabusDiffResponse.readingsDiff readingSnapshot(
             SyllabusBook item,
             Map<String, SyllabusDiffResponse.FieldDiff> changes) {
 
         Book book = item.getBook();
-        return SyllabusDiffResponse.ReadingListDiff.builder()
+        return SyllabusDiffResponse.readingsDiff.builder()
                 .bookId(book.getId())
                 .title(book.getTitle())
                 .author(book.getAuthor())

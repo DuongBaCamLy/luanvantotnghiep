@@ -7,8 +7,6 @@ import {
 } from "react-router-dom"
 import {
   AlertTriangle,
-  BookOpen,
-  CalendarClock,
   CheckCircle2,
   Clock3,
   Copy,
@@ -29,19 +27,26 @@ import {
 } from "lucide-react"
 
 import { cohortApi } from "@/api/cohortApi"
-import {
-  dashboardApi,
-  type DashboardFacultyResponse,
-  type FacultyCourseAssignment,
-  type FacultyDeadlineState,
-  type FacultyRecommendedAction,
-} from "@/api/dashboardApi"
+import { getMyActiveAssignments } from "@/api/classSectionApi"
+import { dashboardApi } from "@/api/dashboardApi"
+
 import { courseProgramApi } from "@/api/courseProgramApi"
 import { programApi } from "@/api/programApi"
-import { syllabusPdfApi } from "@/api/syllabusPdfApi"
+import { syllabusPdfApi, syllabusWordApi } from "@/api/syllabusPdfApi"
+import { syllabusApi } from "@/api/syllabusApi"
+import { syllabusImportApi } from "@/api/syllabusImportApi"
+import AddSyllabusDialog from "@/components/syllabus/AddSyllabusDialog"
 import CloneSyllabusDialog from "@/components/syllabus/CloneSyllabusDialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import {
   Select,
   SelectContent,
@@ -53,19 +58,25 @@ import { useDeleteSyllabus } from "@/hooks/useDeleteSyllabus"
 import { useSubmitSyllabus } from "@/hooks/useSubmitSyllabus"
 import { useSyllabuses } from "@/hooks/useSyllabuses"
 import { getSyllabusBasePath } from "@/lib/programContext"
+import { saveSyllabusImportDraft } from "@/lib/syllabusImportDraft"
+import {
+  SYLLABUS_CANONICAL_STATUSES,
+  SYLLABUS_SEMESTER_OPTIONS,
+} from "@/lib/syllabusCatalogFilters"
 import { useAuthStore } from "@/store/authStore"
 import type {
   Cohort,
   Major,
   Program,
 } from "@/types/admin"
-import type { Syllabus } from "@/types/syllabus"
+import type { SubmissionValidationIssue, SubmissionValidationResponse, Syllabus } from "@/types/syllabus"
+import type { BulkSyllabusImportPreviewResponse } from "@/types/syllabusImport"
 
 type CourseProgram = Record<string, any>
 
 type CourseProgramIndex = {
+  bySyllabusId: Map<number, CourseProgram[]>
   byCourseId: Map<number, CourseProgram[]>
-  byCourseCode: Map<string, CourseProgram[]>
 }
 
 type CatalogRow = {
@@ -74,6 +85,7 @@ type CatalogRow = {
   cohortNames: string[]
   majorCodes: string[]
   semesterValues: string[]
+  programLabels: string[]
   matchesCurriculumContext: boolean
   displayProgram: string
   displayCohort: string
@@ -83,20 +95,17 @@ type CatalogRow = {
 
 const ALL = "all"
 
-const CANONICAL_STATUSES = [
-  "DRAFT",
-  "SUBMITTED",
-  "UNDER_REVIEW",
-  "REVISION_REQUESTED",
-  "REJECTED",
-  "APPROVED",
-  "ARCHIVED",
-]
+const normalizeImportCourseCode = (value?: string) => String(value ?? "")
+  .replace(/[^A-Z0-9]/gi, "")
+  .toUpperCase()
+  .replace(/IU$/, "")
 
-const BASE_SEMESTER_OPTIONS = Array.from(
-  { length: 8 },
-  (_, index) => String(index + 1),
-)
+type BulkImportProgressItem = {
+  code: string
+  name: string
+  status: "pending" | "importing" | "success" | "error"
+  error?: string
+}
 
 const normalize = (value: unknown) =>
   String(value ?? "").trim()
@@ -166,24 +175,6 @@ const uniqueSort = (
     ),
   )
 
-const getCourseProgramCourseId = (
-  courseProgram: CourseProgram,
-) =>
-  toNumber(
-    courseProgram.courseId
-    ?? courseProgram.course?.id
-    ?? courseProgram.course?.courseId,
-  )
-
-const getCourseProgramCourseCode = (
-  courseProgram: CourseProgram,
-) =>
-  normalize(
-    courseProgram.courseCode
-    ?? courseProgram.course?.code
-    ?? courseProgram.course?.courseCode,
-  )
-
 const getCourseProgramProgramId = (
   courseProgram: CourseProgram,
 ) =>
@@ -208,6 +199,14 @@ const getCourseProgramCohortId = (
     courseProgram.cohortId
     ?? courseProgram.cohort?.id
     ?? courseProgram.cohort?.cohortId,
+  )
+
+const getCourseProgramSyllabusId = (
+  courseProgram: CourseProgram,
+) =>
+  toNumber(
+    courseProgram.syllabusId
+    ?? courseProgram.syllabus?.id,
   )
 
 const getCourseProgramCohortName = (
@@ -252,13 +251,13 @@ const normalizeSemesterValue = (
   const text = normalize(value)
 
   const matched =
-    text.match(/semester\s*(\d+)/i)
+    text.match(/^(?:(?:semester|hk)\s*)?([1-8])$/i)
 
   if (matched) {
     return matched[1]
   }
 
-  return text
+  return ""
 }
 
 const formatSemesterLabel = (
@@ -276,70 +275,15 @@ const formatSemesterLabel = (
     : semester
 }
 
-const baseProgramCode = (
-  value: unknown,
-) => {
-  const text =
-    normalize(value)
-
-  return (
-    text
-      .replace(
-        /[-_\s]?20\d{2}$/i,
-        "",
-      )
-      .replace(
-        /[-_\s]+$/g,
-        "",
-      )
-      .trim()
-    || text
-  )
-}
-
-const getProgramOptionLabel = (
-  program: Program,
-) => {
-  const name =
-    normalize(
-      (program as any).nameVn,
-    )
-    || normalize(
-      (program as any).name,
-    )
-
-  const code =
-    baseProgramCode(
-      program.code,
-    )
-
-  return name
-    ? `${code} — ${name}`
-    : code
-}
+const baseProgramCode = (value: unknown) =>
+  normalize(value)
+    .replace(/[-_\s]?20\d{2}$/i, "")
+    .replace(/[-_\s]+$/g, "")
+    .trim()
 
 const getCohortOptionLabel = (
   cohort: Cohort,
-) => {
-  const name =
-    normalize(cohort.name)
-
-  const entryYear =
-    normalize(
-      cohort.entryYear,
-    )
-
-  if (name && entryYear) {
-    return `${name} — Entry ${entryYear}`
-  }
-
-  return name
-    || (
-      entryYear
-        ? `Entry ${entryYear}`
-        : `Cohort ${cohort.id}`
-    )
-}
+) => normalize(cohort.name) || `CS${cohort.entryYear}`
 
 const formatStatusLabel = (
   value: unknown,
@@ -411,6 +355,31 @@ const formatStatusLabelForRole = (
 
   return formatStatusLabel(
     value,
+  )
+}
+
+function SummaryCard({
+  label,
+  value,
+  tone = "default",
+}: {
+  label: string
+  value: number
+  tone?: "default" | "success" | "info" | "warning"
+}) {
+  const toneClass = tone === "success"
+    ? "border-emerald-200 bg-emerald-50/40"
+    : tone === "info"
+      ? "border-blue-200 bg-blue-50/40"
+      : tone === "warning"
+        ? "border-amber-200 bg-amber-50/40"
+        : "border-slate-200 bg-white"
+
+  return (
+    <div className={`rounded-xl border p-4 shadow-sm ${toneClass}`}>
+      <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">{label}</p>
+      <p className="mt-2 text-2xl font-bold text-slate-900">{value}</p>
+    </div>
   )
 }
 
@@ -554,41 +523,14 @@ const getPdfDownloadErrorMessage =
 const getMatchedCoursePrograms = (
   item: Syllabus,
   index: CourseProgramIndex,
-) => {
-  const courseId =
-    getSyllabusCourseId(item)
-
-  if (courseId !== undefined) {
-    const matchedById =
-      index.byCourseId.get(
-        courseId,
-      )
-
-    if (matchedById?.length) {
-      return matchedById
-    }
-  }
-
-  const courseCode =
-    normalizeKey(item.courseCode)
-
-  if (!courseCode) {
-    return []
-  }
-
-  return (
-    index.byCourseCode.get(
-      courseCode,
-    )
-    ?? []
-  )
-}
+) => index.bySyllabusId.get(item.id) ?? []
 
 export default function SyllabusListPage() {
   const {
     data,
     isLoading,
     isError,
+    refetch: refetchSyllabuses,
   } = useSyllabuses()
 
   const navigate = useNavigate()
@@ -606,24 +548,18 @@ export default function SyllabusListPage() {
   const role =
     normalizeRole(user?.role)
 
-  const isInstructor =
-    role === "INSTRUCTOR"
+  const isInstructor = role === "INSTRUCTOR"
 
-  const isAdmin =
-    role === "ADMIN"
+  const isAdmin = role === "ADMIN"
 
-  const isDean =
-    role === "DEAN"
+  const isSystemAdmin = role === "ADMIN"
 
-  const isDeptHead =
-    role === "DEPT_HEAD"
+  const isDean = false
+
+  const isDeptHead = role === "DEPT_HEAD"
 
   const {
     data: facultyDashboard,
-    isLoading: facultyDashboardLoading,
-    isError: facultyDashboardError,
-    isFetching: facultyDashboardFetching,
-    refetch: refetchFacultyDashboard,
   } = useQuery({
     queryKey: [
       "faculty-dashboard",
@@ -642,6 +578,27 @@ export default function SyllabusListPage() {
       location.pathname,
     )
 
+  const { data: ownActiveAssignments = [] } = useQuery({
+    queryKey: ["my-active-assignments", "add-syllabus"],
+    queryFn: getMyActiveAssignments,
+    enabled: isInstructor,
+    staleTime: 30_000,
+  })
+
+  const instructorAvailableAssignments = useMemo(
+    () => ownActiveAssignments.filter((assignment) => assignment.readyForSyllabusCreation),
+    [ownActiveAssignments],
+  )
+
+  const instructorAssignedCourseIds = useMemo(
+    () => Array.from(new Set(instructorAvailableAssignments.map((assignment) => assignment.courseId))),
+    [instructorAvailableAssignments],
+  )
+
+  const singleInstructorAssignmentId = instructorAvailableAssignments.length === 1
+    ? instructorAvailableAssignments[0].id
+    : undefined
+
   const selectedProgramId =
     toNumber(
       searchParams.get(
@@ -655,6 +612,9 @@ export default function SyllabusListPage() {
         "cohortId",
       ),
     )
+
+  const contextCourseId = toNumber(searchParams.get("courseId"))
+  const contextAssignmentId = toNumber(searchParams.get("assignmentId"))
 
   const selectedMajorCode =
     searchParams.get(
@@ -691,6 +651,7 @@ export default function SyllabusListPage() {
     CourseProgram[]
   >([])
 
+
   const [
     cohorts,
     setCohorts,
@@ -725,17 +686,53 @@ export default function SyllabusListPage() {
   >(null)
 
   const [
+    addDialogOpen,
+    setAddDialogOpen,
+  ] = useState(false)
+
+  const [bulkImportProgress, setBulkImportProgress] = useState<BulkImportProgressItem[]>([])
+  const [bulkImportRunning, setBulkImportRunning] = useState(false)
+  const [deleteAllOpen, setDeleteAllOpen] = useState(false)
+  const [deleteAllConfirmation, setDeleteAllConfirmation] = useState("")
+  const [deleteAllRunning, setDeleteAllRunning] = useState(false)
+  const [deleteAllError, setDeleteAllError] = useState("")
+  const [submissionValidation, setSubmissionValidation] = useState<SubmissionValidationResponse | null>(null)
+
+  const [
     downloadingPdfId,
     setDownloadingPdfId,
   ] = useState<
     number | null
   >(null)
+  const [downloadingWordId, setDownloadingWordId] = useState<number | null>(null)
 
   const deleteMutation =
     useDeleteSyllabus()
 
   const submitMutation =
     useSubmitSyllabus()
+
+  const handleDeleteAllSyllabi = async () => {
+    if (deleteAllConfirmation !== "DELETE ALL") return
+    setDeleteAllRunning(true)
+    setDeleteAllError("")
+    try {
+      const deletedCount = await syllabusApi.deleteAll()
+      setCoursePrograms((current) => current.map((item) => ({
+        ...item,
+        syllabusId: null,
+        syllabus: null,
+      })))
+      await refetchSyllabuses()
+      setDeleteAllOpen(false)
+      setDeleteAllConfirmation("")
+      window.alert(`${deletedCount} syllabus record(s) were deleted.`)
+    } catch (error: any) {
+      setDeleteAllError(error?.response?.data?.message || "Unable to delete all syllabuses.")
+    } finally {
+      setDeleteAllRunning(false)
+    }
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -811,6 +808,75 @@ export default function SyllabusListPage() {
     }
   }, [])
 
+  const runBulkImport = async (response: BulkSyllabusImportPreviewResponse) => {
+    if (!selectedProgramId || !selectedCohortId || bulkImportRunning) return
+
+    const progress = response.items.map((item) => ({
+      code: item.preview.data?.sourceCourseCode || "Unknown",
+      name: item.preview.data?.sourceCourseName || "Unnamed syllabus",
+      status: "pending" as const,
+    }))
+    setBulkImportProgress(progress)
+    setBulkImportRunning(true)
+
+    for (let index = 0; index < response.items.length; index++) {
+      const item = response.items[index]
+      setBulkImportProgress((current) => current.map((row, rowIndex) =>
+        rowIndex === index ? { ...row, status: "importing", error: undefined } : row))
+
+      try {
+        if (!item.preview.valid || !item.preview.data) {
+          throw new Error(item.preview.issues?.map((issue) => issue.message).join("; ") || "Extracted data is incomplete")
+        }
+
+        const sourceCode = normalizeImportCourseCode(item.preview.data.sourceCourseCode)
+        const mappings = coursePrograms
+          .filter((mapping) =>
+            normalizeImportCourseCode(mapping.courseCode) === sourceCode
+            &&
+            Number(mapping.programId) === selectedProgramId
+            && (mapping.cohortId == null || Number(mapping.cohortId) === selectedCohortId)
+          )
+          .sort((left, right) => Number(right.cohortId === selectedCohortId) - Number(left.cohortId === selectedCohortId))
+        const mapping = mappings[0]
+        const targetAssignment = isInstructor
+          ? instructorAvailableAssignments.find((assignment) =>
+              mapping != null && assignment.courseId === Number(mapping.courseId))
+          : undefined
+        await syllabusImportApi.confirmBulkItem({
+          assignmentId: targetAssignment?.id,
+          sourceSnapshotId: item.sourceSnapshotId,
+          programId: selectedProgramId,
+          cohortId: selectedCohortId,
+          data: item.preview.data,
+          importMode: "CREATE",
+          originalFileName: response.fileName,
+          originalFileType: response.sourceType === "DOCX"
+            ? "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            : "application/pdf",
+        })
+
+        const [, refreshedMappings] = await Promise.all([
+          refetchSyllabuses(),
+          courseProgramApi.getAll(),
+        ])
+        setCoursePrograms(toArray<CourseProgram>(refreshedMappings))
+        setBulkImportProgress((current) => current.map((row, rowIndex) =>
+          rowIndex === index ? { ...row, status: "success", error: undefined } : row))
+      } catch (error) {
+        const serverMessage = (error as { response?: { data?: { message?: string; error?: string } } })
+          ?.response?.data
+        const message = serverMessage?.message
+          || serverMessage?.error
+          || (error instanceof Error ? error.message : "Import failed")
+        setBulkImportProgress((current) => current.map((row, rowIndex) =>
+          rowIndex === index ? { ...row, status: "error", error: message } : row))
+      }
+    }
+
+    setBulkImportRunning(false)
+  }
+
   const programById =
     useMemo(
       () =>
@@ -880,17 +946,19 @@ export default function SyllabusListPage() {
       changed = true
     }
 
-    if (
-      selectedProgramId
-      === undefined
-    ) {
-      const programCode =
-        searchParams.get(
-          "programCode",
-        )
-        || searchParams.get(
-          "cohort",
-        )
+    if (selectedCohortId === undefined && searchParams.get("cohort")) {
+      const legacyCohort = cohorts.find((cohort) =>
+        normalizeKey(cohort.name) === normalizeKey(searchParams.get("cohort")),
+      )
+      if (legacyCohort) {
+        params.set("cohortId", String(legacyCohort.id))
+        params.delete("cohort")
+        changed = true
+      }
+    }
+
+    if (selectedProgramId === undefined) {
+      const programCode = searchParams.get("programCode")
 
       if (programCode) {
         const selectedProgram =
@@ -933,6 +1001,19 @@ export default function SyllabusListPage() {
           params.delete("major")
           changed = true
         }
+      }
+    }
+
+    if (selectedProgramId !== undefined) {
+      const selectedProgram = programById.get(selectedProgramId)
+      const currentMajorCode = normalize(searchParams.get("majorCode"))
+
+      if (selectedProgram && normalizeKey(currentMajorCode) !== normalizeKey(selectedProgram.majorCode)) {
+        params.set("programCode", selectedProgram.code)
+        params.set("majorId", String(selectedProgram.majorId))
+        params.set("majorCode", selectedProgram.majorCode)
+        params.delete("major")
+        changed = true
       }
     }
 
@@ -1005,55 +1086,26 @@ export default function SyllabusListPage() {
   const courseProgramIndex =
     useMemo<CourseProgramIndex>(
       () => {
-        const byCourseId =
+        const bySyllabusId =
           new Map<
             number,
             CourseProgram[]
           >()
-
-        const byCourseCode =
-          new Map<
-            string,
-            CourseProgram[]
-          >()
+        const byCourseId = new Map<number, CourseProgram[]>()
 
         coursePrograms.forEach(
           (courseProgram) => {
-            const courseId =
-              getCourseProgramCourseId(
-                courseProgram,
-              )
-
-            const courseCode =
-              normalizeKey(
-                getCourseProgramCourseCode(
-                  courseProgram,
-                ),
-              )
-
-            if (
-              courseId !== undefined
-            ) {
-              const current =
-                byCourseId.get(
-                  courseId,
-                )
-                ?? []
-
-              current.push(
-                courseProgram,
-              )
-
-              byCourseId.set(
-                courseId,
-                current,
-              )
+            const courseId = toNumber(courseProgram.courseId ?? courseProgram.course?.id)
+            if (courseId !== undefined) {
+              byCourseId.set(courseId, [...(byCourseId.get(courseId) ?? []), courseProgram])
             }
+            const syllabusId =
+              getCourseProgramSyllabusId(courseProgram)
 
-            if (courseCode) {
+            if (syllabusId !== undefined) {
               const current =
-                byCourseCode.get(
-                  courseCode,
+                bySyllabusId.get(
+                  syllabusId,
                 )
                 ?? []
 
@@ -1061,8 +1113,8 @@ export default function SyllabusListPage() {
                 courseProgram,
               )
 
-              byCourseCode.set(
-                courseCode,
+              bySyllabusId.set(
+                syllabusId,
                 current,
               )
             }
@@ -1070,8 +1122,8 @@ export default function SyllabusListPage() {
         )
 
         return {
+          bySyllabusId,
           byCourseId,
-          byCourseCode,
         }
       },
       [coursePrograms],
@@ -1091,48 +1143,13 @@ export default function SyllabusListPage() {
         )
       : undefined
 
-  const programOptions =
-    useMemo(() => {
-      return programs
-        .filter(
-          (program) =>
-            selectedMajorCode === ALL
-            || normalizeKey(
-              program.majorCode,
-            )
-            === normalizeKey(
-              selectedMajorCode,
-            ),
-        )
-        .slice()
-        .sort(
-          (a, b) =>
-            a.code.localeCompare(
-              b.code,
-              "en",
-              { numeric: true },
-            ),
-        )
-    }, [
-      programs,
-      selectedMajorCode,
-    ])
-
   const cohortOptions =
     useMemo(() => {
-      if (
-        selectedProgramId
-        === undefined
-      ) {
-        return []
-      }
-
       return cohorts
         .filter(
           (cohort) =>
-            cohort.isActive !== false
-            && cohort.programId
-              === selectedProgramId,
+            (selectedProgramId === undefined
+              || cohort.programId === selectedProgramId),
         )
         .slice()
         .sort(
@@ -1163,36 +1180,13 @@ export default function SyllabusListPage() {
 
   const semesterOptions =
     useMemo(() => {
-      const values = [
-        ...BASE_SEMESTER_OPTIONS,
-
-        ...(data ?? []).map(
-          (item) =>
-            normalizeSemesterValue(
-              item.semester,
-            ),
-        ),
-
-        ...coursePrograms.map(
-          (courseProgram) =>
-            normalizeSemesterValue(
-              getSemesterSuggest(
-                courseProgram,
-              ),
-            ),
-        ),
-      ]
-
-      return uniqueSort(values)
-    }, [
-      coursePrograms,
-      data,
-    ])
+      return SYLLABUS_SEMESTER_OPTIONS
+    }, [])
 
   const statusOptions =
     useMemo(() => {
       return uniqueSort([
-        ...CANONICAL_STATUSES,
+        ...SYLLABUS_CANONICAL_STATUSES,
         ...(data ?? []).map(
           (item) =>
             normalize(
@@ -1259,8 +1253,6 @@ export default function SyllabusListPage() {
                     selectedCohortId
                     === undefined
                     || cohortId
-                      === undefined
-                    || cohortId
                       === selectedCohortId
 
                   const majorMatches =
@@ -1318,6 +1310,14 @@ export default function SyllabusListPage() {
                 ),
               )
 
+            const programLabels = uniqueSort(displaySource.map((courseProgram) => {
+              const programId = getCourseProgramProgramId(courseProgram)
+              const program = programId !== undefined ? programById.get(programId) : undefined
+              const code = baseProgramCode(getCourseProgramProgramCode(courseProgram) || program?.code)
+              const name = normalize(program?.nameVn || program?.name || courseProgram.programName)
+              return code && name ? `${code} — ${name}` : code || name
+            }))
+
             const cohortNames =
               uniqueSort(
                 displaySource.map(
@@ -1372,10 +1372,11 @@ export default function SyllabusListPage() {
                 ),
               )
 
-            const semesterValues =
-              syllabusSemester
-                ? [syllabusSemester]
-                : semesterSuggests
+            // An existing syllabus owns the editable semester value. Curriculum
+            // mapping data is only a fallback for records without that value.
+            const semesterValues = syllabusSemester
+              ? [syllabusSemester]
+              : semesterSuggests
 
             const fallbackMajor =
               normalize(item.major)
@@ -1403,6 +1404,7 @@ export default function SyllabusListPage() {
               cohortNames,
               majorCodes,
               semesterValues,
+              programLabels,
 
               matchesCurriculumContext:
                 !hasCurriculumFilter
@@ -1416,7 +1418,8 @@ export default function SyllabusListPage() {
                 ),
 
               displayProgram:
-                programCodes.join(", ")
+                programLabels[0]
+                || programCodes[0]
                 || fallbackProgram
                 || "N/A",
 
@@ -1484,6 +1487,8 @@ export default function SyllabusListPage() {
               item.courseName,
               item.courseNameVn,
               item.createdByUsername,
+              item.versionLabel,
+              `v${item.versionNumber}`,
             ]
               .map(normalizeKey)
               .join(" ")
@@ -1532,10 +1537,32 @@ export default function SyllabusListPage() {
       statusValue,
     ])
 
+  const catalogRows = useMemo(() => {
+    const grouped = new Map<string, CatalogRow>()
+    for (const row of filteredData) {
+      const courseId = getSyllabusCourseId(row.item)
+      const courseKey = courseId !== undefined ? `id:${courseId}` : `code:${normalizeKey(row.item.courseCode)}`
+      const key = `${courseKey}|program:${normalizeKey(row.displayProgram)}|cohort:${normalizeKey(row.displayCohort)}`
+      const current = grouped.get(key)
+      const shouldReplace = !current
+        || Boolean(row.item.isCurrent) && !current.item.isCurrent
+        || Boolean(row.item.isCurrent) === Boolean(current.item.isCurrent)
+          && Number(row.item.versionNumber ?? 0) > Number(current.item.versionNumber ?? 0)
+      if (shouldReplace) grouped.set(key, row)
+    }
+    return Array.from(grouped.values())
+  }, [filteredData])
+
+  const totalCourses = useMemo(() => new Set(enrichedData.map((row) => {
+    const courseId = getSyllabusCourseId(row.item)
+    const courseKey = courseId !== undefined ? `id:${courseId}` : `code:${normalizeKey(row.item.courseCode)}`
+    return `${courseKey}|program:${normalizeKey(row.displayProgram)}|cohort:${normalizeKey(row.displayCohort)}`
+  })).size, [enrichedData])
+
   const summary =
     useMemo(() => {
       const rows =
-        filteredData
+        catalogRows
 
       const approved =
         rows.filter(
@@ -1612,7 +1639,7 @@ export default function SyllabusListPage() {
         revision,
       }
     }, [
-      filteredData,
+      catalogRows,
       isDean,
       isDeptHead,
     ])
@@ -1640,82 +1667,6 @@ export default function SyllabusListPage() {
 
     setSearchParams(params)
   }
-
-  const updateProgramFilter =
-    (
-      value: string,
-    ) => {
-      const params =
-        new URLSearchParams(
-          searchParams,
-        )
-
-      if (
-        !value
-        || value === ALL
-      ) {
-        params.delete(
-          "programId",
-        )
-        params.delete(
-          "programCode",
-        )
-        params.delete(
-          "cohortId",
-        )
-
-        setSearchParams(params)
-        return
-      }
-
-      const programId =
-        Number(value)
-
-      const program =
-        programs.find(
-          (candidate) =>
-            candidate.id
-            === programId,
-        )
-
-      if (!program) {
-        return
-      }
-
-      params.set(
-        "programId",
-        String(program.id),
-      )
-
-      params.set(
-        "programCode",
-        program.code,
-      )
-
-      params.set(
-        "majorId",
-        String(program.majorId),
-      )
-
-      params.set(
-        "majorCode",
-        program.majorCode,
-      )
-
-      params.delete(
-        "cohortId",
-      )
-
-      params.delete(
-        "cohort",
-      )
-
-      params.delete(
-        "major",
-      )
-
-      setSearchParams(params)
-    }
 
   const updateMajorFilter =
     (
@@ -1930,25 +1881,22 @@ export default function SyllabusListPage() {
     (
       item: Syllabus,
     ) =>
-      isAdmin
-      || (
-        isInstructor
-        && Boolean(
-          facultyAssignmentForSyllabus(
-            item,
-          ),
+      ["DRAFT", "REVISION_REQUESTED"].includes(
+        normalize(item.status).toUpperCase(),
+      )
+      && (
+        isAdmin
+        || (
+          isInstructor
+          && Boolean(facultyAssignmentForSyllabus(item))
         )
-        && normalize(
-          item.status,
-        ).toUpperCase()
-          === "DRAFT"
       )
 
   const canSubmit =
     (
       item: Syllabus,
     ) =>
-      (isAdmin && normalize(item.status).toUpperCase() === "DRAFT")
+      (isAdmin && ["DRAFT", "REVISION_REQUESTED"].includes(normalize(item.status).toUpperCase()))
       || canEditDraft(item)
 
   const handleDelete = (
@@ -2012,15 +1960,14 @@ export default function SyllabusListPage() {
             "Syllabus submitted successfully. It is awaiting Head of Department review.",
           ),
 
-        onError: (
-          error: any,
-        ) =>
-          alert(
-            error?.response
-              ?.data
-              ?.message
-            || "Unable to submit the syllabus.",
-          ),
+        onError: (error: any) => {
+          const response = error?.response?.data as SubmissionValidationResponse | undefined
+          if (error?.response?.status === 422 && Array.isArray(response?.issues)) {
+            setSubmissionValidation(response)
+            return
+          }
+          alert(response?.message || "Unable to submit the syllabus.")
+        },
       },
     )
   }
@@ -2047,8 +1994,11 @@ export default function SyllabusListPage() {
         return
       }
 
-      const params =
-        new URLSearchParams()
+      // Preserve the canonical Catalog filter context in the URL so the Map
+      // receives the identical program/cohort/semester/status after navigation
+      // and after a browser refresh. Search intentionally remains Catalog-only.
+      const params = new URLSearchParams(searchParams)
+      params.delete("q")
 
       params.set(
         "programId",
@@ -2110,16 +2060,6 @@ export default function SyllabusListPage() {
           item.status,
         ).toUpperCase()
 
-      if (
-        status !== "APPROVED"
-      ) {
-        alert(
-          "Only approved syllabi can be exported as official PDFs.",
-        )
-
-        return
-      }
-
       const fallbackName =
         [
           "Syllabus",
@@ -2135,7 +2075,7 @@ export default function SyllabusListPage() {
           safeFilePart(
             item.versionLabel,
           ),
-          "Official",
+          status === "APPROVED" ? "Official" : "Preview",
         ].join("_")
         + ".pdf"
 
@@ -2144,11 +2084,11 @@ export default function SyllabusListPage() {
           item.id,
         )
 
-        await syllabusPdfApi
-          .download(
-            item.id,
-            fallbackName,
-          )
+        if (status === "APPROVED") {
+          await syllabusPdfApi.download(item.id, fallbackName)
+        } else {
+          await syllabusPdfApi.downloadPreview(item.id, fallbackName)
+        }
       } catch (error: any) {
         const message =
           await getPdfDownloadErrorMessage(
@@ -2166,72 +2106,22 @@ export default function SyllabusListPage() {
       }
     }
 
-  if (isInstructor) {
-    return (
-      <>
-        <InstructorSyllabusWorkspace
-          dashboard={facultyDashboard}
-          dashboardLoading={
-            facultyDashboardLoading
-          }
-          dashboardError={
-            facultyDashboardError
-          }
-          dashboardFetching={
-            facultyDashboardFetching
-          }
-          syllabuses={
-            data ?? []
-          }
-          syllabusesLoading={
-            isLoading
-          }
-          syllabusesError={
-            isError
-          }
-          basePath={basePath}
-          downloadingPdfId={
-            downloadingPdfId
-          }
-          submitting={
-            submitMutation.isPending
-          }
-          onRefresh={() => {
-            void refetchFacultyDashboard()
-          }}
-          onNavigate={navigate}
-          onSubmit={handleSubmit}
-          onClone={handleClone}
-          onDelete={handleDelete}
-          onDownloadOfficial={
-            handleDownloadApprovedPdf
-          }
-          canEditDraft={
-            canEditDraft
-          }
-          canViewApprovalHistory={
-            canViewApprovalHistory
-          }
-        />
-
-        <CloneSyllabusDialog
-          source={cloneSource}
-          open={cloneSource !== null}
-          onOpenChange={(open) => {
-            if (!open) {
-              setCloneSource(null)
-            }
-          }}
-          onCloned={(
-            newSyllabus,
-          ) =>
-            navigate(
-              `${basePath}/${newSyllabus.id}/editor?import=1`,
-            )
-          }
-        />
-      </>
-    )
+  const handleDownloadWord = async (item: Syllabus, original = false) => {
+    if (downloadingWordId !== null) return
+    try {
+      setDownloadingWordId(item.id)
+      if (original) await syllabusWordApi.downloadOriginal(item.id)
+      else await syllabusWordApi.downloadCurrent(item.id)
+    } catch (error: any) {
+      const blob = error?.response?.data
+      let message = "Word export is available for syllabuses imported from a DOCX source."
+      if (blob instanceof Blob) {
+        try { message = JSON.parse(await blob.text())?.message || message } catch { /* keep fallback */ }
+      }
+      alert(message)
+    } finally {
+      setDownloadingWordId(null)
+    }
   }
 
   if (
@@ -2263,7 +2153,7 @@ export default function SyllabusListPage() {
 
   const pageTitle =
     isDeptHead
-      ? "Department Syllabus Oversight"
+      ? "Managed Major Syllabus Oversight"
       : isDean
         ? "Syllabus Oversight"
         : isAdmin
@@ -2272,7 +2162,7 @@ export default function SyllabusListPage() {
 
   const pageDescription =
     isDeptHead
-      ? "Review syllabus versions within your department scope, track the Department Head and Dean workflow, inspect review history, and access approved official PDFs."
+      ? "Review syllabus versions within your managed Major, track the Department Head and Dean workflow, inspect review history, and access approved official PDFs."
       : isDean
         ? "Monitor syllabus versions, final-review status, official PDFs, and complete review history across the School."
         : isAdmin
@@ -2301,6 +2191,22 @@ export default function SyllabusListPage() {
             </div>
 
             <div className="flex flex-wrap gap-2">
+              {isSystemAdmin && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="border-rose-200 text-rose-700 hover:bg-rose-50 hover:text-rose-800"
+                  disabled={!data?.length || deleteAllRunning}
+                  onClick={() => {
+                    setDeleteAllConfirmation("")
+                    setDeleteAllError("")
+                    setDeleteAllOpen(true)
+                  }}
+                >
+                  <Trash2 className="size-4" />
+                  Delete All Syllabi
+                </Button>
+              )}
               <Button
                 type="button"
                 variant="outline"
@@ -2317,19 +2223,21 @@ export default function SyllabusListPage() {
                 <MapIcon className="size-4" />
                 View Curriculum Map
               </Button>
-
               {(isInstructor || isAdmin) && (
                 <Button
                   type="button"
                   className="bg-[#007d84] text-white hover:bg-[#006d73]"
-                  onClick={() =>
-                    navigate(
-                      `${basePath}/create${isAdmin ? "?import=1" : ""}`,
-                    )
-                  }
+                  title={!selectedCohortId ? "Select a Cohort before adding a syllabus." : undefined}
+                  onClick={() => {
+                    if (!selectedCohortId || !selectedProgramId) {
+                      alert("Please select a Cohort before adding or importing a syllabus.")
+                      return
+                    }
+                    setAddDialogOpen(true)
+                  }}
                 >
                   <Plus className="size-4" />
-                  {isAdmin ? "Add Syllabus" : "Create New Syllabus"}
+                  Add Syllabus
                 </Button>
               )}
             </div>
@@ -2340,7 +2248,7 @@ export default function SyllabusListPage() {
           <section className="flex flex-col gap-3 rounded-xl border border-[#cfe1e4] bg-[#f6fbfb] px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#007d84]">
-                Department Scope
+                Managed Major Scope
               </p>
 
               <p className="mt-1 text-sm font-semibold text-[#17343d]">
@@ -2348,7 +2256,7 @@ export default function SyllabusListPage() {
               </p>
 
               <p className="mt-1 text-xs leading-5 text-slate-500">
-                Access is restricted by the signed-in Department Head account. Curriculum filters refine this authorized data; they do not expand access outside the department.
+                Access is restricted to the Major assigned to this Head account in User Management. Curriculum filters refine this authorized data; they do not expand access outside that Major.
               </p>
             </div>
 
@@ -2466,7 +2374,7 @@ export default function SyllabusListPage() {
                 </div>
 
                 <p className="mt-1 text-xs text-slate-500">
-                  Major → Program → Cohort forms the curriculum hierarchy. Then refine by Semester and Status.
+                  Filter by Major, Cohort, Semester, and workflow status. Curriculum Program context is retained automatically when you arrive from View Syllabi.
                 </p>
               </div>
 
@@ -2488,7 +2396,7 @@ export default function SyllabusListPage() {
 
               <Input
                 className="h-10 bg-slate-50/50 pl-9"
-                placeholder="Search by course code, course name, or instructor..."
+                placeholder="Search by course code, course name, version, or creator..."
                 value={searchValue}
                 onChange={(event) =>
                   updateFilter(
@@ -2499,7 +2407,7 @@ export default function SyllabusListPage() {
               />
             </div>
 
-            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
               <div className="space-y-1.5">
                 <label className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
                   Major
@@ -2543,53 +2451,6 @@ export default function SyllabusListPage() {
 
               <div className="space-y-1.5">
                 <label className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-                  Program
-                </label>
-
-                <Select
-                  value={
-                    selectedProgramId
-                      !== undefined
-                      ? String(
-                          selectedProgramId,
-                        )
-                      : ALL
-                  }
-                  onValueChange={
-                    updateProgramFilter
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Program" />
-                  </SelectTrigger>
-
-                  <SelectContent>
-                    <SelectItem value={ALL}>
-                      {selectedMajorCode === ALL
-                        ? "All Programs"
-                        : "All Programs in Major"}
-                    </SelectItem>
-
-                    {programOptions.map(
-                      (program) => (
-                        <SelectItem
-                          key={program.id}
-                          value={String(
-                            program.id,
-                          )}
-                        >
-                          {getProgramOptionLabel(
-                            program,
-                          )}
-                        </SelectItem>
-                      ),
-                    )}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
                   Cohort
                 </label>
 
@@ -2605,27 +2466,14 @@ export default function SyllabusListPage() {
                   onValueChange={
                     updateCohortFilter
                   }
-                  disabled={
-                    selectedProgramId
-                    === undefined
-                  }
                 >
-                  <SelectTrigger
-                    title={
-                      selectedProgramId
-                        === undefined
-                        ? "Select a Program before choosing a Cohort."
-                        : "Filter cohorts belonging to the selected Program."
-                    }
-                  >
+                  <SelectTrigger>
                     <SelectValue placeholder="Cohort" />
                   </SelectTrigger>
 
                   <SelectContent>
                     <SelectItem value={ALL}>
-                      {selectedProgramId === undefined
-                        ? "Select Program First"
-                        : "All Cohorts in Program"}
+                      All Cohorts
                     </SelectItem>
 
                     {cohortOptions.map(
@@ -2733,22 +2581,26 @@ export default function SyllabusListPage() {
             <p className="text-xs text-slate-500">
               Showing{" "}
               <span className="font-semibold text-slate-700">
-                {filteredData.length}
+                {catalogRows.length}
               </span>
               {" "}of{" "}
               <span className="font-semibold text-slate-700">
-                {data?.length ?? 0}
+                {totalCourses}
               </span>
-              {" "}syllabuses.
+              {" "}courses.
             </p>
           </div>
         </section>
 
         <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[1320px] text-sm">
+            <table className="w-full min-w-[1470px] text-sm">
               <thead className="border-b border-slate-200 bg-slate-50 text-[10px] font-bold uppercase tracking-[0.08em] text-slate-500">
                 <tr>
+                  <th className="w-14 px-4 py-3 text-center">
+                    No.
+                  </th>
+
                   <th className="px-4 py-3 text-left">
                     Course
                   </th>
@@ -2758,11 +2610,11 @@ export default function SyllabusListPage() {
                   </th>
 
                   <th className="px-4 py-3 text-left">
-                    Cohort
+                    Program
                   </th>
 
                   <th className="px-4 py-3 text-left">
-                    Program / Cohort
+                    Cohort
                   </th>
 
                   <th className="px-4 py-3 text-left">
@@ -2788,10 +2640,10 @@ export default function SyllabusListPage() {
               </thead>
 
               <tbody className="divide-y divide-slate-100">
-                {filteredData.length === 0 ? (
+                {catalogRows.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={9}
+                      colSpan={10}
                       className="px-5 py-12 text-center"
                     >
                       <p className="font-medium text-slate-600">
@@ -2804,14 +2656,14 @@ export default function SyllabusListPage() {
                     </td>
                   </tr>
                 ) : (
-                  filteredData.map(
+                  catalogRows.map(
                     ({
                       item,
-                      displayProgram,
                       displayCohort,
                       displayMajor,
+                      displayProgram,
                       displaySemester,
-                    }) => {
+                    }, index) => {
                       const itemStatus =
                         normalize(
                           item.status,
@@ -2822,6 +2674,10 @@ export default function SyllabusListPage() {
                           key={item.id}
                           className="transition-colors hover:bg-[#f8fbfb]"
                         >
+                          <td className="w-14 px-4 py-4 text-center font-mono text-xs font-semibold text-slate-500">
+                            {index + 1}
+                          </td>
+
                           <td className="px-4 py-4">
                             <button
                               type="button"
@@ -2845,53 +2701,32 @@ export default function SyllabusListPage() {
                                   {item.courseNameVn}
                                 </p>
                               )}
+
                             </button>
                           </td>
 
                           <td className="px-4 py-4">
                             <span className="font-medium text-slate-700">
-                              {item.cohortName
-                                || displayCohort
-                                || "Not assigned"}
+                              {item.versionLabel
+                                || `v${item.versionNumber}`}
+                            </span>
+
+                            {item.isCurrent && (
+                              <span className="ml-1.5 rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-700">
+                                Current
+                              </span>
+                            )}
+                          </td>
+
+                          <td className="px-4 py-4">
+                            <span className="inline-flex max-w-[300px] rounded-full border border-sky-200 bg-sky-50 px-2.5 py-1 text-xs font-semibold text-sky-700">
+                              {displayProgram !== "N/A" ? displayProgram : displayMajor}
                             </span>
                           </td>
 
                           <td className="px-4 py-4">
-                            <div className="flex flex-wrap items-center gap-1.5">
-                              <span className="font-semibold text-slate-700">
-                                {item.versionLabel
-                                  || `v${item.versionNumber}`}
-                              </span>
-
-                              {item.isCurrent && (
-                                <span className="rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-700">
-                                  Current
-                                </span>
-                              )}
-                            </div>
-                          </td>
-
-                          <td className="px-4 py-4">
                             <p className="font-medium text-slate-700">
-                              {displayProgram}
-                            </p>
-
-                            <p
-                              className={
-                                "mt-1 text-xs "
-                                + (
-                                  displayCohort
-                                  === "Shared / All cohorts"
-                                    ? "font-medium text-blue-600"
-                                    : "text-slate-500"
-                                )
-                              }
-                            >
-                              Cohort: {displayCohort}
-                            </p>
-
-                            <p className="mt-0.5 text-[10px] text-slate-400">
-                              Major: {displayMajor}
+                              {displayCohort}
                             </p>
                           </td>
 
@@ -2976,8 +2811,20 @@ export default function SyllabusListPage() {
                                 </Button>
                               )}
 
-                              {itemStatus
-                                === "APPROVED" && (
+                              {isDeptHead && itemStatus === "SUBMITTED" && (
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  className="h-8 gap-1.5 bg-[#007d84] px-2.5 text-white hover:bg-[#006d73]"
+                                  title={`Review ${item.courseCode}`}
+                                  onClick={() => navigate(`${basePath}/${item.id}`)}
+                                >
+                                  <ShieldCheck className="size-3.5" />
+                                  <span className="text-xs">Review</span>
+                                </Button>
+                              )}
+
+                              {(
                                 <Button
                                   type="button"
                                   variant="outline"
@@ -2987,7 +2834,7 @@ export default function SyllabusListPage() {
                                     downloadingPdfId
                                     !== null
                                   }
-                                  title="Export official PDF"
+                                  title={itemStatus === "APPROVED" ? "Export official PDF" : "Export preview PDF"}
                                   onClick={() =>
                                     void handleDownloadApprovedPdf(
                                       item,
@@ -3004,10 +2851,28 @@ export default function SyllabusListPage() {
                                     )}
 
                                   <span className="text-xs">
-                                    PDF
+                                    Export PDF
                                   </span>
                                 </Button>
                               )}
+
+                              {String(item.sourceType ?? "").toUpperCase() === "IMPORT_DOCX" && <>
+                                <Button type="button" variant="outline" size="sm"
+                                  className="h-8 gap-1.5 border-blue-200 bg-blue-50 px-2.5 text-blue-700 hover:bg-blue-100"
+                                  disabled={downloadingWordId !== null}
+                                  title="Export Word using the imported source template"
+                                  onClick={() => void handleDownloadWord(item)}>
+                                  {downloadingWordId === item.id ? <LoaderCircle className="size-3.5 animate-spin" /> : <Download className="size-3.5" />}
+                                  <span className="text-xs">Export Word</span>
+                                </Button>
+                                <Button type="button" variant="ghost" size="sm"
+                                  className="h-8 px-2 text-xs text-blue-700"
+                                  disabled={downloadingWordId !== null}
+                                  title="Download the untouched imported syllabus snapshot"
+                                  onClick={() => void handleDownloadWord(item, true)}>
+                                  Original Word
+                                </Button>
+                              </>}
 
                               {canSubmit(item) && (
                                 <Button
@@ -3057,7 +2922,8 @@ export default function SyllabusListPage() {
                                     title="Edit draft"
                                     onClick={() =>
                                       navigate(
-                                        `${basePath}/${item.id}/editor`,
+                                        `${basePath}/${item.id}/edit`,
+                                        { state: { major: displayMajor } },
                                       )
                                     }
                                   >
@@ -3069,9 +2935,12 @@ export default function SyllabusListPage() {
                                     variant="ghost"
                                     size="sm"
                                     className="h-8 w-8 p-0 text-violet-600 hover:bg-violet-50 hover:text-violet-700"
-                                    title="Import PDF / Word"
+                                    title="Add DOCX/PDF template"
                                     onClick={() =>
-                                      navigate(`${basePath}/${item.id}/editor?import=1`)
+                                      navigate(
+                                        `${basePath}/${item.id}/edit?import=1`,
+                                        { state: { major: displayMajor } },
+                                      )
                                     }
                                   >
                                     <Upload className="size-4" />
@@ -3119,1566 +2988,145 @@ export default function SyllabusListPage() {
             newSyllabus,
           ) =>
             navigate(
-              `${basePath}/${newSyllabus.id}/editor?import=1`,
+              `${basePath}/${newSyllabus.id}/edit`,
             )
           }
         />
       )}
-    </div>
-  )
-}
 
+      <Dialog
+        open={submissionValidation !== null}
+        onOpenChange={(open) => { if (!open) setSubmissionValidation(null) }}
+      >
+        <DialogContent className="max-h-[85vh] overflow-y-auto bg-white sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-amber-700"><AlertTriangle className="size-5" />Cannot Submit Syllabus</DialogTitle>
+            <DialogDescription>
+              {submissionValidation?.errorCount ?? 0} issues must be fixed. Open the Draft, update the indicated sections, and save before submitting again.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            {Object.entries((submissionValidation?.issues ?? []).reduce<Record<string, SubmissionValidationIssue[]>>((groups, issue) => {
+              ;(groups[issue.section] ??= []).push(issue)
+              return groups
+            }, {})).map(([section, issues]) => (
+              <section key={section} className="rounded-lg border border-amber-200 bg-amber-50/50 p-4">
+                <h3 className="text-xs font-bold uppercase tracking-wide text-amber-800">{section}</h3>
+                <ul className="mt-2 space-y-2 text-sm text-slate-700">
+                  {issues.map((issue, index) => <li key={`${issue.code}-${issue.field}-${index}`} className="flex gap-2"><span className="text-amber-600">•</span><span>{issue.message}</span></li>)}
+                </ul>
+              </section>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setSubmissionValidation(null)}>Close</Button>
+            <Button type="button" onClick={() => { const id = submissionValidation?.syllabusId; setSubmissionValidation(null); if (id) navigate(`${basePath}/${id}/edit`) }}>Open Draft</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-type InstructorWorkflowFilter =
-  | "ALL"
-  | "NOT_STARTED"
-  | "DRAFT_REVISION"
-  | "IN_REVIEW"
-  | "APPROVED"
-
-function InstructorSyllabusWorkspace({
-  dashboard,
-  dashboardLoading,
-  dashboardError,
-  dashboardFetching,
-  syllabuses,
-  syllabusesLoading,
-  syllabusesError,
-  basePath,
-  downloadingPdfId,
-  submitting,
-  onRefresh,
-  onNavigate,
-  onSubmit,
-  onClone,
-  onDelete,
-  onDownloadOfficial,
-  canEditDraft,
-  canViewApprovalHistory,
-}: {
-  dashboard?: DashboardFacultyResponse
-  dashboardLoading: boolean
-  dashboardError: boolean
-  dashboardFetching: boolean
-  syllabuses: Syllabus[]
-  syllabusesLoading: boolean
-  syllabusesError: boolean
-  basePath: string
-  downloadingPdfId: number | null
-  submitting: boolean
-  onRefresh: () => void
-  onNavigate: (to: string) => void
-  onSubmit: (item: Syllabus) => void
-  onClone: (item: Syllabus) => void
-  onDelete: (item: Syllabus) => void
-  onDownloadOfficial: (
-    item: Syllabus,
-  ) => Promise<void>
-  canEditDraft: (
-    item: Syllabus,
-  ) => boolean
-  canViewApprovalHistory: (
-    item: Syllabus,
-  ) => boolean
-}) {
-  const [
-    searchTerm,
-    setSearchTerm,
-  ] = useState("")
-
-  const [
-    termFilter,
-    setTermFilter,
-  ] = useState(ALL)
-
-  const [
-    workflowFilter,
-    setWorkflowFilter,
-  ] =
-    useState<InstructorWorkflowFilter>(
-      "ALL",
-    )
-
-  const assignments =
-    dashboard?.upcomingDeadlines
-    ?? []
-
-  const filteredAssignments =
-    useMemo(() => {
-      const query =
-        searchTerm
-          .trim()
-          .toLowerCase()
-
-      return assignments
-        .filter(
-          (item) => {
-            if (
-              termFilter !== ALL
-              && item.termKey
-                !== termFilter
-            ) {
-              return false
-            }
-
-            if (
-              !matchesInstructorWorkflow(
-                item,
-                workflowFilter,
-              )
-            ) {
-              return false
-            }
-
-            if (!query) {
-              return true
-            }
-
-            return [
-              item.courseCode,
-              item.courseName,
-              item.courseNameVn,
-              item.academicYear,
-              `Semester ${item.semester}`,
-              ...item.rooms,
-              ...item.schedules,
-            ]
-              .filter(Boolean)
-              .some(
-                (value) =>
-                  String(value)
-                    .toLowerCase()
-                    .includes(query),
-              )
-          },
-        )
-        .slice()
-        .sort(
-          (left, right) => {
-            const leftPriority =
-              instructorAssignmentPriority(
-                left,
-              )
-
-            const rightPriority =
-              instructorAssignmentPriority(
-                right,
-              )
-
-            if (
-              leftPriority
-              !== rightPriority
-            ) {
-              return (
-                leftPriority
-                - rightPriority
-              )
-            }
-
-            return left.courseCode
-              .localeCompare(
-                right.courseCode,
-                "en",
-                {
-                  numeric: true,
-                },
-              )
-          },
-        )
-    }, [
-      assignments,
-      searchTerm,
-      termFilter,
-      workflowFilter,
-    ])
-
-  const instructorSummary =
-    useMemo(() => {
-      const notStarted =
-        assignments.filter(
-          (item) =>
-            !item.syllabusId
-            || normalize(
-              item.status,
-            ).toUpperCase()
-              === "NOT_CREATED",
-        ).length
-
-      const draftRevision =
-        assignments.filter(
-          (item) => {
-            const status =
-              normalize(
-                item.status,
-              ).toUpperCase()
-
-            return (
-              status === "DRAFT"
-              || status
-                === "REJECTED"
-              || status
-                === "REVISION_REQUESTED"
-              || item.recommendedAction
-                === "REVISE"
-            )
-          },
-        ).length
-
-      const inReview =
-        assignments.filter(
-          (item) =>
-            [
-              "SUBMITTED",
-              "UNDER_REVIEW",
-            ].includes(
-              normalize(
-                item.status,
-              ).toUpperCase(),
-            ),
-        ).length
-
-      const approved =
-        assignments.filter(
-          (item) =>
-            normalize(
-              item.status,
-            ).toUpperCase()
-              === "APPROVED",
-        ).length
-
-      return {
-        assigned:
-          dashboard
-            ?.assignedCourses
-          ?? assignments.length,
-        notStarted,
-        draftRevision,
-        inReview,
-        approved,
-      }
-    }, [
-      assignments,
-      dashboard?.assignedCourses,
-    ])
-
-  const uncreatedAssignments =
-    assignments.filter(
-      (item) =>
-        !item.syllabusId
-        || item.recommendedAction
-          === "CREATE",
-    )
-
-  const createPath =
-    uncreatedAssignments.length
-      === 1
-      ? (
-          `${basePath}/create`
-          + `?classSectionId=${uncreatedAssignments[0].primaryClassSectionId}`
-        )
-      : `${basePath}/create`
-
-  const versionRows =
-    useMemo(
-      () =>
-        syllabuses
-          .slice()
-          .sort(
-            (left, right) => {
-              const leftUpdated =
-                new Date(
-                  left.updatedAt
-                  ?? left.submittedAt
-                  ?? 0,
-                ).getTime()
-
-              const rightUpdated =
-                new Date(
-                  right.updatedAt
-                  ?? right.submittedAt
-                  ?? 0,
-                ).getTime()
-
-              return (
-                rightUpdated
-                - leftUpdated
-              )
-            },
-          ),
-      [syllabuses],
-    )
-
-  if (
-    dashboardLoading
-    || syllabusesLoading
-  ) {
-    return (
-      <div className="flex h-64 items-center justify-center text-sm font-medium text-slate-500">
-        <LoaderCircle className="mr-2 size-5 animate-spin" />
-        Loading your syllabus workspace...
-      </div>
-    )
-  }
-
-  if (
-    dashboardError
-    || syllabusesError
-    || !dashboard
-  ) {
-    return (
-      <div className="rounded-xl border border-rose-200 bg-rose-50 p-6 text-rose-700">
-        <div className="flex items-start gap-3">
-          <AlertTriangle className="mt-0.5 size-5 shrink-0" />
-
-          <div>
-            <h2 className="font-semibold">
-              Unable to load My Syllabi
-            </h2>
-
-            <p className="mt-1 text-sm leading-6">
-              Confirm that this account is linked to an Instructor profile and has active teaching assignments.
-            </p>
-
+      <Dialog
+        open={isSystemAdmin && deleteAllOpen}
+        onOpenChange={(open) => {
+          if (deleteAllRunning) return
+          setDeleteAllOpen(open)
+          if (!open) {
+            setDeleteAllConfirmation("")
+            setDeleteAllError("")
+          }
+        }}
+      >
+        <DialogContent className="border-rose-200 bg-white sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-rose-700">Delete all syllabuses?</DialogTitle>
+            <DialogDescription className="leading-6">
+              This permanently deletes every syllabus version and its CLOs, topics, assessments, readings, approvals, and import history. Courses, Programs, Cohorts, semesters, and curriculum relationships remain.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 py-2">
+            <label htmlFor="delete-all-syllabi-confirmation" className="text-xs font-semibold text-slate-700">
+              Type <span className="font-mono text-rose-700">DELETE ALL</span> to confirm
+            </label>
+            <Input
+              id="delete-all-syllabi-confirmation"
+              value={deleteAllConfirmation}
+              onChange={(event) => setDeleteAllConfirmation(event.target.value)}
+              disabled={deleteAllRunning}
+              autoComplete="off"
+              placeholder="DELETE ALL"
+            />
+            {deleteAllError && <p className="text-sm text-rose-600">{deleteAllError}</p>}
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" disabled={deleteAllRunning} onClick={() => setDeleteAllOpen(false)}>Cancel</Button>
             <Button
               type="button"
-              variant="outline"
-              size="sm"
-              className="mt-3 bg-white"
-              onClick={onRefresh}
+              className="bg-rose-600 text-white hover:bg-rose-700"
+              disabled={deleteAllConfirmation !== "DELETE ALL" || deleteAllRunning}
+              onClick={handleDeleteAllSyllabi}
             >
-              <RotateCcw className="size-4" />
-              Try Again
+              {deleteAllRunning ? <LoaderCircle className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
+              {deleteAllRunning ? "Deleting..." : "Delete Everything"}
             </Button>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  return (
-    <div className="min-h-screen -m-6 bg-[#f7faf9] p-6 text-slate-900 md:-m-10 md:p-8">
-      <div className="mx-auto max-w-[1550px] space-y-5">
-        <section className="relative overflow-hidden rounded-2xl border border-[#d7e5e8] bg-white shadow-sm">
-          <div className="absolute inset-x-0 top-0 h-[3px] bg-gradient-to-r from-[#007d84] via-[#15949a] to-[#f0a72f]" />
-
-          <div className="flex flex-col gap-5 px-6 py-5 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#708894]">
-                SCSE / Instructor Syllabus Workspace
-              </p>
-
-              <h1 className="mt-1 text-[28px] font-bold tracking-[-0.5px] text-[#17343d]">
-                My Syllabi
-              </h1>
-
-              <p className="mt-1 max-w-3xl text-sm leading-6 text-[#687f89]">
-                Work from your active teaching assignments: create or clone a syllabus, continue Draft work, submit for Department review, read reviewer feedback, and track every version through final approval.
-              </p>
-            </div>
-
-            <div className="flex flex-wrap gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                disabled={
-                  dashboardFetching
-                }
-                onClick={onRefresh}
-              >
-                {dashboardFetching ? (
-                  <LoaderCircle className="size-4 animate-spin" />
-                ) : (
-                  <RotateCcw className="size-4" />
-                )}
-                Refresh
-              </Button>
-
-              <Button
-                type="button"
-                className="bg-[#007d84] text-white hover:bg-[#006d73]"
-                disabled={
-                  uncreatedAssignments.length
-                    === 0
-                }
-                title={
-                  uncreatedAssignments.length
-                    === 0
-                    ? "All active assignments already have a syllabus."
-                    : "Create a syllabus from an active teaching assignment."
-                }
-                onClick={() =>
-                  onNavigate(
-                    createPath,
-                  )
-                }
-              >
-                <Plus className="size-4" />
-                Create from Assignment
-              </Button>
-            </div>
-          </div>
-        </section>
-
-        <section className="flex flex-col gap-3 rounded-xl border border-[#cfe1e4] bg-[#f6fbfb] px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-start gap-3">
-            <ShieldCheck className="mt-0.5 size-5 shrink-0 text-[#007d84]" />
-
-            <div>
-              <p className="font-semibold text-[#17343d]">
-                Assignment-scoped access
-              </p>
-
-              <p className="mt-1 text-xs leading-5 text-slate-500">
-                You can create and edit syllabuses only for active teaching assignments that match the course, academic year, and semester. Submitted and approved snapshots remain read-only.
-              </p>
-            </div>
-          </div>
-
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="shrink-0 bg-white"
-            onClick={() =>
-              onNavigate(
-                "/instructor/class-sections",
-              )
-            }
-          >
-            <BookOpen className="size-3.5" />
-            View Class Sections
-          </Button>
-        </section>
-
-        <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-          <SummaryCard
-            label="Assigned Courses"
-            value={
-              instructorSummary.assigned
-            }
-          />
-
-          <SummaryCard
-            label="Not Started"
-            value={
-              instructorSummary.notStarted
-            }
-            tone="warning"
-          />
-
-          <SummaryCard
-            label="Draft / Revision"
-            value={
-              instructorSummary.draftRevision
-            }
-            tone="warning"
-          />
-
-          <SummaryCard
-            label="In Review"
-            value={
-              instructorSummary.inReview
-            }
-            tone="info"
-          />
-
-          <SummaryCard
-            label="Approved"
-            value={
-              instructorSummary.approved
-            }
-            tone="success"
-          />
-        </section>
-
-        <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <div className="border-b border-slate-100 px-5 py-4">
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-              <div>
-                <div className="flex items-center gap-2">
-                  <Filter className="size-4 text-orange-600" />
-
-                  <h2 className="font-semibold text-[#17343d]">
-                    My Assignment Scope
-                  </h2>
-                </div>
-
-                <p className="mt-1 text-xs text-slate-500">
-                  Filter by academic term and workflow state. Curriculum Program/Cohort filters are intentionally omitted because Instructor access is defined by teaching assignment.
-                </p>
-              </div>
-
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={
-                  !searchTerm
-                  && termFilter
-                    === ALL
-                  && workflowFilter
-                    === "ALL"
-                }
-                onClick={() => {
-                  setSearchTerm("")
-                  setTermFilter(ALL)
-                  setWorkflowFilter(
-                    "ALL",
-                  )
-                }}
-              >
-                <RotateCcw className="size-4" />
-                Clear Filters
-              </Button>
-            </div>
-          </div>
-
-          <div className="grid gap-3 p-5 lg:grid-cols-[minmax(320px,1fr)_240px_240px]">
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
-
-              <Input
-                className="pl-9"
-                placeholder="Search course, room, or schedule..."
-                value={searchTerm}
-                onChange={(event) =>
-                  setSearchTerm(
-                    event.target.value,
-                  )
-                }
-              />
-            </div>
-
-            <Select
-              value={termFilter}
-              onValueChange={
-                setTermFilter
-              }
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Academic term" />
-              </SelectTrigger>
-
-              <SelectContent>
-                <SelectItem value={ALL}>
-                  All Academic Terms
-                </SelectItem>
-
-                {dashboard.terms.map(
-                  (term) => (
-                    <SelectItem
-                      key={term.key}
-                      value={term.key}
-                    >
-                      Semester {term.semester} · {term.academicYear}
-                    </SelectItem>
-                  ),
-                )}
-              </SelectContent>
-            </Select>
-
-            <Select
-              value={workflowFilter}
-              onValueChange={(value) =>
-                setWorkflowFilter(
-                  value as InstructorWorkflowFilter,
-                )
-              }
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Workflow state" />
-              </SelectTrigger>
-
-              <SelectContent>
-                <SelectItem value="ALL">
-                  All Workflow States
-                </SelectItem>
-
-                <SelectItem value="NOT_STARTED">
-                  Not Started
-                </SelectItem>
-
-                <SelectItem value="DRAFT_REVISION">
-                  Draft / Revision
-                </SelectItem>
-
-                <SelectItem value="IN_REVIEW">
-                  In Review
-                </SelectItem>
-
-                <SelectItem value="APPROVED">
-                  Approved
-                </SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </section>
-
-        <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <div className="border-b border-slate-100 px-5 py-4">
-            <h2 className="font-semibold text-[#17343d]">
-              Assigned Course Work Queue
-            </h2>
-
-            <p className="mt-1 text-xs leading-5 text-slate-500">
-              One row per assigned course and academic term. This queue remains visible even before a syllabus has been created.
-            </p>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[1180px] text-sm">
-              <thead className="border-b border-slate-200 bg-slate-50 text-[10px] font-bold uppercase tracking-[0.08em] text-slate-500">
-                <tr>
-                  <th className="px-4 py-3 text-left">
-                    Course
-                  </th>
-
-                  <th className="px-4 py-3 text-left">
-                    Teaching Assignment
-                  </th>
-
-                  <th className="px-4 py-3 text-left">
-                    Syllabus
-                  </th>
-
-                  <th className="px-4 py-3 text-left">
-                    Official Deadline
-                  </th>
-
-                  <th className="px-4 py-3 text-left">
-                    Time Remaining
-                  </th>
-
-                  <th className="px-4 py-3 text-right">
-                    Next Action
-                  </th>
-                </tr>
-              </thead>
-
-              <tbody className="divide-y divide-slate-100">
-                {filteredAssignments.length === 0 ? (
-                  <tr>
-                    <td
-                      colSpan={6}
-                      className="px-5 py-12 text-center"
-                    >
-                      <p className="font-medium text-slate-600">
-                        No assigned courses match the selected filters.
-                      </p>
-
-                      <p className="mt-1 text-xs text-slate-400">
-                        If the Dashboard shows an assignment, clear the filters. If no assignments exist, contact the administrator responsible for teaching assignments.
-                      </p>
-                    </td>
-                  </tr>
-                ) : (
-                  filteredAssignments.map(
-                    (item) => (
-                      <InstructorAssignmentRow
-                        key={`${item.courseId}-${item.termKey}`}
-                        item={item}
-                        basePath={basePath}
-                        onNavigate={
-                          onNavigate
-                        }
-                      />
-                    ),
-                  )
-                )}
-              </tbody>
-            </table>
-          </div>
-        </section>
-
-        <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <div className="flex flex-col gap-3 border-b border-slate-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h2 className="font-semibold text-[#17343d]">
-                My Syllabus Versions
-              </h2>
-
-              <p className="mt-1 text-xs leading-5 text-slate-500">
-                Preserved syllabus versions available within your assignment scope. Use History to read reviewer comments and View to compare preserved versions.
-              </p>
-            </div>
-
-            <BadgeLike>
-              {versionRows.length} version(s)
-            </BadgeLike>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[1120px] text-sm">
-              <thead className="border-b border-slate-200 bg-slate-50 text-[10px] font-bold uppercase tracking-[0.08em] text-slate-500">
-                <tr>
-                  <th className="px-4 py-3 text-left">
-                    Course
-                  </th>
-
-                  <th className="px-4 py-3 text-left">
-                    Version
-                  </th>
-
-                  <th className="px-4 py-3 text-left">
-                    Academic Term
-                  </th>
-
-                  <th className="px-4 py-3 text-left">
-                    Status
-                  </th>
-
-                  <th className="px-4 py-3 text-left">
-                    Final Approval Date
-                  </th>
-
-                  <th className="px-4 py-3 text-right">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-
-              <tbody className="divide-y divide-slate-100">
-                {versionRows.length === 0 ? (
-                  <tr>
-                    <td
-                      colSpan={6}
-                      className="px-5 py-12 text-center"
-                    >
-                      <p className="font-medium text-slate-600">
-                        No syllabus version has been created yet.
-                      </p>
-
-                      <p className="mt-1 text-xs text-slate-400">
-                        Your teaching assignment is still shown above. Use Create Syllabus from the work queue to start a Draft.
-                      </p>
-                    </td>
-                  </tr>
-                ) : (
-                  versionRows.map(
-                    (item) => {
-                      const itemStatus =
-                        normalize(
-                          item.status,
-                        ).toUpperCase()
-
-                      return (
-                        <tr
-                          key={item.id}
-                          className="hover:bg-[#f8fbfb]"
-                        >
-                          <td className="px-4 py-4">
-                            <p className="font-mono text-xs font-bold text-[#007d84]">
-                              {item.courseCode}
-                            </p>
-
-                            <p className="mt-1 max-w-[260px] font-semibold text-slate-800">
-                              {item.courseName}
-                            </p>
-                          </td>
-
-                          <td className="px-4 py-4">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <span className="font-semibold text-slate-700">
-                                {item.versionLabel
-                                  || `v${item.versionNumber}`}
-                              </span>
-
-                              {item.isCurrent && (
-                                <span className="rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-700">
-                                  Current
-                                </span>
-                              )}
-                            </div>
-                          </td>
-
-                          <td className="px-4 py-4">
-                            <p className="font-medium text-slate-700">
-                              {item.academicYear
-                                || "Not specified"}
-                            </p>
-
-                            <p className="mt-1 text-xs text-slate-500">
-                              {formatSemesterLabel(
-                                item.semester,
-                              )}
-                            </p>
-                          </td>
-
-                          <td className="px-4 py-4">
-                            <span
-                              className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-bold ${getStatusClass(item.status, "INSTRUCTOR")}`}
-                            >
-                              {formatStatusLabelForRole(
-                                item.status,
-                                "INSTRUCTOR",
-                              )}
-                            </span>
-                          </td>
-
-                          <td className="px-4 py-4 text-xs text-slate-600">
-                            {itemStatus
-                              === "APPROVED"
-                              ? (
-                                  item.approvedAt
-                                    ? formatDateTime(
-                                        item.approvedAt,
-                                      )
-                                    : "Not recorded"
-                                )
-                              : "—"}
-                          </td>
-
-                          <td className="px-4 py-4">
-                            <div className="flex flex-wrap justify-end gap-2">
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                className="h-8 gap-1.5"
-                                onClick={() =>
-                                  onNavigate(
-                                    `${basePath}/${item.id}`,
-                                  )
-                                }
-                              >
-                                <Eye className="size-3.5" />
-                                View
-                              </Button>
-
-                              {canViewApprovalHistory(
-                                item,
-                              ) && (
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  size="sm"
-                                  className="h-8 gap-1.5 border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 hover:text-blue-800"
-                                  onClick={() =>
-                                    onNavigate(
-                                      `${basePath}/${item.id}#approval-history`,
-                                    )
-                                  }
-                                >
-                                  <History className="size-3.5" />
-                                  History
-                                </Button>
-                              )}
-
-                              {itemStatus
-                                === "APPROVED" && (
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  size="sm"
-                                  className="h-8 gap-1.5 border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
-                                  disabled={
-                                    downloadingPdfId
-                                    !== null
-                                  }
-                                  onClick={() =>
-                                    void onDownloadOfficial(
-                                      item,
-                                    )
-                                  }
-                                >
-                                  {downloadingPdfId
-                                    === item.id
-                                    ? (
-                                      <LoaderCircle className="size-3.5 animate-spin" />
-                                    )
-                                    : (
-                                      <Download className="size-3.5" />
-                                    )}
-                                  Official PDF
-                                </Button>
-                              )}
-
-                              {canEditDraft(
-                                item,
-                              ) && (
-                                <>
-                                  <Button
-                                    type="button"
-                                    size="sm"
-                                    className="h-8 bg-[#007d84] text-white hover:bg-[#006d73]"
-                                    onClick={() =>
-                                      onNavigate(
-                                        `${basePath}/${item.id}/editor`,
-                                      )
-                                    }
-                                  >
-                                    <Edit2 className="size-3.5" />
-                                    Edit Draft
-                                  </Button>
-
-                                  <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    className="h-8 border-blue-200 text-blue-700"
-                                    disabled={
-                                      submitting
-                                    }
-                                    onClick={() =>
-                                      onSubmit(
-                                        item,
-                                      )
-                                    }
-                                  >
-                                    <Send className="size-3.5" />
-                                    Submit
-                                  </Button>
-
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-8 text-rose-600 hover:bg-rose-50"
-                                    onClick={() =>
-                                      onDelete(
-                                        item,
-                                      )
-                                    }
-                                  >
-                                    <Trash2 className="size-3.5" />
-                                    Delete Draft
-                                  </Button>
-                                </>
-                              )}
-
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                className="h-8"
-                                title="Clone this preserved syllabus into another active assignment for the same course."
-                                onClick={() =>
-                                  onClone(
-                                    item,
-                                  )
-                                }
-                              >
-                                <Copy className="size-3.5" />
-                                Clone
-                              </Button>
-                            </div>
-                          </td>
-                        </tr>
-                      )
-                    },
-                  )
-                )}
-              </tbody>
-            </table>
-          </div>
-        </section>
-
-        <section className="rounded-xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
-          <div className="flex items-start gap-3">
-            <ShieldCheck className="mt-0.5 size-5 shrink-0 text-[#007d84]" />
-
-            <div>
-              <p className="font-semibold text-[#17343d]">
-                Syllabus workflow
-              </p>
-
-              <p className="mt-1 text-xs leading-5 text-slate-500">
-                Draft → Pending Department Review → Pending Dean Review → Approved. If a reviewer returns a submission, the reviewed snapshot remains preserved and you continue on the new/current Draft revision.
-              </p>
-            </div>
-          </div>
-        </section>
-      </div>
-    </div>
-  )
-}
-
-function InstructorAssignmentRow({
-  item,
-  basePath,
-  onNavigate,
-}: {
-  item: FacultyCourseAssignment
-  basePath: string
-  onNavigate: (to: string) => void
-}) {
-  const action =
-    getInstructorAssignmentAction(
-      item,
-      basePath,
-    )
-
-  return (
-    <tr className="align-top hover:bg-[#f8fbfb]">
-      <td className="px-4 py-4">
-        <p className="font-mono text-xs font-bold text-[#007d84]">
-          {item.courseCode}
-        </p>
-
-        <p className="mt-1 max-w-[260px] font-semibold text-slate-800">
-          {item.courseName}
-        </p>
-
-        {item.courseNameVn
-          && item.courseNameVn
-            !== item.courseName && (
-            <p className="mt-0.5 max-w-[260px] text-xs text-slate-400">
-              {item.courseNameVn}
-            </p>
-          )}
-      </td>
-
-      <td className="px-4 py-4">
-        <p className="font-semibold text-slate-700">
-          Semester {item.semester} · {item.academicYear}
-        </p>
-
-        <p className="mt-1 text-xs text-slate-500">
-          {item.sectionCount} section(s)
-          {item.groupNumbers.length
-            > 0
-            ? ` · Group ${item.groupNumbers.join(", ")}`
-            : ""}
-        </p>
-
-        {item.rooms.length > 0 && (
-          <p className="mt-1 text-xs text-slate-400">
-            Room: {item.rooms.join(", ")}
-          </p>
-        )}
-      </td>
-
-      <td className="px-4 py-4">
-        <InstructorSyllabusStatusBadge
-          item={item}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {(isAdmin || isInstructor) && (
+        <AddSyllabusDialog
+          open={addDialogOpen}
+          onOpenChange={setAddDialogOpen}
+          scopeProgramId={selectedProgramId}
+          scopeCohortId={selectedCohortId}
+          allowedCourseIds={isInstructor ? instructorAssignedCourseIds : undefined}
+          contextCourseId={isInstructor ? contextCourseId : undefined}
+          allowedAssignments={isInstructor ? instructorAvailableAssignments : undefined}
+          assignmentId={isInstructor ? (contextAssignmentId ?? singleInstructorAssignmentId) : undefined}
+          onCreateRequested={({ courseId, courseProgramId, assignmentId, importPreview, previewOnly }) => {
+            const importDraftId = importPreview && courseId ? saveSyllabusImportDraft(importPreview, courseId, courseProgramId) : undefined
+            navigate(
+              `${basePath}/create?${courseId ? `courseId=${courseId}&` : ""}${courseProgramId ? `courseProgramId=${courseProgramId}&` : ""}${assignmentId ? `assignmentId=${assignmentId}&` : ""}${selectedProgramId ? `programId=${selectedProgramId}&` : ""}${selectedCohortId ? `cohortId=${selectedCohortId}&` : ""}${importDraftId ? `importDraft=${encodeURIComponent(importDraftId)}` : ""}`.replace(/[?&]$/, ""),
+              { state: importPreview ? { importPreview, targetCourseId: courseId, targetCourseProgramId: courseProgramId, previewOnly } : undefined },
+            )
+          }}
+          onBulkImportRequested={(response) => {
+            setAddDialogOpen(false)
+            void runBulkImport(response)
+          }}
         />
-
-        {item.syllabusVersionLabel && (
-          <p className="mt-1 text-xs text-slate-500">
-            {item.syllabusVersionLabel}
-            {item.currentVersion
-              ? " · Current"
-              : ""}
-          </p>
-        )}
-      </td>
-
-      <td className="px-4 py-4">
-        {item.deadline ? (
-          <>
-            <p className="font-medium text-slate-700">
-              {formatFullDateTime(
-                item.deadline,
-              )}
-            </p>
-
-            <p className="mt-1 text-xs text-slate-400">
-              Official submission deadline
-            </p>
-          </>
-        ) : (
-          <>
-            <p className="font-medium text-slate-500">
-              Not configured
-            </p>
-
-            <p className="mt-1 text-xs text-slate-400">
-              Awaiting administrator configuration
-            </p>
-          </>
-        )}
-      </td>
-
-      <td className="px-4 py-4">
-        <InstructorDeadlineBadge
-          state={
-            item.deadlineState
-          }
-          minutesRemaining={
-            item.minutesRemaining
-          }
-        />
-      </td>
-
-      <td className="px-4 py-4">
-        <div className="flex justify-end">
-          <Button
-            type="button"
-            size="sm"
-            variant={
-              item.actionRequired
-                ? "default"
-                : "outline"
-            }
-            className={
-              item.actionRequired
-                ? "bg-[#007d84] text-white hover:bg-[#006d73]"
-                : ""
-            }
-            onClick={() =>
-              onNavigate(
-                action.path,
-              )
-            }
-          >
-            {action.label}
-            <PlusOrArrow
-              create={
-                item.recommendedAction
-                  === "CREATE"
-              }
-            />
-          </Button>
-        </div>
-      </td>
-    </tr>
-  )
-}
-
-function InstructorSyllabusStatusBadge({
-  item,
-}: {
-  item: FacultyCourseAssignment
-}) {
-  const status =
-    normalize(
-      item.status,
-    ).toUpperCase()
-
-  if (
-    !item.syllabusId
-    || status === "NOT_CREATED"
-  ) {
-    return (
-      <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-bold text-slate-600">
-        Not Started
-      </span>
-    )
-  }
-
-  if (
-    item.recommendedAction
-      === "REVISE"
-  ) {
-    return (
-      <span className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-[10px] font-bold text-rose-700">
-        <AlertTriangle className="size-3" />
-        Revision Required
-      </span>
-    )
-  }
-
-  return (
-    <span
-      className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-bold ${getStatusClass(item.status, "INSTRUCTOR")}`}
-    >
-      {formatStatusLabelForRole(
-        item.status,
-        "INSTRUCTOR",
       )}
-    </span>
-  )
-}
 
-function InstructorDeadlineBadge({
-  state,
-  minutesRemaining,
-}: {
-  state: FacultyDeadlineState
-  minutesRemaining: number | null
-}) {
-  const value =
-    formatMinutesRemaining(
-      minutesRemaining,
-    )
-
-  if (
-    state === "COMPLETED"
-  ) {
-    return (
-      <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-bold text-emerald-700">
-        <CheckCircle2 className="size-3" />
-        Completed
-      </span>
-    )
-  }
-
-  if (
-    state === "SUBMITTED"
-    || state === "IN_REVIEW"
-  ) {
-    return (
-      <span className="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-[10px] font-bold text-blue-700">
-        <Clock3 className="size-3" />
-        In Review
-      </span>
-    )
-  }
-
-  if (
-    state === "NOT_CONFIGURED"
-  ) {
-    return (
-      <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-bold text-slate-600">
-        <CalendarClock className="size-3" />
-        No Deadline
-      </span>
-    )
-  }
-
-  if (
-    state === "OVERDUE"
-  ) {
-    return (
-      <span className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-[10px] font-bold text-rose-700">
-        <AlertTriangle className="size-3" />
-        Overdue {value}
-      </span>
-    )
-  }
-
-  if (
-    state === "DUE_TODAY"
-  ) {
-    return (
-      <span className="inline-flex rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-[10px] font-bold text-rose-700">
-        Due Today
-      </span>
-    )
-  }
-
-  if (
-    state === "DUE_SOON"
-  ) {
-    return (
-      <span className="inline-flex rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[10px] font-bold text-amber-700">
-        {value} remaining
-      </span>
-    )
-  }
-
-  return (
-    <span className="inline-flex rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[10px] font-bold text-slate-600">
-      {value} remaining
-    </span>
-  )
-}
-
-function getInstructorAssignmentAction(
-  item: FacultyCourseAssignment,
-  basePath: string,
-) {
-  const labelByAction:
-    Record<
-      FacultyRecommendedAction,
-      string
-    > = {
-      CREATE:
-        "Create Syllabus",
-      EDIT:
-        "Continue Draft",
-      REVISE:
-        "Revise Syllabus",
-      VIEW_PROGRESS:
-        "View Progress",
-      VIEW_APPROVED:
-        "View Approved",
-      VIEW_HISTORY:
-        "View History",
-    }
-
-  if (
-    item.recommendedAction
-      === "CREATE"
-  ) {
-    return {
-      label:
-        labelByAction.CREATE,
-      path:
-        `${basePath}/create`
-        + `?classSectionId=${item.primaryClassSectionId}`,
-    }
-  }
-
-  if (
-    [
-      "EDIT",
-      "REVISE",
-    ].includes(
-      item.recommendedAction,
-    )
-    && item.syllabusId
-  ) {
-    return {
-      label:
-        labelByAction[
-          item.recommendedAction
-        ],
-      path:
-        `${basePath}/${item.syllabusId}/editor`,
-    }
-  }
-
-  if (
-    item.recommendedAction
-      === "VIEW_HISTORY"
-    && item.syllabusId
-  ) {
-    return {
-      label:
-        labelByAction.VIEW_HISTORY,
-      path:
-        `${basePath}/${item.syllabusId}#approval-history`,
-    }
-  }
-
-  return {
-    label:
-      labelByAction[
-        item.recommendedAction
-      ],
-    path:
-      item.syllabusId
-        ? `${basePath}/${item.syllabusId}`
-        : basePath,
-  }
-}
-
-function matchesInstructorWorkflow(
-  item: FacultyCourseAssignment,
-  filter: InstructorWorkflowFilter,
-) {
-  if (filter === "ALL") {
-    return true
-  }
-
-  const status =
-    normalize(
-      item.status,
-    ).toUpperCase()
-
-  if (
-    filter === "NOT_STARTED"
-  ) {
-    return (
-      !item.syllabusId
-      || status === "NOT_CREATED"
-    )
-  }
-
-  if (
-    filter === "DRAFT_REVISION"
-  ) {
-    return (
-      status === "DRAFT"
-      || status === "REJECTED"
-      || status
-        === "REVISION_REQUESTED"
-      || item.recommendedAction
-        === "REVISE"
-    )
-  }
-
-  if (
-    filter === "IN_REVIEW"
-  ) {
-    return [
-      "SUBMITTED",
-      "UNDER_REVIEW",
-    ].includes(status)
-  }
-
-  return status === "APPROVED"
-}
-
-function instructorAssignmentPriority(
-  item: FacultyCourseAssignment,
-) {
-  if (
-    item.deadlineState
-      === "OVERDUE"
-  ) {
-    return 0
-  }
-
-  if (
-    item.recommendedAction
-      === "REVISE"
-  ) {
-    return 1
-  }
-
-  if (
-    item.deadlineState
-      === "DUE_TODAY"
-  ) {
-    return 2
-  }
-
-  if (
-    item.deadlineState
-      === "DUE_SOON"
-  ) {
-    return 3
-  }
-
-  if (
-    item.actionRequired
-  ) {
-    return 4
-  }
-
-  if (
-    normalize(
-      item.status,
-    ).toUpperCase()
-      === "UNDER_REVIEW"
-  ) {
-    return 5
-  }
-
-  if (
-    normalize(
-      item.status,
-    ).toUpperCase()
-      === "SUBMITTED"
-  ) {
-    return 6
-  }
-
-  if (
-    normalize(
-      item.status,
-    ).toUpperCase()
-      === "APPROVED"
-  ) {
-    return 7
-  }
-
-  return 8
-}
-
-function formatMinutesRemaining(
-  minutes: number | null,
-) {
-  if (
-    minutes === null
-  ) {
-    return "—"
-  }
-
-  const absolute =
-    Math.abs(minutes)
-
-  const days =
-    Math.floor(
-      absolute / 1440,
-    )
-
-  const hours =
-    Math.floor(
-      (
-        absolute % 1440
-      ) / 60,
-    )
-
-  const mins =
-    absolute % 60
-
-  if (days > 0) {
-    return hours > 0
-      ? `${days}d ${hours}h`
-      : `${days}d`
-  }
-
-  if (hours > 0) {
-    return mins > 0
-      ? `${hours}h ${mins}m`
-      : `${hours}h`
-  }
-
-  return `${mins}m`
-}
-
-function formatFullDateTime(
-  value: string,
-) {
-  const date =
-    new Date(value)
-
-  if (
-    Number.isNaN(
-      date.getTime(),
-    )
-  ) {
-    return value
-  }
-
-  return new Intl.DateTimeFormat(
-    "en-GB",
-    {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    },
-  ).format(date)
-}
-
-function PlusOrArrow({
-  create,
-}: {
-  create: boolean
-}) {
-  return create
-    ? <Plus className="size-3.5" />
-    : <Eye className="size-3.5" />
-}
-
-function BadgeLike({
-  children,
-}: {
-  children: React.ReactNode
-}) {
-  return (
-    <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-semibold text-slate-600">
-      {children}
-    </span>
-  )
-}
-
-function SummaryCard({
-  label,
-  value,
-  tone = "default",
-}: {
-  label: string
-  value: number
-  tone?:
-    | "default"
-    | "success"
-    | "info"
-    | "warning"
-}) {
-  const toneClass =
-    tone === "success"
-      ? "border-emerald-200 bg-emerald-50/40"
-      : tone === "info"
-        ? "border-blue-200 bg-blue-50/40"
-        : tone === "warning"
-          ? "border-amber-200 bg-amber-50/40"
-          : "border-slate-200 bg-white"
-
-  return (
-    <div className={`rounded-xl border p-4 shadow-sm ${toneClass}`}>
-      <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-        {label}
-      </p>
-
-      <p className="mt-2 text-2xl font-bold text-slate-900">
-        {value}
-      </p>
+      {bulkImportProgress.length > 0 && (
+        <aside className="fixed right-5 top-20 z-50 flex max-h-[calc(100vh-6rem)] w-[390px] flex-col overflow-hidden rounded-2xl border border-[#cfe2e4] bg-white shadow-2xl">
+          <div className="h-1 bg-gradient-to-r from-[#007d84] via-[#20a0a5] to-[#f0a72f]" />
+          <div className="flex items-start justify-between border-b px-5 py-4">
+            <div>
+              <h2 className="font-bold text-[#006f76]">Program Document Import</h2>
+              <p className="mt-1 text-xs text-slate-500">
+                {bulkImportProgress.filter((item) => item.status === "success").length} saved · {bulkImportProgress.filter((item) => item.status === "error").length} failed · {bulkImportProgress.length} total
+              </p>
+            </div>
+            {!bulkImportRunning && <Button variant="ghost" size="sm" onClick={() => setBulkImportProgress([])}>Close</Button>}
+          </div>
+          <div className="overflow-y-auto p-3">
+            {bulkImportProgress.map((item, index) => (
+              <div key={`${item.code}-${index}`} className={`mb-2 rounded-xl border p-3 last:mb-0 ${item.status === "error" ? "border-rose-200 bg-rose-50" : item.status === "success" ? "border-emerald-200 bg-emerald-50" : "border-slate-200 bg-white"}`}>
+                <div className="flex items-start gap-3">
+                  {item.status === "importing" ? <LoaderCircle className="mt-0.5 size-4 shrink-0 animate-spin text-[#007d84]" />
+                    : item.status === "success" ? <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-600" />
+                    : item.status === "error" ? <AlertTriangle className="mt-0.5 size-4 shrink-0 text-rose-600" />
+                    : <Clock3 className="mt-0.5 size-4 shrink-0 text-slate-400" />}
+                  <div className="min-w-0">
+                    <p className="font-mono text-xs font-bold text-slate-800">{item.code}</p>
+                    <p className="truncate text-xs text-slate-500">{item.name}</p>
+                    {item.error && <p className="mt-1 text-xs leading-5 text-rose-700">{item.error}</p>}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </aside>
+      )}
     </div>
   )
 }

@@ -16,8 +16,8 @@ import org.springframework.transaction.annotation.Transactional;
 import com.scse.curriculum.classsection.entity.ClassSection;
 import com.scse.curriculum.classsection.repository.ClassSectionRepository;
 import com.scse.curriculum.course.entity.Course;
-import com.scse.curriculum.department.entity.Department;
 import com.scse.curriculum.instructor.entity.Instructor;
+import com.scse.curriculum.major.entity.Major;
 import com.scse.curriculum.syllabus.entity.Syllabus;
 import com.scse.curriculum.syllabus.entity.SyllabusStatus;
 import com.scse.curriculum.user.entity.UserAccount;
@@ -56,7 +56,7 @@ public class DeadlineEscalationTargetResolver {
                     0);
         }
 
-        Map<Integer, List<DeadlineEscalationTarget.OverdueInstructor>> byDepartment =
+        Map<Integer, List<DeadlineEscalationTarget.OverdueInstructor>> byMajor =
                 overdue.stream()
                         .filter(item -> item.departmentId() != null)
                         .collect(Collectors.groupingBy(
@@ -69,15 +69,14 @@ public class DeadlineEscalationTargetResolver {
         int departmentsWithoutHead = 0;
 
         for (Map.Entry<Integer, List<DeadlineEscalationTarget.OverdueInstructor>> entry
-                : byDepartment.entrySet()) {
-            Integer departmentId = entry.getKey();
+                : byMajor.entrySet()) {
+            Integer majorId = entry.getKey();
             List<DeadlineEscalationTarget.OverdueInstructor> items = sortInstructors(entry.getValue());
             DeadlineEscalationTarget.OverdueInstructor sample = items.getFirst();
 
             List<UserAccount> heads = userAccountRepository
-                    .findActiveByRoleAndInstructorDepartmentId(
-                            UserRole.DEPT_HEAD,
-                            departmentId);
+                    .findByRoleAndManagedMajor_IdAndIsActiveTrue(
+                            UserRole.DEPT_HEAD, majorId);
             heads = uniqueActiveUsers(heads);
 
             if (heads.isEmpty()) {
@@ -85,7 +84,7 @@ public class DeadlineEscalationTargetResolver {
             }
 
             departments.add(new DepartmentResolution(
-                    departmentId,
+                    majorId,
                     sample.departmentCode(),
                     sample.departmentName(),
                     items,
@@ -95,8 +94,8 @@ public class DeadlineEscalationTargetResolver {
                 recipients.add(new DeadlineEscalationTarget(
                         head,
                         UserRole.DEPT_HEAD,
-                        "DEPARTMENT:" + departmentId,
-                        departmentId,
+                        "MAJOR:" + majorId,
+                        majorId,
                         sample.departmentCode(),
                         sample.departmentName(),
                         items));
@@ -147,13 +146,13 @@ public class DeadlineEscalationTargetResolver {
 
     private List<DeadlineEscalationTarget.OverdueInstructor> resolveOverdueInstructors(
             List<ClassSection> assignments) {
-        Map<InstructorDepartmentKey, List<ClassSection>> grouped = assignments.stream()
+        Map<InstructorMajorKey, List<ClassSection>> grouped = assignments.stream()
                 .filter(section -> section.getInstructor() != null)
                 .filter(section -> section.getCourse() != null)
                 .collect(Collectors.groupingBy(
-                        section -> new InstructorDepartmentKey(
+                        section -> new InstructorMajorKey(
                                 section.getInstructor().getId(),
-                                departmentId(section.getCourse())),
+                                majorId(section)),
                         LinkedHashMap::new,
                         Collectors.toList()));
 
@@ -162,7 +161,8 @@ public class DeadlineEscalationTargetResolver {
         for (List<ClassSection> instructorDepartmentAssignments : grouped.values()) {
             ClassSection sampleSection = instructorDepartmentAssignments.getFirst();
             Instructor instructor = sampleSection.getInstructor();
-            Department department = sampleSection.getCourse().getDepartment();
+            Major major = sampleSection.getProgram() == null
+                    ? null : sampleSection.getProgram().getMajor();
 
             Map<Integer, List<ClassSection>> byCourse = instructorDepartmentAssignments.stream()
                     .collect(Collectors.groupingBy(
@@ -187,9 +187,9 @@ public class DeadlineEscalationTargetResolver {
                     instructor.getId(),
                     instructor.getFullName(),
                     instructor.getEmail(),
-                    department == null ? null : department.getId(),
-                    department == null ? "UNASSIGNED" : department.getCode(),
-                    department == null ? "Chưa gán bộ môn" : department.getName(),
+                    major == null ? null : major.getId(),
+                    major == null ? "UNASSIGNED" : major.getCode(),
+                    major == null ? "Chưa gán Major" : major.getName(),
                     missingCourses));
         }
 
@@ -217,8 +217,9 @@ public class DeadlineEscalationTargetResolver {
                 course.getName());
     }
 
-    private Integer departmentId(Course course) {
-        return course.getDepartment() == null ? null : course.getDepartment().getId();
+    private Integer majorId(ClassSection section) {
+        return section.getProgram() == null || section.getProgram().getMajor() == null
+                ? null : section.getProgram().getMajor().getId();
     }
 
     private List<DeadlineEscalationTarget.OverdueInstructor> sortInstructors(
@@ -251,9 +252,9 @@ public class DeadlineEscalationTargetResolver {
         return List.copyOf(unique.values());
     }
 
-    private record InstructorDepartmentKey(
+    private record InstructorMajorKey(
             Integer instructorId,
-            Integer departmentId) {
+            Integer majorId) {
     }
 
     public record DepartmentResolution(

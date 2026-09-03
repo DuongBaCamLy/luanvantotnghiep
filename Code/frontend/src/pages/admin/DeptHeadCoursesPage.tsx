@@ -179,7 +179,7 @@ export default function DeptHeadCoursesPage() {
   if (isLoading) {
     return (
       <div className="p-8 text-center text-sm text-slate-500">
-        Loading department courses...
+        Loading managed Major courses...
       </div>
     )
   }
@@ -188,7 +188,7 @@ export default function DeptHeadCoursesPage() {
     const message =
       error instanceof Error
         ? error.message
-        : "Unable to load department courses."
+        : "Unable to load managed Major courses."
 
     return (
       <Card className="border-rose-200 bg-rose-50">
@@ -196,7 +196,7 @@ export default function DeptHeadCoursesPage() {
           <CircleAlert className="mt-0.5 size-5 shrink-0" />
           <div>
             <p className="font-semibold">
-              Unable to load department courses
+              Unable to load managed Major courses
             </p>
             <p className="mt-1 text-sm text-rose-700">
               {message}
@@ -224,11 +224,11 @@ export default function DeptHeadCoursesPage() {
           </div>
 
           <h1 className="mt-2 text-[28px] font-bold tracking-[-0.5px] text-[#17343d]">
-            Department Courses
+            Managed Major Courses
           </h1>
 
           <p className="mt-1 text-sm text-slate-500">
-            Browse and filter courses assigned to your department.
+            Browse and filter courses belonging to programs in your managed Major.
           </p>
         </div>
 

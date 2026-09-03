@@ -23,6 +23,7 @@ import {
   updateUser,
 } from "@/api/userApi"
 import { instructorApi } from "@/api/instructorApi"
+import { programApi } from "@/api/programApi"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import {
@@ -147,6 +148,7 @@ export default function UserFormDialog({
     useState<UserRole>("INSTRUCTOR")
   const [instructorId, setInstructorId] =
     useState("")
+  const [managedMajorId, setManagedMajorId] = useState("")
   const [showPassword, setShowPassword] =
     useState(false)
   const [validationError, setValidationError] =
@@ -166,6 +168,11 @@ export default function UserFormDialog({
   } = useQuery({
     queryKey: ["users"],
     queryFn: getUsers,
+    enabled: open,
+  })
+  const { data: majors = [], isLoading: majorsLoading } = useQuery({
+    queryKey: ["majors"],
+    queryFn: programApi.getMajors,
     enabled: open,
   })
 
@@ -188,12 +195,14 @@ export default function UserFormDialog({
           ? String(editingUser.instructorId)
           : "",
       )
+      setManagedMajorId(editingUser.managedMajorId ? String(editingUser.managedMajorId) : "")
     } else {
       setUsername("")
       setEmail("")
       setPassword("")
       setRole("INSTRUCTOR")
       setInstructorId("")
+      setManagedMajorId("")
     }
 
     setShowPassword(false)
@@ -277,6 +286,7 @@ export default function UserFormDialog({
             role,
             instructorId:
               instructorIdValue,
+            managedMajorId: role === "DEPT_HEAD" && managedMajorId ? Number(managedMajorId) : null,
           },
         )
       }
@@ -288,6 +298,7 @@ export default function UserFormDialog({
         role,
         instructorId:
           instructorIdValue,
+        managedMajorId: role === "DEPT_HEAD" && managedMajorId ? Number(managedMajorId) : null,
       })
     },
 
@@ -320,6 +331,7 @@ export default function UserFormDialog({
     ) {
       setInstructorId("")
     }
+    if (nextRole !== "DEPT_HEAD") setManagedMajorId("")
   }
 
   const validate = () => {
@@ -360,8 +372,11 @@ export default function UserFormDialog({
       && !instructorId
     ) {
       return role === "DEPT_HEAD"
-        ? "A Head of Department account must be linked to an instructor profile so the system can resolve its department."
+        ? "A Head of Department account must be linked to an instructor profile."
         : "An Instructor account must be linked to an instructor profile before it can receive teaching assignments."
+    }
+    if (role === "DEPT_HEAD" && !managedMajorId) {
+      return "Managed Major is required for a Head of Department account."
     }
 
     return ""
@@ -613,10 +628,31 @@ export default function UserFormDialog({
 
                   <p>
                     {role === "DEPT_HEAD"
-                      ? "The linked instructor profile determines which department this Head of Department can review."
+                      ? "The linked instructor profile identifies the staff member. Managed Major determines the syllabus review scope."
                       : "The linked instructor profile connects this login account to teaching assignments, class sections, and syllabus ownership."}
                   </p>
                 </div>
+              </div>
+            )}
+
+            {role === "DEPT_HEAD" && (
+              <div className="space-y-1.5">
+                <Label>Managed Major *</Label>
+                <Select value={managedMajorId || NONE} onValueChange={(value) => {
+                  setManagedMajorId(value === NONE ? "" : value)
+                  setValidationError("")
+                }} disabled={mutation.isPending || majorsLoading}>
+                  <SelectTrigger><SelectValue placeholder="Select a Major..." /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={NONE}>Select a Major...</SelectItem>
+                    {majors.map((major) => (
+                      <SelectItem key={major.id} value={String(major.id)}>
+                        {major.code} — {major.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-slate-500">This Major controls syllabus catalog, dashboard, submission routing, and review scope.</p>
               </div>
             )}
 

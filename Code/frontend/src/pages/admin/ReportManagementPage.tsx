@@ -154,7 +154,7 @@ const programLabel = (
 const cohortLabel = (
   cohort: Cohort,
 ) =>
-  `${cohort.name} — Entry ${cohort.entryYear}`
+  cohort.name
 
 export default function ReportManagementPage() {
   const navigate = useNavigate()

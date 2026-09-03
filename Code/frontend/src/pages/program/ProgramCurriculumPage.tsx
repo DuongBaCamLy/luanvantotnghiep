@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { useNavigate, useParams } from "react-router-dom"
+import { useNavigate, useParams, useSearchParams } from "react-router-dom"
 import {
   ArrowLeft,
   BookOpen,
@@ -115,6 +115,7 @@ function getYearSuggest(
 
 export default function ProgramCurriculumPage() {
   const { id } = useParams()
+  const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
 
@@ -124,7 +125,7 @@ export default function ProgramCurriculumPage() {
     && programId > 0
 
   const [selectedCohortId, setSelectedCohortId] =
-    useState("")
+    useState(() => searchParams.get("cohortId") ?? "")
   const [search, setSearch] = useState("")
   const [groupFilter, setGroupFilter] =
     useState(ALL_GROUPS)

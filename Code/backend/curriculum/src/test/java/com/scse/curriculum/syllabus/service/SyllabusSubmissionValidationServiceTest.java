@@ -12,7 +12,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.scse.curriculum.assessment.entity.AssessmentClo;
 import com.scse.curriculum.assessment.entity.AssessmentComponent;
-import com.scse.curriculum.assessment.entity.AssessmentType;
 import com.scse.curriculum.assessment.repository.AssessmentCloRepository;
 import com.scse.curriculum.assessment.repository.AssessmentComponentRepository;
 import com.scse.curriculum.book.entity.Book;
@@ -117,14 +116,13 @@ when(assessmentCloRepository
                 .academicYear("CS2021")
                 .semester("HK1")
                 .versionLabel("v1.0")
-                .major("Computer Science")
                 .courseDesignation("Fundamental course")
                 .courseTypes("[\"Fundamental\"]")
                 .language("English")
                 .relation("None")
                 .teachingMethods("Lecture and laboratory")
                 .workloadTotal("10")
-                .workloadContact("4")
+                .workloadContact("3 (lecture) + 1 (laboratory)")
                 .workloadPrivate("6")
                 .prerequisites("None")
                 .objectives("Understand the fundamentals")
@@ -161,7 +159,7 @@ TopicClo topicClo = TopicClo.builder()
                 .id(300)
                 .syllabus(syllabus)
                 .name("Final exam")
-                .assessmentType(AssessmentType.FINAL_EXAM)
+                .assessmentType("FINAL_EXAM")
                 .weightPercent(100f)
                 .minScore(0f)
                 .maxScore(10f)
@@ -205,6 +203,7 @@ AssessmentClo assessmentClo =
         assertThat(result.getErrorCount()).isZero();
         assertThat(result.getAssessmentTotalWeight()).isEqualTo(100d);
         assertThat(result.getWorkloadTotal()).isEqualTo(10d);
+        assertThat(result.getWorkloadContact()).isEqualTo(4d);
         assertThat(result.getTopicContactHours()).isEqualTo(4d);
         assertThat(result.getTopicPrivateHours()).isEqualTo(6d);
     }
@@ -266,8 +265,7 @@ void validContentWithoutTopicAndAssessmentMappingsIsRejected() {
                     .id(301)
                     .syllabus(syllabus)
                     .name("Final exam")
-                    .assessmentType(
-                            AssessmentType.FINAL_EXAM)
+                    .assessmentType("FINAL_EXAM")
                     .weightPercent(100f)
                     .minScore(0f)
                     .maxScore(10f)

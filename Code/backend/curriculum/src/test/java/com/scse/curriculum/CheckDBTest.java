@@ -42,19 +42,21 @@ public class CheckDBTest {
         request.setClos(clos);
 
         List<CreateSyllabusRequest.TopicDTO> topics = new ArrayList<>();
-        topics.add(new CreateSyllabusRequest.TopicDTO(
-                1,
-                1,
-                "Introduction",
-                "Giới thiệu",
-                3,
-                0,
-                6,
-                "LECTURE",
-                "Slide",
-                "Listen",
-                "None"
-        ));
+       topics.add(new CreateSyllabusRequest.TopicDTO(
+        1,
+        1,
+        "Introduction",
+        "Giới thiệu",
+        3,
+        0,
+        6,
+        "LECTURE",
+        "Slide",
+        "Listen",
+        "Midterm Exam",
+        "Textbook / Slide",
+        "None"
+));
         request.setTopics(topics);
 
         List<CreateSyllabusRequest.AssessmentDTO> assessments = new ArrayList<>();

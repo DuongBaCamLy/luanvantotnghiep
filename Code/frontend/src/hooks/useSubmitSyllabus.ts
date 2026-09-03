@@ -32,6 +32,10 @@ export const useSubmitSyllabus = () => {
       queryClient.invalidateQueries({
         queryKey: ["dept-head-dashboard"],
       })
+
+      queryClient.invalidateQueries({
+        queryKey: ["depthead-courses"],
+      })
     },
   })
 }

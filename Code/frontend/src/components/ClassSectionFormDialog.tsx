@@ -14,6 +14,9 @@ import {
   type CreateClassSectionRequest,
 } from "@/api/classSectionApi"
 import { courseApi } from "@/api/courseApi"
+import { programApi } from "@/api/programApi"
+import { cohortApi } from "@/api/cohortApi"
+import { courseProgramApi } from "@/api/courseProgramApi"
 import { instructorApi } from "@/api/instructorApi"
 import { Button } from "@/components/ui/button"
 import {
@@ -24,7 +27,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
   Select,
@@ -59,11 +61,6 @@ const getDefaultAcademicYear = () => {
   return `${startYear}-${startYear + 1}`
 }
 
-const isValidAcademicYear = (
-  value: string,
-) =>
-  /^\d{4}-\d{4}$/.test(value)
-
 export default function ClassSectionFormDialog({
   open,
   onOpenChange,
@@ -72,24 +69,50 @@ export default function ClassSectionFormDialog({
   isLoading = false,
 }: ClassSectionFormDialogProps) {
   const [courseId, setCourseId] = useState("")
+  const [programId, setProgramId] = useState("")
+  const [cohortId, setCohortId] = useState("")
   const [instructorId, setInstructorId] = useState("")
   const [semester, setSemester] = useState("1")
   const [academicYear, setAcademicYear] = useState(
     getDefaultAcademicYear(),
   )
-  const [groupNumber, setGroupNumber] = useState("1")
+  const [, setGroupNumber] = useState("1")
   const [sectionType, setSectionType] =
     useState<"THEORY" | "LAB" | "COMBINED">("THEORY")
   const [isActive, setIsActive] = useState(true)
   const [validationError, setValidationError] = useState("")
 
   const {
-    data: courses = [],
+    data: allCourses = [],
   } = useQuery({
     queryKey: ["courses"],
     queryFn: courseApi.getAll,
     enabled: open,
   })
+
+  const { data: programs = [] } = useQuery({
+    queryKey: ["programs", "teaching-assignment"],
+    queryFn: programApi.getAll,
+    enabled: open,
+  })
+
+  const { data: cohorts = [] } = useQuery({
+    queryKey: ["cohorts", "teaching-assignment"],
+    queryFn: cohortApi.getAll,
+    enabled: open,
+  })
+
+  const { data: curriculumItems = [] } = useQuery({
+    queryKey: ["course-programs", "curriculum", programId, cohortId],
+    queryFn: () => courseProgramApi.getCurriculum(Number(programId), Number(cohortId)),
+    enabled: open && Boolean(programId && cohortId),
+  })
+
+  const availableCohorts = cohorts.filter(
+    (cohort) => String(cohort.programId) === programId,
+  )
+  const curriculumCourseIds = new Set(curriculumItems.map((item) => item.courseId))
+  const courses = allCourses.filter((course) => curriculumCourseIds.has(course.id))
 
   const {
     data: instructors = [],
@@ -122,63 +145,6 @@ export default function ClassSectionFormDialog({
       ],
     )
 
-  const academicYearOptions =
-    useMemo(() => {
-      const now = new Date()
-      const baseYear =
-        now.getMonth() >= 7
-          ? now.getFullYear()
-          : now.getFullYear() - 1
-
-      const values = new Set<string>()
-
-      for (
-        let offset = -2;
-        offset <= 2;
-        offset++
-      ) {
-        const start = baseYear + offset
-        values.add(`${start}-${start + 1}`)
-      }
-
-      if (initialData?.academicYear) {
-        values.add(initialData.academicYear)
-      }
-
-      return Array.from(values).sort(
-        (left, right) =>
-          right.localeCompare(
-            left,
-            "en",
-            {
-              numeric: true,
-            },
-          ),
-      )
-    }, [
-      initialData?.academicYear,
-    ])
-
-  const semesterOptions =
-    useMemo(() => {
-      const values = new Set<number>([
-        1,
-        2,
-        3,
-      ])
-
-      if (initialData?.semester) {
-        values.add(initialData.semester)
-      }
-
-      return Array.from(values).sort(
-        (left, right) =>
-          left - right,
-      )
-    }, [
-      initialData?.semester,
-    ])
-
   const hasLinkedSyllabus =
     Boolean(
       initialData?.syllabusId,
@@ -190,6 +156,8 @@ export default function ClassSectionFormDialog({
     }
 
     if (initialData) {
+      setProgramId(initialData.programId ? String(initialData.programId) : "")
+      setCohortId(initialData.cohortId ? String(initialData.cohortId) : "")
       setCourseId(
         String(initialData.courseId),
       )
@@ -212,6 +180,8 @@ export default function ClassSectionFormDialog({
         initialData.isActive,
       )
     } else {
+      setProgramId("")
+      setCohortId("")
       setCourseId("")
       setInstructorId("")
       setSemester("1")
@@ -236,63 +206,12 @@ export default function ClassSectionFormDialog({
 
     if (
       !courseId
+      || !programId
+      || !cohortId
       || !instructorId
-      || !semester
-      || !academicYear.trim()
-      || !groupNumber
     ) {
       setValidationError(
-        "Course, Instructor, Semester, Academic Year, and Group are required.",
-      )
-      return
-    }
-
-    if (
-      !isValidAcademicYear(
-        academicYear.trim(),
-      )
-    ) {
-      setValidationError(
-        "Academic Year must use the format YYYY-YYYY, for example 2026-2027.",
-      )
-      return
-    }
-
-    const startYear =
-      Number(
-        academicYear.slice(
-          0,
-          4,
-        ),
-      )
-
-    const endYear =
-      Number(
-        academicYear.slice(
-          5,
-          9,
-        ),
-      )
-
-    if (
-      endYear
-      !== startYear + 1
-    ) {
-      setValidationError(
-        "Academic Year must represent two consecutive years, for example 2026-2027.",
-      )
-      return
-    }
-
-    const parsedGroup =
-      Number(groupNumber)
-
-    if (
-      !Number.isInteger(parsedGroup)
-      || parsedGroup < 1
-    ) {
-      setValidationError(
-        "Group must be a positive whole number.",
+        "Program, Cohort, Course, and Instructor are required.",
       )
       return
     }
@@ -300,6 +219,8 @@ export default function ClassSectionFormDialog({
     setValidationError("")
 
     onSubmit({
+      programId: Number(programId),
+      cohortId: Number(cohortId),
       courseId:
         Number(courseId),
 
@@ -317,7 +238,7 @@ export default function ClassSectionFormDialog({
         academicYear.trim(),
 
       groupNumber:
-        parsedGroup,
+        initialData?.groupNumber ?? 1,
 
       labGroup:
         initialData?.labGroup
@@ -335,8 +256,10 @@ export default function ClassSectionFormDialog({
         initialData?.schedule
         ?? undefined,
 
-      sectionType,
-      isActive,
+      sectionType:
+        sectionType,
+      isActive:
+        isActive,
     })
   }
 
@@ -360,8 +283,8 @@ export default function ClassSectionFormDialog({
 
             <DialogDescription>
               {initialData
-                ? "Update this preserved teaching responsibility. If a syllabus is already linked, its authorization scope is locked."
-                : "Assign an instructor first. The assignment starts without a syllabus; the assigned Faculty creates the Draft later."}
+                ? "Update the Program, Cohort, Course, and Instructor assignment."
+                : "Select the curriculum context and assign an Instructor to its Course."}
             </DialogDescription>
           </DialogHeader>
         </div>
@@ -380,7 +303,7 @@ export default function ClassSectionFormDialog({
                   </p>
 
                   <p className="mt-1 leading-6">
-                    Course, instructor, semester, and academic year are locked because the linked syllabus relies on this assignment scope. Deactivate the assignment instead of deleting its history.
+                    This assignment is already linked to a syllabus. Its Course and Instructor relationship is preserved for workflow history.
                   </p>
                 </div>
               </div>
@@ -394,13 +317,56 @@ export default function ClassSectionFormDialog({
                   </p>
 
                   <p className="mt-1 leading-6">
-                    This assignment is the authorization source for FR-03.1. After saving it, the assigned Faculty can create a Draft for the same Course + Academic Year + Semester.
+                    This assignment authorizes the selected Instructor for exactly one Program, Cohort, and Course context.
                   </p>
                 </div>
               </div>
             )}
 
             <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label>Program *</Label>
+                <Select
+                  value={programId}
+                  onValueChange={(value) => {
+                    setProgramId(value)
+                    setCohortId("")
+                    setCourseId("")
+                    setValidationError("")
+                  }}
+                  disabled={isLoading || hasLinkedSyllabus}
+                >
+                  <SelectTrigger><SelectValue placeholder="Select Program" /></SelectTrigger>
+                  <SelectContent>
+                    {programs.filter((program) => program.isActive || program.id === initialData?.programId).map((program) => (
+                      <SelectItem key={program.id} value={String(program.id)}>
+                        {program.code} — {program.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label>Cohort *</Label>
+                <Select
+                  value={cohortId}
+                  onValueChange={(value) => {
+                    setCohortId(value)
+                    setCourseId("")
+                    setValidationError("")
+                  }}
+                  disabled={isLoading || hasLinkedSyllabus || !programId}
+                >
+                  <SelectTrigger><SelectValue placeholder={programId ? "Select Cohort" : "Select Program first"} /></SelectTrigger>
+                  <SelectContent>
+                    {availableCohorts.filter((cohort) => cohort.isActive || cohort.id === initialData?.cohortId).map((cohort) => (
+                      <SelectItem key={cohort.id} value={String(cohort.id)}>{cohort.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
               <div className="space-y-1.5">
                 <Label>
                   Course *
@@ -415,6 +381,7 @@ export default function ClassSectionFormDialog({
                   disabled={
                     isLoading
                     || hasLinkedSyllabus
+                    || !cohortId
                   }
                 >
                   <SelectTrigger>
@@ -479,169 +446,6 @@ export default function ClassSectionFormDialog({
                 </p>
               </div>
 
-              <div className="space-y-1.5">
-                <Label>
-                  Academic Year *
-                </Label>
-
-                <Select
-                  value={academicYear}
-                  onValueChange={(value) => {
-                    setAcademicYear(value)
-                    setValidationError("")
-                  }}
-                  disabled={
-                    isLoading
-                    || hasLinkedSyllabus
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-
-                  <SelectContent>
-                    {academicYearOptions.map(
-                      (year) => (
-                        <SelectItem
-                          key={year}
-                          value={year}
-                        >
-                          {year}
-                        </SelectItem>
-                      ),
-                    )}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label>
-                  Semester *
-                </Label>
-
-                <Select
-                  value={semester}
-                  onValueChange={(value) => {
-                    setSemester(value)
-                    setValidationError("")
-                  }}
-                  disabled={
-                    isLoading
-                    || hasLinkedSyllabus
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-
-                  <SelectContent>
-                    {semesterOptions.map(
-                      (value) => (
-                        <SelectItem
-                          key={value}
-                          value={String(value)}
-                        >
-                          Semester {value}
-                        </SelectItem>
-                      ),
-                    )}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="section-group">
-                  Group *
-                </Label>
-
-                <Input
-                  id="section-group"
-                  type="number"
-                  min={1}
-                  step={1}
-                  value={groupNumber}
-                  onChange={(event) => {
-                    setGroupNumber(event.target.value)
-                    setValidationError("")
-                  }}
-                  disabled={isLoading}
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <Label>
-                  Class Type *
-                </Label>
-
-                <Select
-                  value={sectionType}
-                  onValueChange={(value) =>
-                    setSectionType(
-                      value as
-                        | "THEORY"
-                        | "LAB"
-                        | "COMBINED",
-                    )
-                  }
-                  disabled={isLoading}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-
-                  <SelectContent>
-                    <SelectItem value="THEORY">
-                      Theory
-                    </SelectItem>
-
-                    <SelectItem value="LAB">
-                      Lab
-                    </SelectItem>
-
-                    <SelectItem value="COMBINED">
-                      Combined
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-1.5 sm:col-span-2">
-                <Label>
-                  Assignment Status
-                </Label>
-
-                <Select
-                  value={
-                    isActive
-                      ? "true"
-                      : "false"
-                  }
-                  onValueChange={(value) =>
-                    setIsActive(
-                      value === "true",
-                    )
-                  }
-                  disabled={isLoading}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-
-                  <SelectContent>
-                    <SelectItem value="true">
-                      Active
-                    </SelectItem>
-
-                    <SelectItem value="false">
-                      Inactive
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-
-                <p className="text-xs text-slate-500">
-                  Inactive assignments remain in history but cannot authorize new syllabus creation.
-                </p>
-              </div>
             </div>
 
             {validationError && (

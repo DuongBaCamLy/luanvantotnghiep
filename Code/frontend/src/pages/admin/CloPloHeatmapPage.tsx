@@ -23,7 +23,6 @@ import {
 } from "lucide-react"
 
 import { cohortApi } from "@/api/cohortApi"
-import { courseTypeApi } from "@/api/courseTypeApi"
 import {
   dashboardApi,
   type HeatmapCellCoverage,
@@ -33,8 +32,15 @@ import {
 } from "@/api/dashboardApi"
 import { programApi } from "@/api/programApi"
 import { reportApi } from "@/api/reportApi"
+import {
+  formatSyllabusFilterStatus,
+  SYLLABUS_CANONICAL_STATUSES,
+  SYLLABUS_FILTER_ALL,
+  SYLLABUS_SEMESTER_OPTIONS,
+} from "@/lib/syllabusCatalogFilters"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { useSyllabuses } from "@/hooks/useSyllabuses"
 import {
   Card,
   CardContent,
@@ -55,14 +61,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 
-const ALL_COURSE_TYPES = "all"
-const SRS_COURSE_TYPE_CODES = new Set([
-  "COMPULSORY",
-  "ELECTIVE",
-  "GENERAL",
-])
-
-type CoverageLevel = "I" | "D" | "A"
+type CoverageLevel = "X" | "XX" | "XXX"
 
 type SelectedCell = {
   course: HeatmapCourseCoverage
@@ -93,27 +92,6 @@ type PageReadiness =
   | "NO_CLO"
   | "NO_MAPPING"
   | "READY"
-
-function getCurrentAcademicYear(): string {
-  const now = new Date()
-  const year = now.getFullYear()
-  const startYear = now.getMonth() >= 7 ? year : year - 1
-  return `${startYear}-${startYear + 1}`
-}
-
-function buildAcademicYearOptions(): string[] {
-  const current = getCurrentAcademicYear()
-  const start = Number(current.slice(0, 4))
-
-  return Array.from(
-    { length: 7 },
-    (_, index) => {
-      const year = start - 4 + index
-      return `${year}-${year + 1}`
-    },
-  ).reverse()
-}
-
 
 function getBaseProgramCode(
   value: unknown,
@@ -194,33 +172,33 @@ function getPloDisplayDescription(
 function levelLabel(
   level: HeatmapCellCoverage["level"],
 ): string {
-  if (level === "I") return "I · Introduce"
-  if (level === "D") return "D · Develop"
-  if (level === "A") return "A · Achieve"
+  if (level === "X") return "X · Low contribution"
+  if (level === "XX") return "XX · Medium contribution"
+  if (level === "XXX") return "XXX · High contribution"
   return "Not mapped"
 }
 
 function levelShortLabel(
   level: HeatmapCellCoverage["level"],
 ): string {
-  if (level === "I") return "I"
-  if (level === "D") return "D"
-  if (level === "A") return "A"
+  if (level === "X") return "X"
+  if (level === "XX") return "XX"
+  if (level === "XXX") return "XXX"
   return "—"
 }
 
 function levelClass(
   level: HeatmapCellCoverage["level"],
 ): string {
-  if (level === "I") {
+  if (level === "X") {
     return "border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100"
   }
 
-  if (level === "D") {
+  if (level === "XX") {
     return "border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100"
   }
 
-  if (level === "A") {
+  if (level === "XXX") {
     return "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
   }
 
@@ -623,14 +601,11 @@ function AdditionalWarning({
   )
 }
 
-export default function CloPloHeatmapPage() {
+export function LiveCloPloHeatmapPage() {
   const location = useLocation()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] =
     useSearchParams()
-
-  const defaultAcademicYear =
-    getCurrentAcademicYear()
 
   const [programId, setProgramId] =
     useState(
@@ -644,26 +619,17 @@ export default function CloPloHeatmapPage() {
       || "",
     )
 
-  const [academicYear, setAcademicYear] =
-    useState(
-      searchParams.get("academicYear")
-      || defaultAcademicYear,
-    )
-
-  const [semester, setSemester] =
-    useState(
-      searchParams.get("semester")
-      || "1",
-    )
-
-  const [courseTypeId, setCourseTypeId] =
-    useState(
-      searchParams.get("courseTypeId")
-      || ALL_COURSE_TYPES,
-    )
-
   const [courseSearch, setCourseSearch] =
-    useState("")
+    useState(searchParams.get("search") || "")
+
+  const [majorCode, setMajorCode] =
+    useState(searchParams.get("majorCode") || "")
+
+  const [semesterFilter, setSemesterFilter] =
+    useState(searchParams.get("semester") || SYLLABUS_FILTER_ALL)
+
+  const [statusFilter, setStatusFilter] =
+    useState(searchParams.get("status") || SYLLABUS_FILTER_ALL)
 
   const [selectedCell, setSelectedCell] =
     useState<SelectedCell | null>(null)
@@ -680,16 +646,22 @@ export default function CloPloHeatmapPage() {
   const [exportError, setExportError] =
     useState("")
 
+  const { data: syllabusCatalogData = [] } = useSyllabuses()
+
+  const statusOptions = useMemo(
+    () => Array.from(new Set([
+      ...SYLLABUS_CANONICAL_STATUSES,
+      ...syllabusCatalogData
+        .map((syllabus) => String(syllabus.status ?? "").trim().toUpperCase())
+        .filter(Boolean),
+    ])).sort(),
+    [syllabusCatalogData],
+  )
+
   const roleBase =
     location.pathname.startsWith("/dean")
       ? "/dean"
       : "/admin"
-
-  const academicYearOptions =
-    useMemo(
-      () => buildAcademicYearOptions(),
-      [],
-    )
 
   const {
     data: programs = [],
@@ -701,12 +673,23 @@ export default function CloPloHeatmapPage() {
   })
 
   const {
-    data: courseTypes = [],
-    isLoading: isLoadingCourseTypes,
+    data: majors = [],
+    isLoading: isLoadingMajors,
+    isError: isMajorsError,
   } = useQuery({
-    queryKey: ["course-types"],
-    queryFn: courseTypeApi.getAll,
+    queryKey: ["majors"],
+    queryFn: programApi.getMajors,
   })
+
+  useEffect(() => {
+    if (majorCode || !programId) return
+    const selectedProgram = programs.find(
+      (program) => String(program.id) === programId,
+    )
+    if (selectedProgram?.majorCode) {
+      setMajorCode(selectedProgram.majorCode)
+    }
+  }, [majorCode, programId, programs])
 
   const programExists =
     programs.some(
@@ -717,8 +700,7 @@ export default function CloPloHeatmapPage() {
   const effectiveProgramId =
     programExists
       ? programId
-      : programs[0]?.id?.toString()
-        || ""
+      : ""
 
   const {
     data: cohorts = [],
@@ -727,34 +709,43 @@ export default function CloPloHeatmapPage() {
   } = useQuery({
     queryKey: [
       "cohorts",
-      effectiveProgramId,
+      "heatmap-filter",
     ],
-    queryFn: () =>
-      cohortApi.getByProgram(
-        Number(effectiveProgramId),
-      ),
-    enabled: Boolean(effectiveProgramId),
+    queryFn: cohortApi.getAll,
   })
 
-  const activeCohorts =
+  const availableCohorts =
     useMemo(
-      () =>
-        cohorts
-          .filter(
-            (cohort) =>
-              cohort.isActive !== false,
-          )
+      () => {
+        const matchingProgramIds = new Set(
+          programs
+            .filter(
+              (program) =>
+                !majorCode
+                || program.majorCode.toLowerCase() === majorCode.toLowerCase(),
+            )
+            .map((program) => String(program.id)),
+        )
+
+        return cohorts
+          .filter((cohort) => {
+            if (effectiveProgramId) {
+              return String(cohort.programId) === effectiveProgramId
+            }
+            return !majorCode || matchingProgramIds.has(String(cohort.programId))
+          })
           .slice()
           .sort(
             (a, b) =>
               Number(b.entryYear ?? 0)
               - Number(a.entryYear ?? 0),
-          ),
-      [cohorts],
+          )
+      },
+      [cohorts, effectiveProgramId, majorCode, programs],
     )
 
   const cohortExists =
-    activeCohorts.some(
+    availableCohorts.some(
       (cohort) =>
         String(cohort.id) === cohortId,
     )
@@ -762,46 +753,37 @@ export default function CloPloHeatmapPage() {
   const effectiveCohortId =
     cohortExists
       ? cohortId
-      : activeCohorts[0]?.id?.toString()
-        || ""
+      : ""
 
-  const srsCourseTypes =
-    useMemo(
-      () =>
-        courseTypes
-          .filter((type) =>
-            SRS_COURSE_TYPE_CODES.has(
-              type.code,
-            ),
-          )
-          .slice()
-          .sort(
-            (a, b) => {
-              const order =
-                [
-                  "COMPULSORY",
-                  "ELECTIVE",
-                  "GENERAL",
-                ]
+  useEffect(() => {
+    const urlProgramId =
+      searchParams.get("programId") || ""
+    const urlCohortId =
+      searchParams.get("cohortId") || ""
 
-              return (
-                order.indexOf(a.code)
-                - order.indexOf(b.code)
-              )
-            },
-          ),
-      [courseTypes],
+    setProgramId((current) =>
+      current === urlProgramId
+        ? current
+        : urlProgramId,
     )
-
-  const selectedCourseTypeId =
-    courseTypeId === ALL_COURSE_TYPES
-      ? undefined
-      : Number(courseTypeId)
+    setCohortId((current) =>
+      current === urlCohortId
+        ? current
+        : urlCohortId,
+    )
+    setMajorCode(searchParams.get("majorCode") || "")
+    setCourseSearch(searchParams.get("search") || "")
+    setSemesterFilter(searchParams.get("semester") || SYLLABUS_FILTER_ALL)
+    setStatusFilter(searchParams.get("status") || SYLLABUS_FILTER_ALL)
+  }, [searchParams])
 
   useEffect(() => {
     if (
-      !effectiveProgramId
-      || !effectiveCohortId
+      isLoadingPrograms
+      || (
+        Boolean(effectiveProgramId)
+        && isLoadingCohorts
+      )
     ) {
       return
     }
@@ -809,35 +791,24 @@ export default function CloPloHeatmapPage() {
     const next =
       new URLSearchParams()
 
-    next.set(
-      "programId",
-      effectiveProgramId,
-    )
-
-    next.set(
-      "cohortId",
-      effectiveCohortId,
-    )
-
-    next.set(
-      "academicYear",
-      academicYear,
-    )
-
-    next.set(
-      "semester",
-      semester,
-    )
-
-    if (
-      courseTypeId
-      !== ALL_COURSE_TYPES
-    ) {
+    if (effectiveProgramId) {
       next.set(
-        "courseTypeId",
-        courseTypeId,
+        "programId",
+        effectiveProgramId,
       )
     }
+
+    if (effectiveCohortId) {
+      next.set(
+        "cohortId",
+        effectiveCohortId,
+      )
+    }
+
+    if (majorCode) next.set("majorCode", majorCode)
+    if (courseSearch.trim()) next.set("search", courseSearch.trim())
+    if (semesterFilter !== SYLLABUS_FILTER_ALL) next.set("semester", semesterFilter)
+    if (statusFilter !== SYLLABUS_FILTER_ALL) next.set("status", statusFilter)
 
     setSearchParams(
       next,
@@ -846,9 +817,12 @@ export default function CloPloHeatmapPage() {
   }, [
     effectiveProgramId,
     effectiveCohortId,
-    academicYear,
-    semester,
-    courseTypeId,
+    majorCode,
+    courseSearch,
+    semesterFilter,
+    statusFilter,
+    isLoadingPrograms,
+    isLoadingCohorts,
     setSearchParams,
   ])
 
@@ -863,9 +837,9 @@ export default function CloPloHeatmapPage() {
       "clo-plo-heatmap",
       effectiveProgramId,
       effectiveCohortId,
-      academicYear,
-      semester,
-      selectedCourseTypeId,
+      courseSearch,
+      semesterFilter,
+      statusFilter,
     ],
 
     queryFn: () =>
@@ -873,19 +847,15 @@ export default function CloPloHeatmapPage() {
         Number(effectiveProgramId),
         {
           cohortId:
-            Number(effectiveCohortId),
-          academicYear,
-          semester,
-          courseTypeId:
-            selectedCourseTypeId,
+            effectiveCohortId ? Number(effectiveCohortId) : undefined,
+          search: courseSearch.trim() || undefined,
+          semester: semesterFilter === SYLLABUS_FILTER_ALL ? undefined : semesterFilter,
+          status: statusFilter === SYLLABUS_FILTER_ALL ? undefined : statusFilter,
         },
       ),
 
     enabled: Boolean(
-      effectiveProgramId
-      && effectiveCohortId
-      && academicYear
-      && semester,
+      effectiveProgramId,
     ),
   })
 
@@ -998,15 +968,15 @@ export default function CloPloHeatmapPage() {
                   === plo.id,
               )
 
-            if (cell?.level === "I") {
+            if (cell?.level === "X") {
               introduceCourses += 1
             }
 
-            if (cell?.level === "D") {
+            if (cell?.level === "XX") {
               developCourses += 1
             }
 
-            if (cell?.level === "A") {
+            if (cell?.level === "XXX") {
               achieveCourses += 1
             }
           }
@@ -1057,7 +1027,7 @@ export default function CloPloHeatmapPage() {
           title:
             "Courses excluded from analysis",
           description:
-            "These curriculum courses do not have an APPROVED syllabus for the selected academic year and semester.",
+            "These curriculum courses do not have an APPROVED syllabus linked to the selected curriculum.",
           count:
             blockedCourses.length,
           references:
@@ -1257,7 +1227,6 @@ export default function CloPloHeatmapPage() {
   ) {
     if (
       !effectiveProgramId
-      || !effectiveCohortId
       || !canExport
     ) {
       return
@@ -1269,11 +1238,10 @@ export default function CloPloHeatmapPage() {
     try {
       const scope = {
         cohortId:
-          Number(effectiveCohortId),
-        academicYear,
-        semester,
-        courseTypeId:
-          selectedCourseTypeId,
+          effectiveCohortId ? Number(effectiveCohortId) : undefined,
+        search: courseSearch.trim() || undefined,
+        semester: semesterFilter === SYLLABUS_FILTER_ALL ? undefined : semesterFilter,
+        status: statusFilter === SYLLABUS_FILTER_ALL ? undefined : statusFilter,
       }
 
       const response =
@@ -1314,8 +1282,6 @@ export default function CloPloHeatmapPage() {
           ),
           heatmap?.cohortName
             ?? effectiveCohortId,
-          academicYear,
-          `S${semester}`,
         ].join("_")
           + `.${extension}`,
       )
@@ -1359,6 +1325,7 @@ export default function CloPloHeatmapPage() {
 
   const isInitialLoading =
     isLoadingPrograms
+    || isLoadingMajors
     || (
       Boolean(effectiveProgramId)
       && isLoadingCohorts
@@ -1446,7 +1413,7 @@ export default function CloPloHeatmapPage() {
             </h2>
 
             <p className="mt-1 text-xs text-slate-500">
-              Program/major, cohort, academic period, and course group define the exact matrix scope.
+              Select a program and cohort to analyze curriculum-wide CLO contributions to PLOs.
             </p>
           </div>
 
@@ -1466,18 +1433,14 @@ export default function CloPloHeatmapPage() {
               variant="outline"
               size="sm"
               onClick={() => {
-                setProgramId(
-                  programs[0]?.id
-                    ?.toString()
-                  || "",
-                )
+                setProgramId("")
                 setCohortId("")
-                setAcademicYear(
-                  defaultAcademicYear,
-                )
-                setSemester("1")
-                setCourseTypeId(
-                  ALL_COURSE_TYPES,
+                setMajorCode("")
+                setSemesterFilter(SYLLABUS_FILTER_ALL)
+                setStatusFilter(SYLLABUS_FILTER_ALL)
+                setSearchParams(
+                  new URLSearchParams(),
+                  { replace: true },
                 )
                 setCourseSearch("")
                 setSelectedCell(null)
@@ -1489,24 +1452,57 @@ export default function CloPloHeatmapPage() {
           </div>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+        <div className="mb-4">
+          <label className="sr-only" htmlFor="heatmap-course-search">
+            Search courses
+          </label>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+            <Input
+              id="heatmap-course-search"
+              value={courseSearch}
+              onChange={(event) => setCourseSearch(event.target.value)}
+              className="bg-white pl-9"
+              placeholder="Search by course code, course name, version, or creator..."
+            />
+          </div>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-4">
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-slate-700">
-              Program / Major
+              Major / Program
             </label>
 
             <Select
-              value={effectiveProgramId}
+              value={majorCode || SYLLABUS_FILTER_ALL}
               onValueChange={(value) => {
-                setProgramId(value)
+                const matchingProgram = value === SYLLABUS_FILTER_ALL
+                  ? undefined
+                  : programs
+                    .filter((item) => item.majorCode.toLowerCase() === value.toLowerCase())
+                    .sort((a, b) => Number(b.isActive) - Number(a.isActive)
+                      || b.validFrom.localeCompare(a.validFrom))[0]
+                setMajorCode(value === SYLLABUS_FILTER_ALL ? "" : value)
+                setProgramId(matchingProgram ? String(matchingProgram.id) : "")
                 setCohortId("")
-                setCourseSearch("")
+                const next =
+                  new URLSearchParams(searchParams)
+                if (value === SYLLABUS_FILTER_ALL) next.delete("majorCode")
+                else next.set("majorCode", value)
+                if (matchingProgram) next.set("programId", String(matchingProgram.id))
+                else next.delete("programId")
+                next.delete("cohortId")
+                setSearchParams(
+                  next,
+                  { replace: true },
+                )
                 setSelectedCell(null)
                 setSelectedPlo(null)
               }}
               disabled={
-                isLoadingPrograms
-                || programs.length === 0
+                isLoadingPrograms || isLoadingMajors
+                || majors.length === 0
               }
             >
               <SelectTrigger className="bg-white">
@@ -1514,18 +1510,17 @@ export default function CloPloHeatmapPage() {
               </SelectTrigger>
 
               <SelectContent>
-                {programs.map(
-                  (program) => (
+                <SelectItem value={SYLLABUS_FILTER_ALL}>All Majors</SelectItem>
+                {majors
+                  .slice()
+                  .sort((a, b) => a.code.localeCompare(b.code, "en", { numeric: true }))
+                  .map(
+                  (major) => (
                     <SelectItem
-                      key={program.id}
-                      value={String(program.id)}
+                      key={major.id}
+                      value={major.code}
                     >
-                      {getBaseProgramCode(
-                        program.code,
-                      )}
-                      {" · "}
-                      {program.nameVn
-                        || program.name}
+                      {major.code} — {major.name}
                     </SelectItem>
                   ),
                 )}
@@ -1539,16 +1534,44 @@ export default function CloPloHeatmapPage() {
             </label>
 
             <Select
-              value={effectiveCohortId}
+              value={effectiveCohortId || SYLLABUS_FILTER_ALL}
               onValueChange={(value) => {
+                if (value === SYLLABUS_FILTER_ALL) {
+                  setCohortId("")
+                  const next = new URLSearchParams(searchParams)
+                  next.delete("cohortId")
+                  setSearchParams(next, { replace: true })
+                  setSelectedCell(null)
+                  setSelectedPlo(null)
+                  return
+                }
+                const selectedCohort = cohorts.find((item) => String(item.id) === value)
+                const cohortProgram = selectedCohort
+                  ? programs.find((program) => program.id === selectedCohort.programId)
+                  : undefined
+                if (cohortProgram) {
+                  setProgramId(String(cohortProgram.id))
+                  setMajorCode(cohortProgram.majorCode)
+                }
                 setCohortId(value)
-                setCourseSearch("")
+                const next =
+                  new URLSearchParams(searchParams)
+                next.set(
+                  "programId",
+                  cohortProgram ? String(cohortProgram.id) : "",
+                )
+                if (cohortProgram) next.set("majorCode", cohortProgram.majorCode)
+                next.set("cohortId", value)
+                setSearchParams(
+                  next,
+                  { replace: true },
+                )
                 setSelectedCell(null)
                 setSelectedPlo(null)
               }}
               disabled={
                 isLoadingCohorts
-                || activeCohorts.length === 0
+                || availableCohorts.length === 0
               }
             >
               <SelectTrigger className="bg-white">
@@ -1556,46 +1579,14 @@ export default function CloPloHeatmapPage() {
               </SelectTrigger>
 
               <SelectContent>
-                {activeCohorts.map(
+                <SelectItem value={SYLLABUS_FILTER_ALL}>All Cohorts</SelectItem>
+                {availableCohorts.map(
                   (cohort) => (
                     <SelectItem
                       key={cohort.id}
                       value={String(cohort.id)}
                     >
                       {cohort.name}
-                      {" · "}
-                      {cohort.entryYear}
-                    </SelectItem>
-                  ),
-                )}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-700">
-              Academic Year
-            </label>
-
-            <Select
-              value={academicYear}
-              onValueChange={(value) => {
-                setAcademicYear(value)
-                setSelectedCell(null)
-              }}
-            >
-              <SelectTrigger className="bg-white">
-                <SelectValue />
-              </SelectTrigger>
-
-              <SelectContent>
-                {academicYearOptions.map(
-                  (year) => (
-                    <SelectItem
-                      key={year}
-                      value={year}
-                    >
-                      {year}
                     </SelectItem>
                   ),
                 )}
@@ -1607,83 +1598,42 @@ export default function CloPloHeatmapPage() {
             <label className="text-xs font-semibold text-slate-700">
               Semester
             </label>
-
-            <Select
-              value={semester}
-              onValueChange={(value) => {
-                setSemester(value)
-                setSelectedCell(null)
-              }}
-            >
-              <SelectTrigger className="bg-white">
-                <SelectValue />
-              </SelectTrigger>
-
+            <Select value={semesterFilter} onValueChange={setSemesterFilter}>
+              <SelectTrigger className="bg-white"><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="1">
-                  Semester 1
-                </SelectItem>
-                <SelectItem value="2">
-                  Semester 2
-                </SelectItem>
-                <SelectItem value="3">
-                  Semester 3 / Summer
-                </SelectItem>
+                <SelectItem value={SYLLABUS_FILTER_ALL}>All Semesters</SelectItem>
+                {SYLLABUS_SEMESTER_OPTIONS.map((semester) => (
+                  <SelectItem key={semester} value={semester}>Semester {semester}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
 
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-slate-700">
-              Course Group
+              Status
             </label>
-
-            <Select
-              value={courseTypeId}
-              onValueChange={(value) => {
-                setCourseTypeId(value)
-                setCourseSearch("")
-                setSelectedCell(null)
-              }}
-              disabled={
-                isLoadingCourseTypes
-              }
-            >
-              <SelectTrigger className="bg-white">
-                <SelectValue placeholder="All Course Groups" />
-              </SelectTrigger>
-
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="bg-white"><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem
-                  value={ALL_COURSE_TYPES}
-                >
-                  All Course Groups
-                </SelectItem>
-
-                {srsCourseTypes.map(
-                  (type) => (
-                    <SelectItem
-                      key={type.id}
-                      value={String(type.id)}
-                    >
-                      {type.name}
-                    </SelectItem>
-                  ),
-                )}
+                <SelectItem value={SYLLABUS_FILTER_ALL}>All Statuses</SelectItem>
+                {statusOptions.map((status) => (
+                  <SelectItem key={status} value={status}>{formatSyllabusFilterStatus(status)}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
 
-          <div className="mt-4 flex items-start gap-2 rounded-xl border border-[#d7e5e8] bg-[#f7fbfb] px-4 py-3 text-xs leading-5 text-[#5d747e]">
+          <div className="flex items-start gap-2 rounded-xl border border-[#d7e5e8] bg-[#f7fbfb] px-4 py-3 text-xs leading-5 text-[#5d747e] md:col-span-4">
             <Info className="mt-0.5 size-4 shrink-0 text-[#007d84]" />
             <span>
-              Only CLOs from <strong>APPROVED</strong> syllabuses in the selected academic scope contribute to the coverage analysis.
+              All curriculum courses are included. Only CLOs from the curriculum-linked <strong>APPROVED</strong> syllabus contribute to coverage.
             </span>
           </div>
         </div>
       </section>
 
-      {isProgramsError
+      {isProgramsError || isMajorsError
       || isCohortsError ? (
         <section className="rounded-2xl border border-rose-200 bg-rose-50 p-5 text-sm text-rose-700">
           Unable to load program or cohort master data.
@@ -1696,7 +1646,11 @@ export default function CloPloHeatmapPage() {
         <section className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-800">
           No curriculum programs are available.
         </section>
-      ) : activeCohorts.length === 0 ? (
+      ) : !effectiveProgramId ? (
+        <section className="rounded-2xl border border-blue-200 bg-blue-50 p-5 text-sm text-blue-800">
+          Select a Program to start curriculum-wide CLO–PLO analysis.
+        </section>
+      ) : availableCohorts.length === 0 ? (
         <section className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-800">
           The selected program has no active cohort.
         </section>
@@ -1738,13 +1692,7 @@ export default function CloPloHeatmapPage() {
 
                 <p className="mt-1 text-xs text-slate-500">
                   {heatmap.cohortName}
-                  {" · "}
-                  {heatmap.academicYear}
-                  {" · Semester "}
-                  {heatmap.semester}
-                  {" · "}
-                  {heatmap.courseTypeName
-                    || "All Course Groups"}
+                  {" · Full Curriculum"}
                 </p>
               </div>
 
@@ -1915,7 +1863,7 @@ export default function CloPloHeatmapPage() {
                   {blockedCourses.length}
                 </p>
                 <p className="mt-1 text-xs text-slate-500">
-                  No approved syllabus in the selected period
+                  No curriculum-linked approved syllabus
                 </p>
               </div>
 
@@ -1952,23 +1900,23 @@ export default function CloPloHeatmapPage() {
               <div className="flex flex-wrap gap-2">
                 <Badge
                   variant="outline"
-                  className={levelClass("I")}
+                  className={levelClass("X")}
                 >
-                  I · Introduce
+                  X · Low
                 </Badge>
 
                 <Badge
                   variant="outline"
-                  className={levelClass("D")}
+                  className={levelClass("XX")}
                 >
-                  D · Develop
+                  XX · Medium
                 </Badge>
 
                 <Badge
                   variant="outline"
-                  className={levelClass("A")}
+                  className={levelClass("XXX")}
                 >
-                  A · Achieve
+                  XXX · High
                 </Badge>
 
                 <Badge
@@ -2271,7 +2219,7 @@ export default function CloPloHeatmapPage() {
 
               <div className="flex flex-wrap gap-2">
                 <CoverageLevelBadge
-                  level="I"
+                  level="X"
                   count={
                     approvedCourses.reduce(
                       (sum, course) =>
@@ -2279,7 +2227,7 @@ export default function CloPloHeatmapPage() {
                         + course.cells.filter(
                           (cell) =>
                             cell.level
-                            === "I",
+                            === "X",
                         ).length,
                       0,
                     )
@@ -2287,7 +2235,7 @@ export default function CloPloHeatmapPage() {
                 />
 
                 <CoverageLevelBadge
-                  level="D"
+                  level="XX"
                   count={
                     approvedCourses.reduce(
                       (sum, course) =>
@@ -2295,7 +2243,7 @@ export default function CloPloHeatmapPage() {
                         + course.cells.filter(
                           (cell) =>
                             cell.level
-                            === "D",
+                            === "XX",
                         ).length,
                       0,
                     )
@@ -2303,7 +2251,7 @@ export default function CloPloHeatmapPage() {
                 />
 
                 <CoverageLevelBadge
-                  level="A"
+                  level="XXX"
                   count={
                     approvedCourses.reduce(
                       (sum, course) =>
@@ -2311,7 +2259,7 @@ export default function CloPloHeatmapPage() {
                         + course.cells.filter(
                           (cell) =>
                             cell.level
-                            === "A",
+                            === "XXX",
                         ).length,
                       0,
                     )
@@ -2395,19 +2343,19 @@ export default function CloPloHeatmapPage() {
 
                     <div className="mt-3 flex flex-wrap gap-1.5">
                       <CoverageLevelBadge
-                        level="I"
+                        level="X"
                         count={
                           introduceCourses
                         }
                       />
                       <CoverageLevelBadge
-                        level="D"
+                        level="XX"
                         count={
                           developCourses
                         }
                       />
                       <CoverageLevelBadge
-                        level="A"
+                        level="XXX"
                         count={
                           achieveCourses
                         }
@@ -2686,7 +2634,7 @@ export default function CloPloHeatmapPage() {
                     </p>
 
                     <p className="mt-1 text-xs text-slate-500">
-                      The matrix displays the highest I/D/A level among the CLO mappings in this cell.
+                      The matrix displays the highest X/XX/XXX contribution among the CLO mappings in this cell.
                     </p>
                   </div>
 
@@ -2714,17 +2662,21 @@ export default function CloPloHeatmapPage() {
                   </Badge>
                 </div>
 
-                {selectedCell.cell.cloCodes.length > 0 ? (
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {selectedCell.cell.cloCodes.map(
-                      (code) => (
-                        <Badge
-                          key={code}
-                          variant="outline"
-                          className="border-[#b9dfe1] bg-[#f2fafa] text-[#007d84]"
-                        >
-                          {code}
-                        </Badge>
+                {selectedCell.cell.cloContributions.length > 0 ? (
+                  <div className="mt-3 space-y-2">
+                    {selectedCell.cell.cloContributions.map(
+                      (contribution) => (
+                        <div key={contribution.cloId} className="rounded-xl border border-slate-200 bg-white p-3">
+                          <div className="flex items-center justify-between gap-3">
+                            <p className="font-semibold text-[#007d84]">{contribution.cloCode}</p>
+                            <Badge variant="outline" className={levelClass(contribution.level)}>
+                              {levelLabel(contribution.level)}
+                            </Badge>
+                          </div>
+                          <p className="mt-2 text-xs leading-5 text-slate-600">
+                            {contribution.descriptionVn || contribution.description}
+                          </p>
+                        </div>
                       ),
                     )}
                   </div>
@@ -2756,7 +2708,7 @@ export default function CloPloHeatmapPage() {
             </DialogTitle>
 
             <DialogDescription>
-              Review coverage status and I/D/A contribution distribution for this PLO.
+              Review coverage status and X/XX/XXX contribution distribution for this PLO.
             </DialogDescription>
           </DialogHeader>
 
@@ -2822,7 +2774,7 @@ export default function CloPloHeatmapPage() {
                 <div className="mt-3 grid gap-3 sm:grid-cols-3">
                   <div className="rounded-xl border border-blue-200 bg-blue-50 p-4">
                     <p className="text-xs font-semibold text-blue-700">
-                      Introduce
+                      Low (X)
                     </p>
                     <p className="mt-1 text-2xl font-bold text-blue-800">
                       {selectedPlo.introduceCourses}
@@ -2834,7 +2786,7 @@ export default function CloPloHeatmapPage() {
 
                   <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
                     <p className="text-xs font-semibold text-amber-700">
-                      Develop
+                      Medium (XX)
                     </p>
                     <p className="mt-1 text-2xl font-bold text-amber-800">
                       {selectedPlo.developCourses}
@@ -2846,7 +2798,7 @@ export default function CloPloHeatmapPage() {
 
                   <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
                     <p className="text-xs font-semibold text-emerald-700">
-                      Achieve
+                      High (XXX)
                     </p>
                     <p className="mt-1 text-2xl font-bold text-emerald-800">
                       {selectedPlo.achieveCourses}
@@ -2917,7 +2869,7 @@ function CoverageEmptyState({
     NO_APPROVED: {
       title: "No APPROVED syllabuses can contribute",
       description:
-        `${blockedCourseCount} curriculum course${blockedCourseCount === 1 ? "" : "s"} do not have an APPROVED syllabus for this academic year and semester.`,
+        `${blockedCourseCount} curriculum course${blockedCourseCount === 1 ? "" : "s"} do not have a curriculum-linked APPROVED syllabus.`,
       nextStep:
         "Coverage is calculated only from approved syllabus CLOs, so approve the relevant syllabuses or choose another academic period.",
       actionLabel:
@@ -2941,7 +2893,7 @@ function CoverageEmptyState({
       description:
         `${totalCloCount} CLO${totalCloCount === 1 ? "" : "s"} are available from APPROVED syllabuses, but ${mappedCloCount} are mapped to PLOs.`,
       nextStep:
-        "Faculty must map CLOs to PLOs with I/D/A contribution levels before the matrix can analyze coverage.",
+        "Faculty must map CLOs to PLOs with X/XX/XXX contribution levels before the matrix can analyze coverage.",
       actionLabel:
         "Open Syllabus Catalog",
       action: onOpenSyllabus,
@@ -2993,3 +2945,5 @@ function CoverageEmptyState({
     </div>
   )
 }
+
+export default LiveCloPloHeatmapPage

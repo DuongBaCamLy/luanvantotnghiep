@@ -20,7 +20,7 @@ public class BookController {
     private final BookService bookService;
 
     @PostMapping
-@PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTRUCTOR')")
     public BookResponse create(
             @RequestBody BookRequest request) {
 

@@ -5,6 +5,11 @@ export interface ClassSectionResponse {
   courseId: number
   courseCode: string
   courseName: string
+  programId: number | null
+  programCode: string | null
+  programName: string | null
+  cohortId: number | null
+  cohortName: string | null
   syllabusId: number | null
   syllabusVersionNumber: number | null
   syllabusStatus: string | null
@@ -27,6 +32,8 @@ export interface ClassSectionResponse {
 
 export interface CreateClassSectionRequest {
   courseId: number
+  programId: number
+  cohortId: number
 
   /**
    * New Admin assignments should normally use null.
@@ -36,14 +43,14 @@ export interface CreateClassSectionRequest {
   syllabusId?: number | null
 
   instructorId: number
-  semester: number
-  academicYear: string
-  groupNumber: number
+  semester?: number
+  academicYear?: string
+  groupNumber?: number
   labGroup?: number
   maxStudents?: number
   room?: string
   schedule?: string
-  sectionType:
+  sectionType?:
     | "THEORY"
     | "LAB"
     | "COMBINED"

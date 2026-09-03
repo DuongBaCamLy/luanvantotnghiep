@@ -8,6 +8,14 @@ import type {
 } from "@/types/syllabus"
 import type { SyllabusDiffResponse } from "@/types/syllabusDiff"
 
+const normalizeSemesterLabel = (value: unknown) => {
+  const text = String(value ?? "").trim()
+  if (!text) return ""
+  if (/^summer(?:\s+semester)?$/i.test(text)) return "Summer Semester"
+  const match = text.match(/^(?:(?:semester|hk)\s*)?([1-8])$/i)
+  return match ? `Semester ${match[1]}` : text
+}
+
 const normalizeSyllabusCreatePayload = (
   data: CreateSyllabusRequest
 ): CreateSyllabusRequest => {
@@ -19,7 +27,7 @@ const normalizeSyllabusCreatePayload = (
     versionNumber: Number(data.versionNumber || 1),
     versionLabel: data.versionLabel || "v1.0",
     academicYear: data.academicYear?.trim() || "",
-    semester: data.semester?.trim() || "",
+    semester: normalizeSemesterLabel(data.semester),
     changeSummary: data.changeSummary ?? "",
     notes: data.notes ?? "",
     clos: data.clos ?? [],
@@ -39,6 +47,10 @@ const normalizeSyllabusUpdatePayload = (
 
   if (data.versionNumber !== undefined && data.versionNumber !== null) {
     payload.versionNumber = Number(data.versionNumber)
+  }
+
+  if (data.semester !== undefined && data.semester !== null) {
+    payload.semester = normalizeSemesterLabel(data.semester)
   }
 
   // Quan trọng: không tự thêm clos/topics/assessments = [] khi update.
@@ -63,6 +75,13 @@ export const syllabusApi = {
 
   getById: async (id: number): Promise<Syllabus> => {
     const response = await api.get(`/api/syllabuses/${id}`)
+    return response.data
+  },
+
+  getForEdit: async (id: number): Promise<Syllabus> => {
+    const response = await api.get(`/api/syllabuses/${id}`, {
+      params: { forEdit: true },
+    })
     return response.data
   },
 
@@ -95,6 +114,11 @@ export const syllabusApi = {
 
   delete: async (id: number): Promise<void> => {
     await api.delete(`/api/syllabuses/${id}`)
+  },
+
+  deleteAll: async (): Promise<number> => {
+    const response = await api.delete<{ deletedCount: number }>("/api/syllabuses/all")
+    return response.data.deletedCount
   },
 
   validateForSubmit: async (id: number): Promise<SubmissionValidationResponse> => {

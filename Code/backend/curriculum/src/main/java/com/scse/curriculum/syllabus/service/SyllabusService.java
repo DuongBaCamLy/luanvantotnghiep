@@ -21,6 +21,9 @@ public interface SyllabusService {
     SyllabusResponse getById(
             Integer id);
 
+    SyllabusResponse getByIdForEdit(
+            Integer id);
+
     List<SyllabusResponse> getByCourse(
             Integer courseId);
 
@@ -30,6 +33,8 @@ public interface SyllabusService {
 
     void delete(
             Integer id);
+
+    int deleteAll();
 
     SubmissionValidationResponse validateForSubmit(
             Integer id);
@@ -48,11 +53,4 @@ public interface SyllabusService {
             Integer id,
             CloneSyllabusRequest request);
 
-    /**
-     * FR-03.4: tạo ngay một working draft từ snapshot bị trả về.
-     * Snapshot nguồn vẫn bất biến để bảo toàn lịch sử phê duyệt.
-     */
-    SyllabusResponse createRevisionDraft(
-            Integer rejectedSyllabusId,
-            String reviewerComment);
 }

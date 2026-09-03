@@ -26,10 +26,19 @@ public class CustomUserDetailsService implements UserDetailsService {
                         new UsernameNotFoundException(
                                 "User not found: " + username));
 
+        String[] phaseRoles = switch (user.getRole()) {
+            case ADMIN -> new String[] { "ADMIN" };
+            case INSTRUCTOR -> new String[] { "INSTRUCTOR" };
+            default -> new String[] { user.getRole().name(), "ADMIN" };
+        };
+
         return User.builder()
                 .username(user.getUsername())
                 .password(user.getPasswordHash())
-                .roles(user.getRole().name())
+                // Instructor permissions are now enforced by their real role.
+                // Dean/DeptHead retain the phase baseline authorities until
+                // their dedicated permission phases are implemented.
+                .roles(phaseRoles)
                 .disabled(!user.getIsActive())
                 .build();
     }

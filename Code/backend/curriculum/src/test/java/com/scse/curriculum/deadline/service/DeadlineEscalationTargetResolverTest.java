@@ -18,6 +18,8 @@ import com.scse.curriculum.classsection.repository.ClassSectionRepository;
 import com.scse.curriculum.course.entity.Course;
 import com.scse.curriculum.department.entity.Department;
 import com.scse.curriculum.instructor.entity.Instructor;
+import com.scse.curriculum.major.entity.Major;
+import com.scse.curriculum.program.entity.Program;
 import com.scse.curriculum.syllabus.entity.Syllabus;
 import com.scse.curriculum.syllabus.entity.SyllabusStatus;
 import com.scse.curriculum.user.entity.UserAccount;
@@ -60,9 +62,9 @@ class DeadlineEscalationTargetResolverTest {
 
         when(classSectionRepository.findActiveForDeadline("2026-2027", 1))
                 .thenReturn(assignments);
-        when(userAccountRepository.findActiveByRoleAndInstructorDepartmentId(
+        when(userAccountRepository.findByRoleAndManagedMajor_IdAndIsActiveTrue(
                 UserRole.DEPT_HEAD, 1)).thenReturn(List.of(csHead));
-        when(userAccountRepository.findActiveByRoleAndInstructorDepartmentId(
+        when(userAccountRepository.findByRoleAndManagedMajor_IdAndIsActiveTrue(
                 UserRole.DEPT_HEAD, 2)).thenReturn(List.of());
         when(userAccountRepository.findByRoleAndIsActiveTrue(UserRole.DEAN))
                 .thenReturn(List.of(dean));
@@ -81,7 +83,7 @@ class DeadlineEscalationTargetResolverTest {
                 .filter(target -> target.recipientRole() == UserRole.DEPT_HEAD)
                 .findFirst()
                 .orElseThrow();
-        assertThat(headTarget.scopeKey()).isEqualTo("DEPARTMENT:1");
+        assertThat(headTarget.scopeKey()).isEqualTo("MAJOR:1");
         assertThat(headTarget.overdueInstructors())
                 .extracting(DeadlineEscalationTarget.OverdueInstructor::instructorName)
                 .containsExactly("Alice Nguyen");
@@ -134,7 +136,7 @@ class DeadlineEscalationTargetResolverTest {
 
         when(classSectionRepository.findActiveForDeadline("2026-2027", 1))
                 .thenReturn(List.of(section(1, algorithms, alice, null)));
-        when(userAccountRepository.findActiveByRoleAndInstructorDepartmentId(
+        when(userAccountRepository.findByRoleAndManagedMajor_IdAndIsActiveTrue(
                 UserRole.DEPT_HEAD, 1)).thenReturn(List.of(first, duplicate));
         when(userAccountRepository.findByRoleAndIsActiveTrue(UserRole.DEAN))
                 .thenReturn(List.of(dean));
@@ -194,6 +196,15 @@ class DeadlineEscalationTargetResolverTest {
         return ClassSection.builder()
                 .id(id)
                 .course(course)
+                .program(Program.builder()
+                        .id(course.getDepartment().getId())
+                        .code(course.getDepartment().getCode())
+                        .major(Major.builder()
+                                .id(course.getDepartment().getId())
+                                .code(course.getDepartment().getCode())
+                                .name(course.getDepartment().getName())
+                                .build())
+                        .build())
                 .instructor(instructor)
                 .syllabus(syllabus)
                 .academicYear("2026-2027")

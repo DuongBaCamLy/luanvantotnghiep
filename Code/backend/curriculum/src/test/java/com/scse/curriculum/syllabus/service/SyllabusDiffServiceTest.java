@@ -15,7 +15,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import com.scse.curriculum.assessment.entity.AssessmentClo;
 import com.scse.curriculum.assessment.entity.AssessmentCloId;
 import com.scse.curriculum.assessment.entity.AssessmentComponent;
-import com.scse.curriculum.assessment.entity.AssessmentType;
 import com.scse.curriculum.assessment.repository.AssessmentCloRepository;
 import com.scse.curriculum.assessment.repository.AssessmentComponentRepository;
 import com.scse.curriculum.book.entity.Book;
@@ -92,7 +91,7 @@ class SyllabusDiffServiceTest {
     }
 
     @Test
-    void compareIncludesReadingListAndAllMappings() {
+    void compareIncludesreadingsAndAllMappings() {
         Clo oldClo = Clo.builder()
                 .id(1)
                 .syllabus(oldSyllabus)
@@ -181,7 +180,7 @@ class SyllabusDiffServiceTest {
                 .syllabus(oldSyllabus)
                 .name("Final exam")
                 .nameVn("Thi cuối kỳ")
-                .assessmentType(AssessmentType.FINAL_EXAM)
+                .assessmentType("FINAL_EXAM")
                 .weightPercent(50f)
                 .minScore(0f)
                 .maxScore(100f)
@@ -192,7 +191,7 @@ class SyllabusDiffServiceTest {
                 .syllabus(newSyllabus)
                 .name("Final exam")
                 .nameVn("Thi cuối kỳ")
-                .assessmentType(AssessmentType.FINAL_EXAM)
+                .assessmentType("FINAL_EXAM")
                 .weightPercent(60f)
                 .minScore(0f)
                 .maxScore(100f)
@@ -297,8 +296,8 @@ class SyllabusDiffServiceTest {
         assertThat(result.getAssessmentCloDiff().getModified().get(0).getChanges())
                 .containsKey("contributionPercent");
 
-        assertThat(result.getReadingListDiff().getModified()).hasSize(1);
-        assertThat(result.getReadingListDiff().getModified().get(0).getChanges())
+        assertThat(result.getReadingsDiff().getModified()).hasSize(1);
+        assertThat(result.getReadingsDiff().getModified().get(0).getChanges())
                 .containsKeys("author", "usageType", "orderIndex");
     }
 
@@ -330,6 +329,6 @@ class SyllabusDiffServiceTest {
 
         assertThat(result.isHasChanges()).isFalse();
         assertThat(result.getGeneralInfoDiff()).isEmpty();
-        assertThat(result.getReadingListDiff().getModified()).isEmpty();
+        assertThat(result.getReadingsDiff().getModified()).isEmpty();
     }
 }

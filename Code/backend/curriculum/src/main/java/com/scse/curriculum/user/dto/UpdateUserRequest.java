@@ -41,6 +41,7 @@ public class UpdateUserRequest {
     private UserRole role;
 
     private Integer instructorId;
+    private Integer managedMajorId;
 
     private Boolean isActive;
 }

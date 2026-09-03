@@ -17,4 +17,8 @@ public interface DashboardService {
         Integer programId,
         Integer cohortId);
     DashboardHeatmapResponse getHeatmapCoverage(long programId, Integer cohortId, String academicYear, String semester, Integer courseTypeId);
+
+    DashboardHeatmapResponse getHeatmapCoverage(long programId, Integer cohortId, String academicYear,
+                                                 String semester, Integer courseTypeId,
+                                                 String search, String status);
 }

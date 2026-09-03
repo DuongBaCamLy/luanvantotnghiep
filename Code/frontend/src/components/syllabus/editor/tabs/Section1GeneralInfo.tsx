@@ -60,7 +60,6 @@ export default function Section1GeneralInfo({ syllabus, readOnly = false }: Prop
   objectives: syllabus.objectives ?? "",
   examForms: syllabus.examForms ?? "",
   examRequirements: syllabus.examRequirements ?? "",
-  rubrics: syllabus.rubrics ?? "",
   major: syllabus.major ?? "",
 })
   const selectedCourseTypes = parseCourseTypes(syllabus.courseTypes)
@@ -121,6 +120,25 @@ export default function Section1GeneralInfo({ syllabus, readOnly = false }: Prop
               <div className="h-10 px-3 flex items-center rounded-lg border border-slate-200 bg-slate-50 text-sm text-slate-700">
                 {syllabus.courseName}
               </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Credit Points</Label>
+              <div className="h-10 px-3 flex items-center rounded-lg border border-slate-200 bg-slate-50 text-sm text-slate-700">
+                {syllabus.creditTheory != null || syllabus.creditLab != null
+                  ? `Total: ${(syllabus.creditTheory ?? 0) + (syllabus.creditLab ?? 0)} (Lecture: ${syllabus.creditTheory ?? 0}, Laboratory: ${syllabus.creditLab ?? 0})`
+                  : "Not configured"}
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                Person Responsible for the Course
+              </Label>
+              <div className="h-10 px-3 flex items-center rounded-lg border border-slate-200 bg-slate-50 text-sm text-slate-700">
+                {syllabus.responsibleInstructors || "Not assigned"}
+              </div>
+              <p className="text-[11px] text-slate-400">
+                From the linked teaching assignment. Shown on the exported PDF exactly as displayed here.
+              </p>
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Prepared By</Label>
@@ -441,15 +459,6 @@ export default function Section1GeneralInfo({ syllabus, readOnly = false }: Prop
                 readOnly={readOnly}
                 value={form.examRequirements}
                 onChange={(e) => setForm({ ...form, examRequirements: e.target.value })}
-              />
-            </div>
-            <div className="space-y-1.5 md:col-span-2">
-              <Label className="text-xs font-semibold text-slate-600">Rubrics (Optional)</Label>
-              <textarea
-                className={`w-full min-h-[80px] px-3 py-2 rounded-lg border border-slate-200 text-sm outline-none ${readOnly ? readOnlyClass : "bg-white focus:border-primary/60"}`}
-                readOnly={readOnly}
-                value={form.rubrics}
-                onChange={(e) => setForm({ ...form, rubrics: e.target.value })}
               />
             </div>
           </div>

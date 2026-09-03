@@ -9,20 +9,17 @@ import { useQuery } from "@tanstack/react-query"
 import {
   AlertTriangle,
   ArrowLeft,
-  BookOpen,
-  Copy,
-  FilePlus2,
-  GraduationCap,
   LoaderCircle,
   ShieldCheck,
 } from "lucide-react"
 
 import { courseProgramApi } from "@/api/courseProgramApi"
+import { syllabusApi } from "@/api/syllabusApi"
 import {
   getMyActiveAssignments,
-  type ClassSectionResponse,
 } from "@/api/classSectionApi"
 import { Button } from "@/components/ui/button"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import {
   Card,
   CardContent,
@@ -37,7 +34,18 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import SyllabusForm from "@/components/syllabus/SyllabusForm"
-import { useCloneSyllabus } from "@/hooks/useCloneSyllabus"
+import {
+  buildImportedSyllabusInitialData,
+} from "@/lib/syllabusImportForm"
+import {
+  isUsableSyllabusImportPreview,
+  loadSyllabusImportDraft,
+  removeSyllabusImportDraft,
+} from "@/lib/syllabusImportDraft"
+import {
+  SyllabusRelationSyncError,
+  syncStandardSyllabusRelations,
+} from "@/lib/syllabusRelationSync"
 import { useCreateSyllabus } from "@/hooks/useCreateSyllabus"
 import { useSyllabuses } from "@/hooks/useSyllabuses"
 import { useSyllabus } from "@/hooks/useSyllabus"
@@ -45,10 +53,11 @@ import { useAuthStore } from "@/store/authStore"
 import type {
   CreateSyllabusRequest,
 } from "@/types/syllabus"
+import type { SyllabusImportPreviewResponse } from "@/types/syllabusImport"
 
 const assignmentSemester = (
   semester: number,
-) => `HK${semester}`
+) => `Semester ${semester}`
 
 const normalizeRole = (
   value: unknown,
@@ -58,27 +67,15 @@ const normalizeRole = (
     .trim()
     .toUpperCase()
 
-const normalizeStatus = (
-  value: unknown,
-) =>
-  String(value ?? "")
-    .trim()
-    .toUpperCase()
+const normalizeCourseIdentity = (value: unknown) => String(value ?? "")
+  .trim()
+  .toUpperCase()
+  .replace(/[\s_-]+/g, "")
 
-const sectionTypeLabel = (
-  value:
-    ClassSectionResponse["sectionType"],
-) => {
-  if (value === "THEORY") {
-    return "Theory"
-  }
-
-  if (value === "LAB") {
-    return "Laboratory"
-  }
-
-  return "Combined"
-}
+const normalizeCourseName = (value: unknown) => String(value ?? "")
+  .trim()
+  .toUpperCase()
+  .replace(/[^A-Z0-9+#]+/g, "")
 
 const errorMessage = (
   error: unknown,
@@ -107,10 +104,6 @@ const errorMessage = (
   return fallback
 }
 
-type InstructorStartMode =
-  | "BLANK"
-  | "CLONE"
-
 export default function SyllabusCreatePage() {
   const location =
     useLocation()
@@ -121,8 +114,33 @@ export default function SyllabusCreatePage() {
   const [searchParams] =
     useSearchParams()
 
-  const autoImportAfterCreate =
-    searchParams.get("import") === "1"
+  const requestedCourseId = Number(searchParams.get("courseId"))
+  const hasRequestedCourseId = Number.isFinite(requestedCourseId) && requestedCourseId > 0
+  const importDraftId = searchParams.get("importDraft")
+  const importLocationState = location.state as {
+    importPreview?: SyllabusImportPreviewResponse
+    targetCourseId?: number
+    targetCourseProgramId?: number
+    previewOnly?: boolean
+  } | null
+  const previewOnly = Boolean(importLocationState?.previewOnly)
+  const requestedImportCourseProgramId = Number(searchParams.get("courseProgramId")) || undefined
+  const previewFromLocation = importLocationState?.targetCourseId === requestedCourseId
+    && (importLocationState.targetCourseProgramId === undefined
+      || importLocationState.targetCourseProgramId === requestedImportCourseProgramId)
+    ? importLocationState.importPreview
+    : undefined
+  const importPreviewCandidate = useMemo(
+    () => previewFromLocation ?? loadSyllabusImportDraft(
+      importDraftId,
+      requestedCourseId,
+      requestedImportCourseProgramId,
+    ),
+    [importDraftId, previewFromLocation, requestedCourseId, requestedImportCourseProgramId],
+  )
+  const importPreview = isUsableSyllabusImportPreview(importPreviewCandidate)
+    ? importPreviewCandidate
+    : undefined
 
   const user =
     useAuthStore(
@@ -135,11 +153,13 @@ export default function SyllabusCreatePage() {
       user?.role,
     )
 
-  const isInstructor =
-    role === "INSTRUCTOR"
+  const isInstructor = role === "INSTRUCTOR"
 
-  const isAdmin =
-    role === "ADMIN"
+  const isAdmin = role === "ADMIN"
+
+  // Course master data stays read-only for Instructor. The broader isAdmin
+  // flag above is temporary and only reuses the global syllabus creation flow.
+  const canManageCourseMaster = role === "ADMIN"
 
   const courseProgramId =
     Number(
@@ -162,12 +182,7 @@ export default function SyllabusCreatePage() {
       ),
     )
 
-  const requestedClassSectionId =
-    Number(
-      searchParams.get(
-        "classSectionId",
-      ),
-    )
+  const requestedAssignmentId = Number(searchParams.get("assignmentId"))
 
   const basePath =
     location.pathname.includes(
@@ -184,25 +199,6 @@ export default function SyllabusCreatePage() {
   const createMutation =
     useCreateSyllabus()
 
-  const cloneMutation =
-    useCloneSyllabus()
-
-  const [
-    selectedAssignmentId,
-    setSelectedAssignmentId,
-  ] =
-    useState<number | null>(
-      null,
-    )
-
-  const [
-    startMode,
-    setStartMode,
-  ] =
-    useState<InstructorStartMode>(
-      "BLANK",
-    )
-
   const [
     selectedSourceId,
     setSelectedSourceId,
@@ -211,16 +207,7 @@ export default function SyllabusCreatePage() {
       null,
     )
 
-  const {
-    data:
-      myAssignments = [],
-    isLoading:
-      assignmentsLoading,
-    isError:
-      assignmentsError,
-    refetch:
-      refetchAssignments,
-  } = useQuery({
+  const { data: myAssignments = [] } = useQuery({
     queryKey: [
       "my-active-assignments",
       "syllabus-create",
@@ -231,13 +218,7 @@ export default function SyllabusCreatePage() {
     staleTime: 30_000,
   })
 
-  const {
-    data:
-      allSyllabuses = [],
-    isLoading:
-      syllabusesLoading,
-  } =
-    useSyllabuses()
+  const { data: allSyllabuses = [] } = useSyllabuses()
 
   const {
     data:
@@ -252,11 +233,30 @@ export default function SyllabusCreatePage() {
         courseProgramId,
       ),
     enabled:
-      isAdmin
+      (isAdmin || isInstructor)
       && Number.isFinite(
         courseProgramId,
       )
       && courseProgramId > 0,
+  })
+
+  const {
+    data: scopedCoursePrograms = [],
+  } = useQuery({
+    queryKey: ["course-programs", "curriculum", programId, cohortId],
+    queryFn: () => courseProgramApi.getCurriculum(programId, cohortId),
+    enabled: (isAdmin || isInstructor) && programId > 0 && cohortId > 0,
+  })
+
+  const {
+    data: requestedCourseContext,
+    isLoading: requestedCourseContextLoading,
+    isError: requestedCourseContextError,
+    refetch: refetchRequestedCourseContext,
+  } = useQuery({
+    queryKey: ["syllabus-create-context", requestedCourseId],
+    queryFn: () => syllabusApi.getCreateContext(requestedCourseId),
+    enabled: (isAdmin || isInstructor) && hasRequestedCourseId,
   })
 
   const {
@@ -265,9 +265,14 @@ export default function SyllabusCreatePage() {
     isFetching:
       sourceLoading,
   } = useSyllabus(
-    !isInstructor
-      ? selectedSourceId
-      : null,
+    selectedSourceId,
+  )
+
+  const curriculumEntriesByCourse = useMemo(
+    () => new Map(
+      scopedCoursePrograms.map((item) => [item.courseId, item]),
+    ),
+    [scopedCoursePrograms],
   )
 
   const eligibleAssignments =
@@ -281,226 +286,34 @@ export default function SyllabusCreatePage() {
             && assignment
               .syllabusId
               === null,
-        ),
-      [myAssignments],
+        ).filter((assignment) => {
+          if (!(programId > 0 && cohortId > 0)) return true
+
+          return assignment.programId === programId
+            && assignment.cohortId === cohortId
+            && curriculumEntriesByCourse.has(assignment.courseId)
+        }),
+      [cohortId, curriculumEntriesByCourse, myAssignments, programId],
     )
-
-  const requestedAssignment =
-    Number.isFinite(
-      requestedClassSectionId,
-    )
-      && requestedClassSectionId
-        > 0
-      ? eligibleAssignments.find(
-          (assignment) =>
-            assignment.id
-            === requestedClassSectionId,
-        )
-      : undefined
-
-  const effectiveAssignmentId =
-    selectedAssignmentId
-    ?? requestedAssignment?.id
-    ?? eligibleAssignments[0]?.id
-    ?? null
-
-  const selectedAssignment =
-    eligibleAssignments.find(
-      (assignment) =>
-        assignment.id
-        === effectiveAssignmentId,
-    )
-
-  const cloneSources =
-    useMemo(() => {
-      if (!selectedAssignment) {
-        return []
-      }
-
-      return allSyllabuses
-        .filter(
-          (syllabus) => {
-            if (
-              syllabus.courseId
-              !== selectedAssignment
-                .courseId
-            ) {
-              return false
-            }
-
-            const status =
-              normalizeStatus(
-                syllabus.status,
-              )
-
-            if (
-              status !== "DRAFT"
-            ) {
-              return true
-            }
-
-            return (
-              syllabus.createdById
-              === user?.userId
-            )
-          },
-        )
-        .slice()
-        .sort(
-          (
-            left,
-            right,
-          ) => {
-            const leftVersion =
-              Number(
-                left.versionNumber
-                ?? 0,
-              )
-
-            const rightVersion =
-              Number(
-                right.versionNumber
-                ?? 0,
-              )
-
-            if (
-              leftVersion
-              !== rightVersion
-            ) {
-              return (
-                rightVersion
-                - leftVersion
-              )
-            }
-
-            return (
-              right.id
-              - left.id
-            )
-          },
-        )
-    }, [
-      allSyllabuses,
-      selectedAssignment,
-      user?.userId,
-    ])
-
-  const selectedCloneSource =
-    cloneSources.find(
-      (syllabus) =>
-        syllabus.id
-        === selectedSourceId,
-    )
-
-  const createInstructorDraft =
-    () => {
-      if (!selectedAssignment) {
-        return
-      }
-
-      if (
-        startMode === "CLONE"
-      ) {
-        if (
-          !selectedCloneSource
-        ) {
-          alert(
-            "Select a previous syllabus version to clone.",
-          )
-          return
-        }
-
-        cloneMutation.mutate(
-          {
-            id:
-              selectedCloneSource.id,
-            request: {
-              classSectionId:
-                selectedAssignment.id,
-              changeSummary:
-                `Cloned from ${selectedCloneSource.versionLabel || `v${selectedCloneSource.versionNumber}`} for Semester ${selectedAssignment.semester} · ${selectedAssignment.academicYear}`,
-            },
-          },
-          {
-            onSuccess: (
-              cloned,
-            ) => {
-              navigate(
-                `/instructor/syllabus/${cloned.id}/editor`,
-              )
-            },
-
-            onError: (
-              error: unknown,
-            ) => {
-              alert(
-                errorMessage(
-                  error,
-                  "Unable to clone the previous syllabus into this teaching assignment.",
-                ),
-              )
-            },
-          },
-        )
-
-        return
-      }
-
-      const payload:
-        CreateSyllabusRequest = {
-          classSectionId:
-            selectedAssignment.id,
-          courseId:
-            selectedAssignment
-              .courseId,
-          versionNumber: 1,
-          versionLabel: "v1.0",
-          academicYear:
-            selectedAssignment
-              .academicYear,
-          semester:
-            assignmentSemester(
-              selectedAssignment
-                .semester,
-            ),
-          changeSummary:
-            "Initial Draft",
-          notes: "",
-          clos: [],
-          topics: [],
-          assessments: [],
-        }
-
-      createMutation.mutate(
-        payload,
-        {
-          onSuccess: (
-            created,
-          ) => {
-            navigate(
-              `/instructor/syllabus/${created.id}/editor`,
-            )
-          },
-
-          onError: (
-            error: unknown,
-          ) => {
-            alert(
-              errorMessage(
-                error,
-                "Unable to create the Draft. Check the teaching assignment, academic year, and semester.",
-              ),
-            )
-          },
-        },
-      )
-    }
 
   const handleAdminCreate =
     (
       values:
         CreateSyllabusRequest,
     ) => {
+      const targetCourseId = Number(values.courseId)
+      const instructorAssignment = isInstructor
+        ? eligibleAssignments.find((assignment) =>
+            assignment.courseId === targetCourseId
+            && (!(requestedAssignmentId > 0) || assignment.id === requestedAssignmentId),
+          )
+        : undefined
+
+      if (isInstructor && !instructorAssignment) {
+        alert("You are not assigned to this course and cannot create or import its syllabus.")
+        return
+      }
+
       const safeValues = {
         ...values,
       }
@@ -510,10 +323,11 @@ export default function SyllabusCreatePage() {
       const payload:
         CreateSyllabusRequest = {
           ...safeValues,
+          assignmentId: isInstructor
+            ? instructorAssignment!.id
+            : values.assignmentId,
           courseId:
-            Number(
-              values.courseId,
-            ),
+            targetCourseId,
           versionNumber:
             Number(
               values
@@ -524,18 +338,20 @@ export default function SyllabusCreatePage() {
             values.versionLabel
             || "v1.0",
           academicYear:
-            values.academicYear
-              ?.trim()
-            || "",
+            isInstructor
+              ? instructorAssignment!.academicYear
+              : values.academicYear?.trim() || "",
           semester:
-            values.semester
-              ?.trim()
-            || "",
+            isInstructor
+              ? assignmentSemester(instructorAssignment!.semester)
+              : values.semester?.trim() || "",
           courseProgramId:
             courseProgramId > 0
               ? courseProgramId
-              : values
-                  .courseProgramId,
+              : values.courseProgramId
+                ?? scopedCoursePrograms.find((item) => item.courseId === Number(values.courseId))?.id,
+          programId: programId > 0 ? programId : values.programId,
+          cohortId: cohortId > 0 ? cohortId : values.cohortId,
           changeSummary:
             values.changeSummary
             ?? "",
@@ -556,23 +372,39 @@ export default function SyllabusCreatePage() {
       createMutation.mutate(
         payload,
         {
-          onSuccess: (
+          onSuccess: async (
             created,
           ) => {
+            let relatedDataSaved = true
+            try {
+              await syncStandardSyllabusRelations(created.id, payload)
+            } catch (relationError) {
+              relatedDataSaved = false
+              console.error(relationError)
+              const relationMessage = relationError instanceof SyllabusRelationSyncError
+                ? `${relationError.result.failures.length} linked item(s) could not be synchronized.`
+                : "One or more linked items could not be synchronized."
+              alert(`The syllabus Draft was created, but ${relationMessage} Open the Draft in the Syllabus Form and save again to retry.`)
+            }
+
+            if (relatedDataSaved) {
+              removeSyllabusImportDraft(importDraftId)
+            }
+
             if (
               programId > 0
               && cohortId > 0
             ) {
               navigate(
-                `${basePath}/programs/${programId}?cohortId=${cohortId}`,
+                `${basePath}/syllabus?programId=${programId}&cohortId=${cohortId}`,
+                { replace: Boolean(importPreview) },
               )
               return
             }
 
             navigate(
-              `${basePath}/syllabus/${created.id}/editor${
-                autoImportAfterCreate ? "?import=1" : ""
-              }`,
+              `${basePath}/syllabus/${created.id}/edit`,
+              { replace: Boolean(importPreview) },
             )
           },
 
@@ -626,460 +458,136 @@ export default function SyllabusCreatePage() {
     )
   }
 
-  if (isInstructor) {
+  if ((isAdmin || isInstructor) && (!(programId > 0) || !(cohortId > 0))) {
     return (
-      <div className="mx-auto w-full max-w-[1280px] space-y-6 pb-10">
-        <section className="relative overflow-hidden rounded-2xl border border-[#d7e5e8] bg-white shadow-sm">
-          <div className="absolute inset-x-0 top-0 h-[3px] bg-gradient-to-r from-[#007d84] via-[#15949a] to-[#f0a72f]" />
-
-          <div className="flex flex-col gap-5 px-6 py-6 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-              <div className="flex items-center gap-2">
-                <GraduationCap className="size-5 text-[#007d84]" />
-
-                <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#708894]">
-                  Instructor / New Syllabus
-                </span>
-              </div>
-
-              <h1 className="mt-2 text-[28px] font-bold tracking-[-0.5px] text-[#17343d]">
-                Create Syllabus Draft
-              </h1>
-
-              <p className="mt-1 max-w-3xl text-sm leading-6 text-[#687f89]">
-                Choose one active teaching assignment, create a blank Draft or clone a previous syllabus for the same course, then complete CLOs, CLO–PLO mapping, teaching content, assessments, and reading materials in the Syllabus Editor.
-              </p>
-            </div>
-
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() =>
-                navigate(
-                  "/instructor/class-sections",
-                )
-              }
-            >
-              <ArrowLeft className="size-4" />
-              Back to Class Sections
+      <div className="mx-auto max-w-3xl rounded-2xl border border-amber-200 bg-amber-50 p-6 text-amber-900">
+        <div className="flex items-start gap-3">
+          <AlertTriangle className="mt-0.5 size-5 shrink-0" />
+          <div>
+            <h1 className="font-semibold">Cohort is required</h1>
+            <p className="mt-1 text-sm leading-6">Return to Syllabus Catalog and select a Cohort before importing or creating a syllabus. This prevents Major and Cohort from being saved as N/A.</p>
+            <Button type="button" size="sm" variant="outline" className="mt-4 bg-white" onClick={() => navigate(`${basePath}/syllabus`)}>
+              <ArrowLeft className="size-4" /> Back to Syllabus Catalog
             </Button>
           </div>
-        </section>
-
-        <section className="rounded-xl border border-[#cfe1e4] bg-[#f6fbfb] px-5 py-4 shadow-sm">
-          <div className="flex items-start gap-3">
-            <ShieldCheck className="mt-0.5 size-5 shrink-0 text-[#007d84]" />
-
-            <div>
-              <p className="font-semibold text-[#17343d]">
-                Assignment-controlled creation
-              </p>
-
-              <p className="mt-1 text-xs leading-5 text-slate-500">
-                Course, academic year, semester, section, and Instructor come from the teaching assignment and cannot be changed here. Curriculum Cohort is a separate concept and is not substituted with Academic Year.
-              </p>
-            </div>
-          </div>
-        </section>
-
-        {assignmentsLoading ? (
-          <Card className="border-slate-200 shadow-sm">
-            <CardContent className="flex h-48 items-center justify-center text-sm text-slate-500">
-              <LoaderCircle className="mr-2 size-5 animate-spin" />
-              Loading eligible teaching assignments...
-            </CardContent>
-          </Card>
-        ) : assignmentsError ? (
-          <Card className="border-rose-200 bg-rose-50/70 shadow-sm">
-            <CardContent className="p-6">
-              <div className="flex items-start gap-3 text-rose-800">
-                <AlertTriangle className="mt-0.5 size-5 shrink-0" />
-
-                <div>
-                  <p className="font-semibold">
-                    Unable to load teaching assignments
-                  </p>
-
-                  <p className="mt-1 text-sm">
-                    Confirm that this account is linked to an Instructor profile and that the assignment is active.
-                  </p>
-
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="mt-3 bg-white"
-                    onClick={() =>
-                      void refetchAssignments()
-                    }
-                  >
-                    Try Again
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ) : eligibleAssignments.length === 0 ? (
-          <Card className="border-amber-200 bg-amber-50/60 shadow-sm">
-            <CardContent className="p-6">
-              <div className="flex items-start gap-3">
-                <AlertTriangle className="mt-0.5 size-5 shrink-0 text-amber-700" />
-
-                <div>
-                  <p className="font-semibold text-amber-950">
-                    No assignment is ready for syllabus creation
-                  </p>
-
-                  <p className="mt-1 text-sm leading-6 text-amber-800">
-                    Every active assignment is already linked to a syllabus, or no active assignment is available. Use My Syllabuses to continue an existing Draft.
-                  </p>
-
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="bg-white"
-                      onClick={() =>
-                        navigate(
-                          "/instructor/syllabus",
-                        )
-                      }
-                    >
-                      My Syllabuses
-                    </Button>
-
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="bg-white"
-                      onClick={() =>
-                        navigate(
-                          "/instructor/class-sections",
-                        )
-                      }
-                    >
-                      Class Sections
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ) : (
-          <>
-            <Card className="border-slate-200 shadow-sm">
-              <CardHeader className="border-b border-slate-100">
-                <CardTitle className="flex items-center gap-2 text-base text-[#17343d]">
-                  <BookOpen className="size-5 text-[#007d84]" />
-                  1. Teaching Assignment
-                </CardTitle>
-
-                <p className="text-xs leading-5 text-slate-500">
-                  Select the exact active assignment for which the new syllabus will be created.
-                </p>
-              </CardHeader>
-
-              <CardContent className="space-y-5 p-6">
-                <Select
-                  value={
-                    effectiveAssignmentId
-                      ? String(
-                          effectiveAssignmentId,
-                        )
-                      : undefined
-                  }
-                  onValueChange={(
-                    value,
-                  ) => {
-                    setSelectedAssignmentId(
-                      Number(value),
-                    )
-                    setSelectedSourceId(
-                      null,
-                    )
-                    setStartMode(
-                      "BLANK",
-                    )
-                  }}
-                >
-                  <SelectTrigger className="h-11 bg-white">
-                    <SelectValue placeholder="Select teaching assignment" />
-                  </SelectTrigger>
-
-                  <SelectContent>
-                    {eligibleAssignments.map(
-                      (assignment) => (
-                        <SelectItem
-                          key={assignment.id}
-                          value={String(
-                            assignment.id,
-                          )}
-                        >
-                          {assignment.courseCode} — Semester {assignment.semester} — {assignment.academicYear} — Group {assignment.groupNumber}
-                        </SelectItem>
-                      ),
-                    )}
-                  </SelectContent>
-                </Select>
-
-                {selectedAssignment && (
-                  <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                    <ContextValue
-                      label="Course"
-                      value={`${selectedAssignment.courseCode} — ${selectedAssignment.courseName}`}
-                    />
-
-                    <ContextValue
-                      label="Academic Year"
-                      value={
-                        selectedAssignment
-                          .academicYear
-                      }
-                    />
-
-                    <ContextValue
-                      label="Semester"
-                      value={`Semester ${selectedAssignment.semester}`}
-                    />
-
-                    <ContextValue
-                      label="Class Section"
-                      value={`Group ${selectedAssignment.groupNumber} · ${sectionTypeLabel(selectedAssignment.sectionType)}`}
-                    />
-
-                    <ContextValue
-                      label="Instructor"
-                      value={
-                        selectedAssignment
-                          .instructorName
-                      }
-                    />
-
-                    <ContextValue
-                      label="Schedule / Room"
-                      value={
-                        [
-                          selectedAssignment
-                            .schedule,
-                          selectedAssignment
-                            .room,
-                        ]
-                          .filter(Boolean)
-                          .join(" · ")
-                        || "Not recorded"
-                      }
-                    />
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card className="border-slate-200 shadow-sm">
-              <CardHeader className="border-b border-slate-100">
-                <CardTitle className="flex items-center gap-2 text-base text-[#17343d]">
-                  <FilePlus2 className="size-5 text-[#007d84]" />
-                  2. Start From
-                </CardTitle>
-
-                <p className="text-xs leading-5 text-slate-500">
-                  A blank Draft starts with assignment context only. Clone copies the previous syllabus content into this new assignment using the protected clone workflow.
-                </p>
-              </CardHeader>
-
-              <CardContent className="space-y-5 p-6">
-                <div className="grid gap-3 md:grid-cols-2">
-                  <button
-                    type="button"
-                    className={
-                      startMode
-                        === "BLANK"
-                        ? "rounded-xl border-2 border-[#007d84] bg-[#f3fbfb] p-4 text-left"
-                        : "rounded-xl border border-slate-200 bg-white p-4 text-left hover:border-slate-300"
-                    }
-                    onClick={() => {
-                      setStartMode(
-                        "BLANK",
-                      )
-                      setSelectedSourceId(
-                        null,
-                      )
-                    }}
-                  >
-                    <div className="flex items-start gap-3">
-                      <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-[#eaf7f7] text-[#007d84]">
-                        <FilePlus2 className="size-4" />
-                      </span>
-
-                      <div>
-                        <p className="font-semibold text-slate-900">
-                          Blank syllabus
-                        </p>
-
-                        <p className="mt-1 text-xs leading-5 text-slate-500">
-                          Create Draft v1.0 and complete the syllabus in the structured editor.
-                        </p>
-                      </div>
-                    </div>
-                  </button>
-
-                  <button
-                    type="button"
-                    className={
-                      startMode
-                        === "CLONE"
-                        ? "rounded-xl border-2 border-[#007d84] bg-[#f3fbfb] p-4 text-left"
-                        : "rounded-xl border border-slate-200 bg-white p-4 text-left hover:border-slate-300"
-                    }
-                    onClick={() =>
-                      setStartMode(
-                        "CLONE",
-                      )
-                    }
-                  >
-                    <div className="flex items-start gap-3">
-                      <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-700">
-                        <Copy className="size-4" />
-                      </span>
-
-                      <div>
-                        <p className="font-semibold text-slate-900">
-                          Clone previous syllabus
-                        </p>
-
-                        <p className="mt-1 text-xs leading-5 text-slate-500">
-                          Reuse a previous version of the same course for this target assignment.
-                        </p>
-                      </div>
-                    </div>
-                  </button>
-                </div>
-
-                {startMode
-                  === "CLONE" && (
-                  <div className="rounded-xl border border-blue-100 bg-blue-50/40 p-4">
-                    <label className="mb-2 block text-[10px] font-bold uppercase tracking-[0.1em] text-slate-500">
-                      Previous syllabus version
-                    </label>
-
-                    {syllabusesLoading ? (
-                      <div className="flex h-10 items-center text-sm text-slate-500">
-                        <LoaderCircle className="mr-2 size-4 animate-spin" />
-                        Loading available versions...
-                      </div>
-                    ) : cloneSources.length === 0 ? (
-                      <p className="text-sm leading-6 text-slate-500">
-                        No previous syllabus version for this course is available to clone. Choose Blank syllabus.
-                      </p>
-                    ) : (
-                      <Select
-                        value={
-                          selectedSourceId
-                            ? String(
-                                selectedSourceId,
-                              )
-                            : undefined
-                        }
-                        onValueChange={(
-                          value,
-                        ) =>
-                          setSelectedSourceId(
-                            Number(value),
-                          )
-                        }
-                      >
-                        <SelectTrigger className="bg-white">
-                          <SelectValue placeholder="Select a previous syllabus version" />
-                        </SelectTrigger>
-
-                        <SelectContent>
-                          {cloneSources.map(
-                            (syllabus) => (
-                              <SelectItem
-                                key={syllabus.id}
-                                value={String(
-                                  syllabus.id,
-                                )}
-                              >
-                                {syllabus.versionLabel || `v${syllabus.versionNumber}`} · {syllabus.academicYear} · {syllabus.semester || "No semester"} · {normalizeStatus(syllabus.status)}
-                              </SelectItem>
-                            ),
-                          )}
-                        </SelectContent>
-                      </Select>
-                    )}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <p className="font-semibold text-[#17343d]">
-                    Next step: Structured Syllabus Editor
-                  </p>
-
-                  <p className="mt-1 text-xs leading-5 text-slate-500">
-                    The Draft editor contains General Information, CLOs, CLO–PLO mapping with I/D/A contribution levels, teaching content, assessment, reading list, PDF preview, validation, and submission.
-                  </p>
-                </div>
-
-                <Button
-                  type="button"
-                  size="lg"
-                  className="shrink-0 bg-[#007d84] text-white hover:bg-[#006d73]"
-                  disabled={
-                    !selectedAssignment
-                    || createMutation
-                      .isPending
-                    || cloneMutation
-                      .isPending
-                    || (
-                      startMode
-                        === "CLONE"
-                      && !selectedCloneSource
-                    )
-                  }
-                  onClick={
-                    createInstructorDraft
-                  }
-                >
-                  {createMutation
-                    .isPending
-                    || cloneMutation
-                      .isPending ? (
-                    <>
-                      <LoaderCircle className="size-4 animate-spin" />
-                      Creating Draft...
-                    </>
-                  ) : startMode
-                    === "CLONE" ? (
-                    <>
-                      <Copy className="size-4" />
-                      Clone & Open Editor
-                    </>
-                  ) : (
-                    <>
-                      <FilePlus2 className="size-4" />
-                      Create Draft & Open Editor
-                    </>
-                  )}
-                </Button>
-              </div>
-            </section>
-          </>
-        )}
+        </div>
       </div>
     )
   }
+
+  if ((isAdmin || isInstructor) && hasRequestedCourseId && requestedCourseContextLoading) {
+    return (
+      <div className="mx-auto flex min-h-72 max-w-3xl items-center justify-center rounded-2xl border border-slate-200 bg-white p-8 text-sm text-slate-600 shadow-sm">
+        <LoaderCircle className="mr-2 size-5 animate-spin text-[#007d84]" />
+        Loading the selected course and its latest syllabus version...
+      </div>
+    )
+  }
+
+  if ((isAdmin || isInstructor) && hasRequestedCourseId && (requestedCourseContextError || !requestedCourseContext)) {
+    return (
+      <div className="mx-auto max-w-3xl rounded-2xl border border-rose-200 bg-rose-50 p-6 text-rose-800">
+        <div className="flex items-start gap-3">
+          <AlertTriangle className="mt-0.5 size-5 shrink-0" />
+          <div>
+            <h1 className="font-semibold">Cannot load the selected course</h1>
+            <p className="mt-1 text-sm leading-6">The form was not opened, so imported data cannot be attached to the wrong course or version.</p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Button type="button" size="sm" onClick={() => refetchRequestedCourseContext()}>Try again</Button>
+              <Button type="button" size="sm" variant="outline" className="bg-white" onClick={() => navigate(-1)}>Back</Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if ((isAdmin || isInstructor) && importDraftId && !importPreview) {
+    return (
+      <div className="mx-auto max-w-3xl rounded-2xl border border-amber-200 bg-amber-50 p-6 text-amber-900">
+        <div className="flex items-start gap-3">
+          <AlertTriangle className="mt-0.5 size-5 shrink-0" />
+          <div>
+            <h1 className="font-semibold">Imported PDF data is unavailable</h1>
+            <p className="mt-1 text-sm leading-6">The preview expired, is incomplete, or belongs to another course. Return to the catalog and import the PDF again; no syllabus has been saved.</p>
+            <Button type="button" size="sm" variant="outline" className="mt-4 bg-white" onClick={() => navigate(-1)}>
+              <ArrowLeft className="size-4" /> Back to import
+            </Button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  const importedCourseMismatch = !previewOnly && Boolean(
+    importPreview
+    && requestedCourseContext
+    && (() => {
+      const sourceCode = normalizeCourseIdentity(importPreview.data.sourceCourseCode)
+      const targetCode = normalizeCourseIdentity(requestedCourseContext.course.courseCode)
+      if (sourceCode === targetCode) return false
+      const aliasMatches = sourceCode.replace(/IU$/, "") === targetCode.replace(/IU$/, "")
+      const sourceName = normalizeCourseName(importPreview.data.sourceCourseName)
+      const targetName = normalizeCourseName(requestedCourseContext.course.name)
+      return !aliasMatches || Boolean(sourceName && targetName && sourceName !== targetName)
+    })()
+  )
+
+  if (importedCourseMismatch) {
+    return (
+      <div className="mx-auto max-w-3xl rounded-2xl border border-rose-200 bg-rose-50 p-6 text-rose-800">
+        <div className="flex items-start gap-3">
+          <AlertTriangle className="mt-0.5 size-5 shrink-0" />
+          <div>
+            <h1 className="font-semibold">The imported PDF belongs to another course</h1>
+            <p className="mt-1 text-sm leading-6">PDF course {importPreview?.data.sourceCourseCode} does not match selected course {requestedCourseContext?.course.courseCode}. Nothing has been saved.</p>
+            <Button type="button" size="sm" variant="outline" className="mt-4 bg-white" onClick={() => navigate(-1)}>
+              <ArrowLeft className="size-4" /> Choose the matching course
+            </Button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  const automaticallyResolvedCourseProgramId = courseProgramId > 0
+    ? courseProgramId
+    : scopedCoursePrograms.find((item) => item.courseId === requestedCourseId)?.id
+      ?? requestedCourseContext?.coursePrograms?.find((item) => item.cohortId === cohortId)?.id
+      ?? (requestedCourseContext?.coursePrograms?.length === 1
+        ? requestedCourseContext.coursePrograms[0].id
+        : undefined)
 
   let initialData:
     CreateSyllabusRequest
     | undefined
 
-  if (courseProgram && !sourceSyllabus) {
+  if (Number.isFinite(requestedCourseId) && requestedCourseId > 0) {
+    const selectedCourseProgramId = automaticallyResolvedCourseProgramId
+    const nextVersionNumber = (requestedCourseContext?.latestSyllabus?.versionNumber ?? 0) + 1
+
+    initialData = importPreview
+      ? buildImportedSyllabusInitialData(importPreview, {
+          courseId: requestedCourseId,
+          courseProgramId: selectedCourseProgramId,
+          nextVersionNumber,
+        })
+      : {
+      courseId: requestedCourseId,
+      courseProgramId: selectedCourseProgramId,
+      versionNumber: nextVersionNumber,
+      versionLabel: `v${nextVersionNumber}.0`,
+      academicYear: "",
+      semester: "",
+      changeSummary: "Initial Draft",
+      notes: "",
+      clos: [],
+      topics: [],
+      assessments: [],
+    }
+  }
+
+  if (!initialData && courseProgram && !sourceSyllabus) {
     initialData = {
       courseProgramId: courseProgram.id,
       courseId: courseProgram.courseId,
@@ -1092,6 +600,7 @@ export default function SyllabusCreatePage() {
       courseTypes: courseProgram.courseTypeName
         ? JSON.stringify([courseProgram.courseTypeName])
         : JSON.stringify([]),
+      major: courseProgram.majorName || courseProgram.majorCode || "",
       changeSummary: "Initial Draft",
       notes: "",
       clos: [],
@@ -1101,10 +610,18 @@ export default function SyllabusCreatePage() {
   }
 
   if (sourceSyllabus) {
+    const nextVersion = (requestedCourseContext?.latestSyllabus?.versionNumber ?? sourceSyllabus.versionNumber ?? 0) + 1
     initialData = {
-      courseId: sourceSyllabus.courseId,
-      versionNumber: 1,
-      versionLabel: "v1.0",
+      courseProgramId: courseProgramId > 0
+        ? courseProgramId
+        : requestedCourseContext?.coursePrograms?.length === 1
+          ? requestedCourseContext.coursePrograms[0].id
+          : undefined,
+      courseId: Number.isFinite(requestedCourseId) && requestedCourseId > 0
+        ? requestedCourseId
+        : sourceSyllabus.courseId,
+      versionNumber: nextVersion,
+      versionLabel: `v${nextVersion}.0`,
       academicYear: sourceSyllabus.academicYear ?? "",
       semester: sourceSyllabus.semester ?? "",
       courseDesignation: sourceSyllabus.courseDesignation ?? "",
@@ -1119,7 +636,6 @@ export default function SyllabusCreatePage() {
       objectives: sourceSyllabus.objectives ?? "",
       examForms: sourceSyllabus.examForms ?? "",
       examRequirements: sourceSyllabus.examRequirements ?? "",
-      rubrics: sourceSyllabus.rubrics ?? "",
       major: sourceSyllabus.major ?? "",
       changeSummary: `Imported from ${sourceSyllabus.versionLabel || `v${sourceSyllabus.versionNumber}`}`,
       notes: sourceSyllabus.notes ?? "",
@@ -1136,15 +652,15 @@ export default function SyllabusCreatePage() {
         <div className="flex flex-col gap-5 px-6 py-6 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#708894]">
-              Administrator / New Syllabus
+              New Syllabus
             </span>
 
             <h1 className="mt-2 text-[28px] font-bold tracking-[-0.5px] text-[#17343d]">
-              Create Syllabus Draft
+              Create Full Syllabus Draft
             </h1>
 
             <p className="mt-1 max-w-3xl text-sm leading-6 text-[#687f89]">
-              Select a course, let the system prefill data from the latest syllabus when available, create the Draft, then import a PDF/Word/Excel file to automatically populate the structured syllabus. You can review and edit everything before submission.
+              Complete the standard CS syllabus below: General Information, CLOs, CLO-PLO Matrix, Planned Learning Activities, Assessment Plan, and Reading List. Imported data remains editable before saving.
             </p>
           </div>
 
@@ -1160,29 +676,18 @@ export default function SyllabusCreatePage() {
               Back
             </Button>
 
-            {autoImportAfterCreate && (
-              <Button
-                type="submit"
-                form="new-syllabus-form"
-                className="bg-[#007d84] text-white hover:bg-[#006d73]"
-                disabled={createMutation.isPending}
-              >
-                <FilePlus2 className="size-4" />
-                Create Draft & Import File
-              </Button>
-            )}
           </div>
         </div>
       </section>
 
-      <Card className="border-slate-200 shadow-sm">
+      {!importPreview && <Card className="border-slate-200 shadow-sm">
         <CardHeader className="border-b border-slate-100">
           <CardTitle className="text-base text-[#17343d]">
-            Start from existing syllabus (optional)
+            Start from an existing syllabus (optional)
           </CardTitle>
 
           <p className="text-xs leading-5 text-slate-500">
-            Choose an existing syllabus only when you want to clone its metadata and structured content. Otherwise select a course below and the system will automatically prefill the latest available syllabus template.
+            Choose an existing syllabus only when you want to reuse its content. Saving always creates a separate server-controlled syllabus version and keeps previous versions unchanged.
           </p>
         </CardHeader>
 
@@ -1214,7 +719,9 @@ export default function SyllabusCreatePage() {
                 Start without source metadata
               </SelectItem>
 
-              {allSyllabuses.map(
+              {allSyllabuses
+                .filter((syllabus) => !Number.isFinite(requestedCourseId) || requestedCourseId <= 0 || syllabus.courseId === requestedCourseId)
+                .map(
                 (syllabus) => (
                   <SelectItem
                     key={syllabus.id}
@@ -1236,54 +743,66 @@ export default function SyllabusCreatePage() {
             </p>
           )}
         </CardContent>
-      </Card>
+      </Card>}
+
+      {previewOnly && (
+        <Alert className="border-sky-200 bg-sky-50 text-sky-900">
+          <AlertTriangle className="size-4" />
+          <AlertTitle>Template preview only</AlertTitle>
+          <AlertDescription>
+            Course {importPreview?.data.sourceCourseCode || "from this template"} is not in the selected curriculum. A temporary course context is used only to display the imported form; saving is disabled.
+          </AlertDescription>
+        </Alert>
+      )}
 
       <SyllabusForm
         key={
-          sourceSyllabus
+          importPreview
+            ? `import-${importDraftId || requestedCourseId}`
+            : sourceSyllabus
             ? `source-${sourceSyllabus.id}`
-            : `program-${courseProgramId || "none"}`
+            : requestedCourseId > 0
+              ? `course-${requestedCourseId}`
+              : `program-${courseProgramId || "none"}`
         }
         initialData={
           initialData
         }
+        importedContentTopics={importPreview?.data.topics}
+        readOnly={previewOnly}
+        previewCourseIdentity={previewOnly ? {
+          code: importPreview?.data.sourceCourseCode,
+          name: importPreview?.data.sourceCourseName,
+        } : undefined}
         onSubmit={
           handleAdminCreate
         }
         formId="new-syllabus-form"
-        allowCreateCourse={isAdmin}
-        submitLabel={
-          autoImportAfterCreate
-            ? "Create Draft & Import File"
-            : "Create Syllabus Draft"
-        }
+        allowCreateCourse={canManageCourseMaster}
+        autoPrefillExisting={!(Number.isFinite(requestedCourseId) && requestedCourseId > 0)}
+        submitLabel="Lưu syllabus"
         loading={
           createMutation.isPending
         }
         lockProgramContext={
           courseProgramId > 0
+          || (Number.isFinite(requestedCourseId) && requestedCourseId > 0)
         }
+        curriculumContext={courseProgram?.cohortName ? {
+          program: `${courseProgram.programCode} — ${courseProgram.programName}`,
+          major: courseProgram.majorName || courseProgram.majorCode || "N/A",
+          cohort: courseProgram.cohortName,
+        } : scopedCoursePrograms[0]?.cohortName ? {
+          program: `${scopedCoursePrograms[0].programCode} — ${scopedCoursePrograms[0].programName}`,
+          major: scopedCoursePrograms[0].majorName || scopedCoursePrograms[0].majorCode || "N/A",
+          cohort: scopedCoursePrograms[0].cohortName,
+        } : undefined}
+        allowedCourseIds={isInstructor
+          ? Array.from(new Set(eligibleAssignments.map((assignment) => assignment.courseId)))
+          : programId > 0 && cohortId > 0
+            ? Array.from(new Set(scopedCoursePrograms.map((item) => item.courseId)))
+            : undefined}
       />
-    </div>
-  )
-}
-
-function ContextValue({
-  label,
-  value,
-}: {
-  label: string
-  value: string
-}) {
-  return (
-    <div className="rounded-xl border border-slate-100 bg-slate-50/70 px-4 py-3">
-      <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-slate-500">
-        {label}
-      </p>
-
-      <p className="mt-1 text-sm font-semibold leading-5 text-slate-800">
-        {value}
-      </p>
     </div>
   )
 }

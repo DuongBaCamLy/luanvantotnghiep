@@ -62,7 +62,7 @@ export type AssessmentCloMappingDiff = {
   changes?: Record<string, FieldDiff>
 }
 
-export type ReadingListDiff = {
+export type readingsDiff = {
   bookId?: number
   title?: string
   author?: string
@@ -90,5 +90,5 @@ export type SyllabusDiffResponse = {
   topicCloDiff?: ListDiff<TopicCloMappingDiff>
   assessmentDiff?: ListDiff<AssessmentDiff>
   assessmentCloDiff?: ListDiff<AssessmentCloMappingDiff>
-  readingListDiff?: ListDiff<ReadingListDiff>
+  readingsDiff?: ListDiff<readingsDiff>
 }

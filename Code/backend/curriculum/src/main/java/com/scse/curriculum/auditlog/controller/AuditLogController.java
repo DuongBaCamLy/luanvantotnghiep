@@ -20,7 +20,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/audit-logs")
 @RequiredArgsConstructor
-@PreAuthorize("hasRole('ADMIN')")
+@PreAuthorize("@phaseRoleGuard.isAdmin(authentication)")
 public class AuditLogController {
 
     private final AuditLogService service;

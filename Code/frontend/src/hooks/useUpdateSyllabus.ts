@@ -39,6 +39,10 @@ export const useUpdateSyllabus =
       queryClient.invalidateQueries({
         queryKey: ["syllabuses-course"],
       })
+
+      queryClient.invalidateQueries({
+        queryKey: ["clo-plo-heatmap"],
+      })
       },
     });
   };

@@ -504,7 +504,7 @@ export default function InstructorAssignmentsPage() {
 
               <div className="min-w-0 flex-1">
                 <p className="font-semibold text-slate-900">
-                  Unable to load Class Sections
+                  Unable to load Teaching Assignments
                 </p>
 
                 <p className="mt-1 text-sm leading-6 text-slate-600">
@@ -551,7 +551,7 @@ export default function InstructorAssignmentsPage() {
             </div>
 
             <h1 className="mt-2 text-[28px] font-bold tracking-[-0.5px] text-[#17343d]">
-              My Class Sections
+              My Teaching Assignments
             </h1>
 
             <p className="mt-1 max-w-4xl text-sm leading-6 text-[#687f89]">
@@ -877,11 +877,11 @@ export default function InstructorAssignmentsPage() {
       <Card className="overflow-hidden border border-slate-200 bg-white shadow-sm">
         <CardHeader className="border-b border-slate-100 pb-4">
           <CardTitle className="text-base font-bold text-[#17343d]">
-            Active Class Sections
+            Active Teaching Assignments
           </CardTitle>
 
           <p className="text-xs leading-5 text-slate-500">
-            Use the syllabus action only for the assignment shown in the row. The backend verifies that the selected Class Section belongs to this Instructor before syllabus creation or modification.
+            Use the syllabus action only for the assignment shown in the row. The backend verifies that the selected assignment belongs to this Instructor and matches its Program, Cohort, and Course.
           </p>
         </CardHeader>
 
@@ -1035,6 +1035,11 @@ function AssignmentRow({
 
           <p className="mt-1 max-w-[260px] font-semibold text-slate-800">
             {item.courseName}
+          </p>
+          <p className="mt-1 text-xs text-slate-500">
+            {item.programCode && item.cohortName
+              ? `${item.programCode} · ${item.cohortName}`
+              : "Curriculum context missing — contact the Administrator"}
           </p>
         </div>
       </TableCell>
@@ -1282,11 +1287,15 @@ function getSyllabusAction(
     item.readyForSyllabusCreation
     && item.syllabusId === null
   ) {
+    const params = new URLSearchParams()
+    if (item.programId) params.set("programId", String(item.programId))
+    if (item.cohortId) params.set("cohortId", String(item.cohortId))
+    params.set("courseId", String(item.courseId))
+    params.set("assignmentId", String(item.id))
+
     return {
       label: "Create Syllabus",
-      path:
-        `${base}/create`
-        + `?classSectionId=${item.id}`,
+      path: `${base}?${params.toString()}`,
       primary: true,
     }
   }
@@ -1306,7 +1315,7 @@ function getSyllabusAction(
           ? "Continue Draft"
           : "Revise Syllabus",
       path:
-        `${base}/${item.syllabusId}/editor`,
+        `${base}/${item.syllabusId}/edit`,
       primary: true,
     }
   }

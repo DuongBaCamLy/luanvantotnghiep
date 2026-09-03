@@ -13,6 +13,8 @@ export interface Topic {
   topicType?: TopicType | string
   teachingMethod?: string
   learningActivity?: string
+  assessments?: string
+  resources?: string
   notes?: string
 }
 
@@ -28,6 +30,8 @@ export interface CreateTopicRequest {
   topicType?: string
   teachingMethod?: string
   learningActivity?: string
+  assessments?: string
+  resources?: string
   notes?: string
 }
 

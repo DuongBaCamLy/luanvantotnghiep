@@ -18,6 +18,9 @@ public class UserAccountResponse {
     private String email;
     private UserRole role;
     private Integer instructorId;
+    private Integer managedMajorId;
+    private String managedMajorCode;
+    private String managedMajorName;
     private Boolean isActive;
     private LocalDateTime lastLogin;
     private LocalDateTime createdAt;
@@ -29,6 +32,9 @@ public class UserAccountResponse {
                 .email(u.getEmail())
                 .role(u.getRole())
                 .instructorId(u.getInstructorId())
+                .managedMajorId(u.getManagedMajor() == null ? null : u.getManagedMajor().getId())
+                .managedMajorCode(u.getManagedMajor() == null ? null : u.getManagedMajor().getCode())
+                .managedMajorName(u.getManagedMajor() == null ? null : u.getManagedMajor().getName())
                 .isActive(u.getIsActive())
                 .lastLogin(u.getLastLogin())
                 .createdAt(u.getCreatedAt())

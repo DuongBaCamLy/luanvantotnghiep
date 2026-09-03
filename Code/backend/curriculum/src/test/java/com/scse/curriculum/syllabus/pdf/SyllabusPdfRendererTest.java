@@ -1,8 +1,15 @@
 package com.scse.curriculum.syllabus.pdf;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lowagie.text.pdf.PdfReader;
+import com.lowagie.text.pdf.parser.PdfTextExtractor;
+import org.apache.pdfbox.Loader;
+import org.apache.pdfbox.rendering.PDFRenderer;
 import org.junit.jupiter.api.Test;
 
+import javax.imageio.ImageIO;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -16,6 +23,7 @@ class SyllabusPdfRendererTest {
         SyllabusPdfFontProvider fonts = new SyllabusPdfFontProvider("", "");
         SyllabusPdfRenderer renderer = new SyllabusPdfRenderer(
                 fonts,
+                new ObjectMapper(),
                 "VIETNAM NATIONAL UNIVERSITY HCMC - INTERNATIONAL UNIVERSITY",
                 "SCHOOL OF COMPUTER SCIENCE AND ENGINEERING");
 
@@ -27,7 +35,35 @@ class SyllabusPdfRendererTest {
 
         PdfReader reader = new PdfReader(bytes);
         assertTrue(reader.getNumberOfPages() >= 2);
+        String allText = java.util.stream.IntStream.rangeClosed(1, reader.getNumberOfPages())
+                .mapToObj(page -> {
+                    try {
+                        return new PdfTextExtractor(reader).getTextFromPage(page);
+                    } catch (Exception exception) {
+                        throw new IllegalStateException(exception);
+                    }
+                })
+                .reduce("", String::concat);
+        assertTrue(allText.contains("1. General information"));
+        assertTrue(allText.contains("Course learning outcomes"));
+        assertTrue(allText.contains("3. Planned learning activities and teaching methods"));
+        assertTrue(allText.contains("Assessment Type"));
+        assertTrue(allText.contains("Rubrics (optional)"));
         reader.close();
+
+        Path qaDirectory = Path.of("target", "pdf-qa");
+        Files.createDirectories(qaDirectory);
+        Files.write(qaDirectory.resolve("syllabus-reference-layout.pdf"), bytes);
+        try (var document = Loader.loadPDF(bytes)) {
+            PDFRenderer pdfRenderer = new PDFRenderer(document);
+            int previewPages = Math.min(3, document.getNumberOfPages());
+            for (int page = 0; page < previewPages; page++) {
+                ImageIO.write(
+                        pdfRenderer.renderImageWithDPI(page, 120),
+                        "png",
+                        qaDirectory.resolve("page-" + (page + 1) + ".png").toFile());
+            }
+        }
     }
 
 
@@ -36,6 +72,7 @@ class SyllabusPdfRendererTest {
         SyllabusPdfFontProvider fonts = new SyllabusPdfFontProvider("", "");
         SyllabusPdfRenderer renderer = new SyllabusPdfRenderer(
                 fonts,
+                new ObjectMapper(),
                 "VIETNAM NATIONAL UNIVERSITY HCMC - INTERNATIONAL UNIVERSITY",
                 "SCHOOL OF COMPUTER SCIENCE AND ENGINEERING");
 

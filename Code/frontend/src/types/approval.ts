@@ -14,6 +14,13 @@ export interface ApprovalRequestItem {
   syllabusId: number
   courseCode: string
   courseName: string
+  programCode: string | null
+  programName: string | null
+  cohortName: string | null
+  semester: string | null
+  instructorUsername: string | null
+  departmentCode: string | null
+  departmentName: string | null
   versionNumber: number
   versionLabel: string
   syllabusStatus: string

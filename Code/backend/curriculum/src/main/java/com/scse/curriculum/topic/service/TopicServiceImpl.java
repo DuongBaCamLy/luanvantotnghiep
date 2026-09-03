@@ -43,12 +43,14 @@ public class TopicServiceImpl implements TopicService {
                 .orderInWeek(request.getOrderInWeek())
                 .name(request.getName())
                 .nameVn(request.getNameVn())
-                .teachingHours(request.getTeachingHours())
-                .labHours(request.getLabHours())
-                .selfStudyHours(request.getSelfStudyHours())
+                .teachingHours(hoursOrDefault(request.getTeachingHours(), 3))
+                .labHours(hoursOrDefault(request.getLabHours(), 0))
+                .selfStudyHours(hoursOrDefault(request.getSelfStudyHours(), 6))
                 .topicType(request.getTopicType())
                 .teachingMethod(request.getTeachingMethod())
                 .learningActivity(request.getLearningActivity())
+                .assessments(request.getAssessments())
+                .resources(request.getResources())
                 .notes(request.getNotes())
                 .build();
 
@@ -122,12 +124,14 @@ public class TopicServiceImpl implements TopicService {
         topic.setOrderInWeek(request.getOrderInWeek());
         topic.setName(request.getName());
         topic.setNameVn(request.getNameVn());
-        topic.setTeachingHours(request.getTeachingHours());
-        topic.setLabHours(request.getLabHours());
-        topic.setSelfStudyHours(request.getSelfStudyHours());
+        topic.setTeachingHours(hoursOrDefault(request.getTeachingHours(), 3));
+        topic.setLabHours(hoursOrDefault(request.getLabHours(), 0));
+        topic.setSelfStudyHours(hoursOrDefault(request.getSelfStudyHours(), 6));
         topic.setTopicType(request.getTopicType());
         topic.setTeachingMethod(request.getTeachingMethod());
         topic.setLearningActivity(request.getLearningActivity());
+        topic.setAssessments(request.getAssessments());
+        topic.setResources(request.getResources());
         topic.setNotes(request.getNotes());
 
         return mapToResponse(
@@ -165,7 +169,13 @@ public class TopicServiceImpl implements TopicService {
                 .topicType(topic.getTopicType())
                 .teachingMethod(topic.getTeachingMethod())
                 .learningActivity(topic.getLearningActivity())
+                .assessments(topic.getAssessments())
+                .resources(topic.getResources())
                 .notes(topic.getNotes())
                 .build();
+    }
+
+    private int hoursOrDefault(Integer value, int defaultValue) {
+        return value != null ? value : defaultValue;
     }
 }

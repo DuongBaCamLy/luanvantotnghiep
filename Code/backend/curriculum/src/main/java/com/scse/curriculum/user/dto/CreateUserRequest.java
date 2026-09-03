@@ -39,4 +39,5 @@ public class CreateUserRequest {
     private UserRole role;
 
     private Integer instructorId;
+    private Integer managedMajorId;
 }

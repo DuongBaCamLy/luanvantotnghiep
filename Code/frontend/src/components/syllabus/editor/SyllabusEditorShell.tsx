@@ -1,13 +1,12 @@
 import {
   lazy,
   Suspense,
-  useEffect,
   useMemo,
   useState,
 } from "react"
 
 import axios from "axios"
-import { useNavigate, useSearchParams } from "react-router-dom"
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -35,6 +34,7 @@ import type {
 
 import { useSubmitSyllabus } from "@/hooks/useSubmitSyllabus"
 import { useAuthStore } from "@/store/authStore"
+import { saveSyllabusImportDraft } from "@/lib/syllabusImportDraft"
 import { useValidateSyllabusSubmission } from "@/hooks/useValidateSyllabusSubmission"
 
 import SubmissionValidationDialog from "@/components/syllabus/SubmissionValidationDialog"
@@ -61,9 +61,11 @@ const Section6Assessment = lazy(
   () => import("./tabs/Section6Assessment"),
 )
 
-const Section7ReadingList = lazy(
-  () => import("./tabs/Section7ReadingList"),
-)
+const Section7readings = lazy(
+
+    () => import("./tabs/Section7ReadingList")
+
+);
 
 interface TabDefinition {
   id: number
@@ -123,7 +125,7 @@ const TABS: TabDefinition[] = [
     icon: LibraryBig,
   },
   {
-    id: 8,
+    id: 9,
     label: "Review & Submit",
     shortLabel: "Review",
     description:
@@ -244,9 +246,10 @@ export default function SyllabusEditorShell({
   readOnly = false,
 }: Props) {
   const navigate = useNavigate()
+  const location = useLocation()
   const [searchParams] = useSearchParams()
   const currentUser = useAuthStore((state) => state.user)
-  const isAdmin = String(currentUser?.role ?? "").replace(/^ROLE_/i, "").toUpperCase() === "ADMIN"
+  const isAdmin = Boolean(currentUser) && currentUser?.role !== "INSTRUCTOR"
 
   const [activeTab, setActiveTab] =
     useState<number>(1)
@@ -272,7 +275,12 @@ export default function SyllabusEditorShell({
   const [
     importOpen,
     setImportOpen,
-  ] = useState(false)
+  ] = useState(() =>
+    searchParams.get("import") === "1"
+    && isAdmin
+    && !readOnly
+    && normalizeStatus(syllabus.status) === "DRAFT",
+  )
 
   const submitMutation =
     useSubmitSyllabus()
@@ -293,12 +301,6 @@ export default function SyllabusEditorShell({
 
   const canEdit =
     !effectiveReadOnly
-
-  useEffect(() => {
-    if (searchParams.get("import") === "1" && canEdit) {
-      setImportOpen(true)
-    }
-  }, [searchParams, canEdit])
 
   const canSubmit =
     normalizedStatus === "DRAFT"
@@ -453,13 +455,13 @@ export default function SyllabusEditorShell({
 
       case 7:
         return (
-          <Section7ReadingList
+          <Section7readings
             syllabusId={syllabus.id}
             readOnly={effectiveReadOnly}
           />
         )
 
-      case 8:
+      case 9:
         return (
           <ReviewAndSubmitSection
             syllabus={syllabus}
@@ -570,7 +572,7 @@ export default function SyllabusEditorShell({
                 Preview PDF
               </Button>
 
-              {canEdit && (
+              {canEdit && isAdmin && (
                 <Button
                   type="button"
                   variant="outline"
@@ -581,7 +583,7 @@ export default function SyllabusEditorShell({
                   className="gap-1.5 border-slate-300 bg-white"
                 >
                   <Upload className="size-4" />
-                  Import Word/Excel
+                  Add Template
                 </Button>
               )}
 
@@ -735,14 +737,27 @@ export default function SyllabusEditorShell({
       />
 
       <ImportSyllabusDialog
-        syllabusId={syllabus.id}
         open={importOpen}
         onClose={() =>
           setImportOpen(false)
         }
-        onImported={() =>
-          window.location.reload()
-        }
+        expectedCourseCode={syllabus.courseCode}
+        expectedCourseName={syllabus.courseName}
+        onPreviewConfirmed={(importPreview) => {
+          const importDraftId = saveSyllabusImportDraft(importPreview, syllabus.courseId)
+          setImportOpen(false)
+          const workspaceRoot = location.pathname.startsWith("/instructor/")
+            ? "/instructor"
+            : location.pathname.startsWith("/dean/")
+              ? "/dean"
+              : location.pathname.startsWith("/dept-head/")
+                ? "/dept-head"
+                : "/admin"
+          navigate(
+            `${workspaceRoot}/syllabus/create?courseId=${syllabus.courseId}&importDraft=${encodeURIComponent(importDraftId)}`,
+            { state: { importPreview, targetCourseId: syllabus.courseId } },
+          )
+        }}
       />
     </div>
   )

@@ -1,10 +1,10 @@
 import { api } from "./axios"
 
 export interface CloPloMatrixExportScope {
-  cohortId: number
-  academicYear: string
-  semester: string
-  courseTypeId?: number
+  cohortId?: number
+  search?: string
+  semester?: string
+  status?: string
 }
 
 export interface SyllabusListExportScope {

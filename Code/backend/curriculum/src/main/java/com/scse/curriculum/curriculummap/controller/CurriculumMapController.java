@@ -22,11 +22,15 @@ public class CurriculumMapController {
     @GetMapping
 public CurriculumMapResponse generate(
         @RequestParam Integer programId,
-        @RequestParam(required = false) Integer cohortId
+        @RequestParam(required = false) Integer cohortId,
+        @RequestParam(required = false) String semester,
+        @RequestParam(required = false) String status
 ) {
     return curriculumMapService.generate(
             programId,
-            cohortId
+            cohortId,
+            semester,
+            status
     );
 }
 }

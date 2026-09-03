@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import com.scse.curriculum.major.entity.Major;
 
 @Entity
 @Table(name = "user_account")
@@ -35,6 +36,10 @@ public class UserAccount {
 
     @Column(name = "instructor_id")
     private Integer instructorId;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "managed_major_id")
+    private Major managedMajor;
 
     @Column(name = "is_active")
     private Boolean isActive;

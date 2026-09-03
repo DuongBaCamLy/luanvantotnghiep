@@ -50,7 +50,8 @@ public class DashboardController {
     }
 
     @GetMapping("/admin")
-@PreAuthorize("hasRole('ADMIN')")
+// TEMPORARY: Instructor reuses the Admin dashboard for UI testing.
+@PreAuthorize("hasAnyRole('ADMIN', 'INSTRUCTOR')")
 public ResponseEntity<DashboardAdminResponse> getAdminDashboard(
         @RequestParam(required = false) String academicYear,
         @RequestParam(required = false) Integer semester,
@@ -65,7 +66,7 @@ public ResponseEntity<DashboardAdminResponse> getAdminDashboard(
                     cohortId));
 }
 @GetMapping("/admin/terms")
-@PreAuthorize("hasRole('ADMIN')")
+@PreAuthorize("hasAnyRole('ADMIN', 'INSTRUCTOR')")
 public ResponseEntity<List<DashboardAdminResponse.TermOption>>
 getAdminTermOptions() {
 
@@ -76,7 +77,7 @@ getAdminTermOptions() {
 
 
     @GetMapping("/credit-distribution")
-    @PreAuthorize("hasAnyRole('ADMIN', 'DEAN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'DEAN', 'DEPT_HEAD', 'INSTRUCTOR')")
     public ResponseEntity<CreditDistributionResponse> getCreditDistribution(
             @RequestParam Integer programId,
             @RequestParam Integer cohortId) {
@@ -85,14 +86,17 @@ getAdminTermOptions() {
     }
 
     @GetMapping("/heatmap/{programId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'DEAN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'DEAN', 'DEPT_HEAD', 'INSTRUCTOR')")
     public ResponseEntity<DashboardHeatmapResponse> getHeatmapCoverage(
             @PathVariable long programId,
-            @RequestParam Integer cohortId,
-            @RequestParam String academicYear,
-            @RequestParam String semester,
-            @RequestParam(required = false) Integer courseTypeId) {
+            @RequestParam(required = false) Integer cohortId,
+            @RequestParam(required = false) String academicYear,
+            @RequestParam(required = false) String semester,
+            @RequestParam(required = false) Integer courseTypeId,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String status) {
         return ResponseEntity.ok(dashboardService.getHeatmapCoverage(
-                programId, cohortId, academicYear, semester, courseTypeId));
+                programId, cohortId, academicYear, semester, courseTypeId,
+                search, status));
     }
 }

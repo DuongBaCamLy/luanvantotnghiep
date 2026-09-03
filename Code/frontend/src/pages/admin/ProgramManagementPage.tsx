@@ -3,13 +3,11 @@ import { useLocation, useNavigate } from "react-router-dom"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import {
   Archive,
-  BookOpen,
-  CalendarDays,
-  CheckCircle2,
   Copy,
   Eye,
   Filter,
   History,
+  Map as MapIcon,
   Pencil,
   Plus,
   RotateCcw,
@@ -83,13 +81,18 @@ export default function ProgramManagementPage() {
   const navigate = useNavigate()
   const location = useLocation()
 
-  const isDean = location.pathname.startsWith("/dean")
-  const isAdmin = location.pathname.startsWith("/admin")
+  const isDean = false
+  const isAdmin = true
   const [open, setOpen] = useState(false)
   const [cohortFilter, setCohortFilter] = useState("all")
   const [majorFilter, setMajorFilter] = useState("all")
   const [statusFilter, setStatusFilter] = useState("all")
   const [searchTerm, setSearchTerm] = useState("")
+  const [syllabiProgram, setSyllabiProgram] = useState<Program | null>(null)
+  const [syllabiCohortId, setSyllabiCohortId] = useState("")
+  const [cohortAction, setCohortAction] = useState<"syllabi" | "map" | "archive">("syllabi")
+  const [cohortProgram, setCohortProgram] = useState<Program | null>(null)
+  const [cohortEntryYear, setCohortEntryYear] = useState(String(new Date().getFullYear()))
 
   const [selectedProgram, setSelectedProgram] = useState<Program | null>(null)
   const [creditDialogOpen, setCreditDialogOpen] = useState(false)
@@ -175,17 +178,12 @@ export default function ProgramManagementPage() {
   }, [cohorts])
 
   const majorFilterOptions = useMemo(() => {
-    const programMajorIds = new Set(
-      (programs ?? []).map((program) => program.majorId)
-    )
-
     return (majors ?? [])
-      .filter((major) => programMajorIds.has(major.id))
       .slice()
       .sort((a, b) =>
         a.code.localeCompare(b.code, "en", { numeric: true })
       )
-  }, [majors, programs])
+  }, [majors])
 
   const filteredPrograms = useMemo(() => {
     const normalizedSearch = searchTerm.trim().toLowerCase()
@@ -254,14 +252,73 @@ export default function ProgramManagementPage() {
     setStatusFilter("all")
   }
 
-  const goToSyllabusCatalog = (program: Program) => {
+  const goToSyllabusCatalog = (program: Program, cohort: Cohort) => {
     const params = new URLSearchParams()
 
-    setProgramContext(params, program)
+    setProgramContext(params, program, cohort)
 
     navigate({
       pathname: getSyllabusBasePath(location.pathname),
       search: params.toString(),
+    })
+  }
+
+  const openSyllabusCatalog = (program: Program) => {
+    const programCohorts = cohortsByProgramId.get(program.id) ?? []
+    if (programCohorts.length === 1) {
+      goToSyllabusCatalog(program, programCohorts[0])
+      return
+    }
+
+    setCohortAction("syllabi")
+    setSyllabiProgram(program)
+    setSyllabiCohortId("")
+  }
+
+  const goToCurriculumMap = (program: Program, cohort: Cohort) => {
+    const params = new URLSearchParams()
+    setProgramContext(params, program, cohort)
+    const roleBase = `/${location.pathname.split("/")[1]}`
+    navigate({
+      pathname: `${roleBase}/syllabus/curriculum-map`,
+      search: params.toString(),
+    })
+  }
+
+  const openCurriculumMap = (program: Program) => {
+    const programCohorts = (cohortsByProgramId.get(program.id) ?? [])
+      .filter((cohort) => cohort.isActive !== false)
+    if (programCohorts.length === 1) {
+      goToCurriculumMap(program, programCohorts[0])
+      return
+    }
+    setCohortAction("map")
+    setSyllabiProgram(program)
+    setSyllabiCohortId("")
+  }
+
+  const openCohortAction = (
+    program: Program,
+    action: "archive",
+  ) => {
+    setCohortAction(action)
+    setSyllabiProgram(program)
+    setSyllabiCohortId("")
+  }
+
+  const openProgramEditor = (program: Program) => {
+    setEditProgram(program)
+    setMetadata({
+      name: program.name,
+      nameVn: program.nameVn,
+      majorId: program.majorId,
+      programTypeId: program.programTypeId,
+      departmentId: program.departmentId,
+      accreditationBody: program.accreditationBody,
+      totalCredits: program.totalCredits,
+      durationYears: program.durationYears,
+      validFrom: program.validFrom,
+      validTo: program.validTo,
     })
   }
 
@@ -386,27 +443,38 @@ export default function ProgramManagementPage() {
       }),
   })
 
-  const openCreditDialog = (program: Program) => {
-    const latestCohort = cohorts
-      .filter(
-        (cohort) =>
-          cohort.programId === program.id
-          && cohort.isActive !== false,
-      )
-      .slice()
-      .sort(
-        (left, right) =>
-          right.entryYear - left.entryYear
-          || right.id - left.id,
-      )[0]
+  const cohortStatusMutation = useMutation({
+    mutationFn: (cohort: Cohort) =>
+      cohort.isActive ? cohortApi.archive(cohort.id) : cohortApi.reactivate(cohort.id),
+    onSuccess: (cohort) => {
+      queryClient.invalidateQueries({ queryKey: ["cohorts"] })
+      queryClient.invalidateQueries({ queryKey: ["course-programs"] })
+      setSyllabiProgram(null)
+      setSyllabiCohortId("")
+      setNotice({
+        type: "success",
+        message: `${cohort.name} has been ${cohort.isActive ? "reactivated" : "archived"}. The Program and curriculum data were preserved.`,
+      })
+    },
+    onError: (error: unknown) => setNotice({
+      type: "error",
+      message: getErrorMessage(error, "Unable to update the selected cohort status."),
+    }),
+  })
 
-    setSelectedProgram(program)
-    setCreditCohortId(
-      latestCohort ? String(latestCohort.id) : "",
-    )
-    setCreditResult(null)
-    setCreditDialogOpen(true)
-  }
+  const createCohortMutation = useMutation({
+    mutationFn: ({ programId, entryYear }: { programId: number; entryYear: number }) =>
+      cohortApi.create({ programId, entryYear }),
+    onSuccess: (cohort) => {
+      queryClient.invalidateQueries({ queryKey: ["cohorts"] })
+      setCohortProgram(null)
+      setNotice({ type: "success", message: `${cohort.name} has been added.` })
+    },
+    onError: (error: unknown) => setNotice({
+      type: "error",
+      message: getErrorMessage(error, "Unable to add the cohort. Check that the entry year is not duplicated."),
+    }),
+  })
 
   const openCloneDialog = (program: Program) => {
     setSelectedProgram(program)
@@ -416,55 +484,6 @@ export default function ProgramManagementPage() {
     setCloneDialogOpen(true)
   }
 
-  const openEditDialog = (program: Program) => {
-    setEditProgram(program)
-    setMetadata({
-      name: program.name,
-      nameVn: program.nameVn || "",
-      majorId: program.majorId,
-      programTypeId: program.programTypeId,
-      departmentId: program.departmentId,
-      accreditationBody: program.accreditationBody || "",
-      totalCredits: program.totalCredits,
-      durationYears: program.durationYears,
-      validFrom: program.validFrom,
-      validTo: program.validTo || null,
-    })
-  }
-
-  const openStatusDialog = async (program: Program) => {
-    setStatusProgram(program)
-    setArchiveValidation(null)
-    if (program.isActive) {
-      try {
-        setArchiveValidation(await progApi.validateArchive(program.id))
-      } catch (error: unknown) {
-        setNotice({
-          type: "error",
-          message: getErrorMessage(
-            error,
-            "Unable to validate archive conditions.",
-          ),
-        })
-      }
-    }
-  }
-
-  const goToTimeline = (program: Program) => {
-    const basePath = location.pathname.includes("/programs")
-      ? location.pathname.slice(0, location.pathname.indexOf("/programs"))
-      : "/admin"
-    navigate(`${basePath}/programs/${program.id}/timeline`)
-  }
-  const goToManageCurriculum = (
-    program: Program
-  ) => {
-    if (!isAdmin) return
-
-    navigate(
-      `/admin/programs/${program.id}/curriculum`
-    )
-  }
   const goToProgramDiff = (program: Program) => {
     const basePath = location.pathname.includes("/programs")
       ? location.pathname.slice(0, location.pathname.indexOf("/programs"))
@@ -472,24 +491,6 @@ export default function ProgramManagementPage() {
 
     navigate(`${basePath}/programs/${program.id}/diff`)
   }
-  const goToCurriculumHistory = (
-    program: Program
-  ) => {
-    const basePath =
-      location.pathname.includes("/programs")
-        ? location.pathname.slice(
-          0,
-          location.pathname.indexOf(
-            "/programs"
-          )
-        )
-        : "/admin"
-
-    navigate(
-      `${basePath}/programs/${program.id}/history`
-    )
-  }
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (
@@ -646,7 +647,7 @@ export default function ProgramManagementPage() {
                 <SelectItem value="all">All Cohorts</SelectItem>
                 {cohortFilterOptions.map((cohort) => (
                   <SelectItem key={cohort.id} value={String(cohort.id)}>
-                    {cohort.name} — {cohort.entryYear}
+                    {cohort.name}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -710,7 +711,7 @@ export default function ProgramManagementPage() {
                 </TableHead>
 
                 <TableHead className="min-w-[180px] font-semibold text-slate-600">
-                  Cohorts
+                  Cohort
                 </TableHead>
 
                 <TableHead className="w-[110px] font-semibold text-slate-600">
@@ -793,11 +794,6 @@ export default function ProgramManagementPage() {
                             {prog.name}
                           </span>
 
-                          {isAdmin && displayProgramCode(prog) !== prog.code && (
-                            <span className="mt-1 text-[10px] text-slate-400">
-                              Stored code: {prog.code}
-                            </span>
-                          )}
                         </div>
                       </TableCell>
 
@@ -810,12 +806,11 @@ export default function ProgramManagementPage() {
                       </TableCell>
 
                       <TableCell>
-                        {programCohorts.length === 0 ? (
-                          <span className="text-xs text-slate-400">
-                            No cohorts
-                          </span>
-                        ) : (
-                          <div className="flex flex-wrap gap-1">
+                        <div className="flex flex-wrap items-center gap-1">
+                          {programCohorts.length === 0 ? (
+                            <span className="text-xs text-slate-400">No cohorts</span>
+                          ) : (
+                            <>
                             {visibleCohorts.map((cohort) => (
                               <Badge
                                 key={cohort.id}
@@ -834,8 +829,23 @@ export default function ProgramManagementPage() {
                                 +{remainingCohorts}
                               </Badge>
                             )}
-                          </div>
-                        )}
+                            </>
+                          )}
+                          {isAdmin && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 rounded-full px-2 text-[11px] font-semibold text-[#007d84] hover:bg-[#eaf6f6]"
+                              onClick={() => {
+                                setCohortProgram(prog)
+                                setCohortEntryYear(String(new Date().getFullYear()))
+                              }}
+                            >
+                              <Plus className="size-3" /> Cohort
+                            </Button>
+                          )}
+                        </div>
                       </TableCell>
 
                       <TableCell>
@@ -880,7 +890,7 @@ export default function ProgramManagementPage() {
                             variant="outline"
                             size="sm"
                             onClick={() =>
-                              goToSyllabusCatalog(prog)
+                              openSyllabusCatalog(prog)
                             }
                           >
                             <Eye className="size-3.5" />
@@ -891,12 +901,10 @@ export default function ProgramManagementPage() {
                             type="button"
                             variant="outline"
                             size="sm"
-                            onClick={() =>
-                              openCreditDialog(prog)
-                            }
+                            onClick={() => openCurriculumMap(prog)}
                           >
-                            <CheckCircle2 className="size-3.5" />
-                            Validate Credits
+                            <MapIcon className="size-3.5" />
+                            Curriculum Map
                           </Button>
 
                           <Button
@@ -908,31 +916,7 @@ export default function ProgramManagementPage() {
                             }
                           >
                             <History className="size-3.5" />
-                            Compare Cohorts
-                          </Button>
-
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() =>
-                              goToTimeline(prog)
-                            }
-                          >
-                            <CalendarDays className="size-3.5" />
-                            Semester Timeline
-                          </Button>
-
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() =>
-                              goToCurriculumHistory(prog)
-                            }
-                          >
-                            <History className="size-3.5" />
-                            Change History
+                            Compare Program
                           </Button>
 
                           {isAdmin && (
@@ -941,24 +925,10 @@ export default function ProgramManagementPage() {
                                 type="button"
                                 variant="outline"
                                 size="sm"
-                                onClick={() =>
-                                  openEditDialog(prog)
-                                }
+                                onClick={() => openProgramEditor(prog)}
                               >
                                 <Pencil className="size-3.5" />
                                 Edit
-                              </Button>
-
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={() =>
-                                  goToManageCurriculum(prog)
-                                }
-                              >
-                                <BookOpen className="size-3.5" />
-                                Manage Curriculum
                               </Button>
 
                               <Button
@@ -982,23 +952,12 @@ export default function ProgramManagementPage() {
                                 }
                                 size="sm"
                                 onClick={() =>
-                                  openStatusDialog(prog)
+                                  openCohortAction(prog, "archive")
                                 }
-                                className={
-                                  prog.isActive
-                                    ? "border-amber-300 text-amber-700 hover:bg-amber-50"
-                                    : "bg-emerald-600 hover:bg-emerald-700"
-                                }
+                                className="border-amber-300 text-amber-700 hover:bg-amber-50"
                               >
-                                {prog.isActive ? (
-                                  <Archive className="size-3.5" />
-                                ) : (
-                                  <RotateCcw className="size-3.5" />
-                                )}
-
-                                {prog.isActive
-                                  ? "Archive"
-                                  : "Reactivate"}
+                                <Archive className="size-3.5" />
+                                Archive
                               </Button>
                             </>
                           )}
@@ -1125,16 +1084,14 @@ export default function ProgramManagementPage() {
       <Dialog open={cloneDialogOpen} onOpenChange={setCloneDialogOpen}>
         <DialogContent className="sm:max-w-xl bg-white">
           <DialogHeader>
-            <DialogTitle>Clone Curriculum to Another Cohort</DialogTitle>
-            <DialogDescription>
-              Copy the complete course list, course categories, suggested semesters, and requirement status from the source cohort to the target cohort.
-            </DialogDescription>
+            <DialogTitle className="text-xl text-[#006f76]">Clone Cohort</DialogTitle>
+            <DialogDescription>{selectedProgram?.code}</DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="flex flex-col gap-1.5">
-                <Label>Source Cohort</Label>
+                <Label>From</Label>
                 <Select value={sourceCohortId} onValueChange={setSourceCohortId}>
                   <SelectTrigger><SelectValue placeholder="Select source..." /></SelectTrigger>
                   <SelectContent>
@@ -1145,7 +1102,7 @@ export default function ProgramManagementPage() {
                 </Select>
               </div>
               <div className="flex flex-col gap-1.5">
-                <Label>Target Cohort</Label>
+                <Label>To</Label>
                 <Select value={targetCohortId} onValueChange={setTargetCohortId}>
                   <SelectTrigger><SelectValue placeholder="Select target..." /></SelectTrigger>
                   <SelectContent>
@@ -1165,8 +1122,8 @@ export default function ProgramManagementPage() {
                 className="mt-1"
               />
               <span>
-                <span className="block font-semibold">Overwrite Target Cohort</span>
-                <span className="text-slate-500">When enabled, existing course-program assignments in the target cohort will be removed before copying from the source cohort.</span>
+                <span className="block font-semibold">Replace existing curriculum</span>
+                <span className="text-slate-500">Clear the target before cloning.</span>
               </span>
             </label>
           </div>
@@ -1185,7 +1142,7 @@ export default function ProgramManagementPage() {
               }
               onClick={() => selectedProgram && cloneMutation.mutate({ programId: selectedProgram.id })}
             >
-              {cloneMutation.isPending ? "Cloning..." : "Clone Curriculum"}
+              {cloneMutation.isPending ? "Cloning..." : "Clone"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1393,6 +1350,131 @@ export default function ProgramManagementPage() {
           </form>
         </DialogContent>
       </Dialog>      )}
+
+      <Dialog
+        open={cohortProgram !== null}
+        onOpenChange={(isOpen) => !isOpen && setCohortProgram(null)}
+      >
+        <DialogContent className="overflow-hidden border-[#cfe2e4] bg-white p-0 sm:max-w-sm">
+          <div className="h-1 bg-gradient-to-r from-[#007d84] via-[#20a0a5] to-[#f0a72f]" />
+          <div className="space-y-5 px-6 pb-2 pt-5">
+            <DialogHeader className="space-y-1 text-left">
+              <DialogTitle className="text-xl font-bold text-[#006f76]">Add Cohort</DialogTitle>
+              <DialogDescription>
+                {cohortProgram ? `${displayProgramCode(cohortProgram)} · ${cohortProgram.name}` : ""}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-2">
+              <Label htmlFor="cohort-entry-year" className="text-[11px] font-bold uppercase tracking-[0.08em] text-slate-500">
+                Entry year
+              </Label>
+              <Input
+                id="cohort-entry-year"
+                type="number"
+                min={2000}
+                max={2100}
+                value={cohortEntryYear}
+                onChange={(event) => setCohortEntryYear(event.target.value)}
+                className="h-11 bg-[#f8fbfb]"
+              />
+              {cohortProgram && Number(cohortEntryYear) >= 2000 && Number(cohortEntryYear) <= 2100 && (
+                <p className="text-xs text-slate-500">
+                  Code: <span className="font-mono font-bold text-[#007d84]">{displayProgramCode(cohortProgram)}{cohortEntryYear}</span>
+                </p>
+              )}
+            </div>
+          </div>
+          <DialogFooter className="border-t border-[#e2ecee] bg-[#f7fafb] px-6 py-4">
+            <Button variant="ghost" onClick={() => setCohortProgram(null)}>Cancel</Button>
+            <Button
+              className="bg-[#007d84] text-white hover:bg-[#006b71]"
+              disabled={
+                !cohortProgram
+                || Number(cohortEntryYear) < 2000
+                || Number(cohortEntryYear) > 2100
+                || (cohortsByProgramId.get(cohortProgram.id) ?? []).some((cohort) => cohort.entryYear === Number(cohortEntryYear))
+                || createCohortMutation.isPending
+              }
+              onClick={() => cohortProgram && createCohortMutation.mutate({
+                programId: cohortProgram.id,
+                entryYear: Number(cohortEntryYear),
+              })}
+            >
+              {createCohortMutation.isPending ? "Adding..." : "Add"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={syllabiProgram !== null}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) {
+            setSyllabiProgram(null)
+            setSyllabiCohortId("")
+          }
+        }}
+      >
+        <DialogContent className="overflow-hidden border-[#cfe2e4] bg-white p-0 sm:max-w-md">
+          <div className="h-1 bg-gradient-to-r from-[#007d84] via-[#20a0a5] to-[#f0a72f]" />
+          <div className="space-y-5 px-6 pb-2 pt-5">
+          <DialogHeader className="space-y-1 text-left">
+            <DialogTitle className="text-xl font-bold tracking-tight text-[#006f76]">
+              {cohortAction === "syllabi" && "View Syllabi"}
+              {cohortAction === "map" && "View Curriculum Map"}
+              {cohortAction === "archive" && "Cohort Status"}
+            </DialogTitle>
+            <DialogDescription className="text-sm">
+              {syllabiProgram ? `${displayProgramCode(syllabiProgram)} · ${syllabiProgram.name}` : ""}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+          <Label className="text-[11px] font-bold uppercase tracking-[0.08em] text-slate-500">Cohort</Label>
+          <Select value={syllabiCohortId} onValueChange={setSyllabiCohortId}>
+            <SelectTrigger className="h-11 rounded-lg border-[#cbdde0] bg-[#f8fbfb] shadow-none focus:ring-[#007d84]">
+              <SelectValue placeholder="Choose a cohort" />
+            </SelectTrigger>
+            <SelectContent>
+              {(syllabiProgram ? cohortsByProgramId.get(syllabiProgram.id) ?? [] : [])
+                .filter((cohort) => cohortAction !== "map" || cohort.isActive !== false)
+                .map((cohort) => (
+                <SelectItem key={cohort.id} value={String(cohort.id)}>
+                  {cohort.name}{cohort.isActive === false ? " — Archived" : ""}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          </div>
+          </div>
+          <DialogFooter className="border-t border-[#e2ecee] bg-[#f7fafb] px-6 py-4 sm:justify-end">
+            <Button className="h-9" variant="ghost" onClick={() => setSyllabiProgram(null)}>Cancel</Button>
+            <Button
+              className={cohortAction === "archive"
+                ? "h-9 bg-amber-600 text-white hover:bg-amber-700"
+                : "h-9 bg-[#007d84] text-white hover:bg-[#006b71]"}
+              disabled={!syllabiProgram || !syllabiCohortId || cohortStatusMutation.isPending}
+              onClick={() => {
+                const cohort = (syllabiProgram ? cohortsByProgramId.get(syllabiProgram.id) ?? [] : []).find((item) => item.id === Number(syllabiCohortId))
+                if (!syllabiProgram || !cohort) return
+                if (cohortAction === "syllabi") {
+                  goToSyllabusCatalog(syllabiProgram, cohort)
+                } else if (cohortAction === "map") {
+                  goToCurriculumMap(syllabiProgram, cohort)
+                } else {
+                  cohortStatusMutation.mutate(cohort)
+                }
+              }}
+            >
+              {cohortAction === "syllabi" && "View Syllabi"}
+              {cohortAction === "map" && "View Map"}
+              {cohortAction === "archive" && (() => {
+                const cohort = (syllabiProgram ? cohortsByProgramId.get(syllabiProgram.id) ?? [] : []).find((item) => item.id === Number(syllabiCohortId))
+                return cohort?.isActive ? "Archive" : "Reactivate"
+              })()}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
     </div>
   )

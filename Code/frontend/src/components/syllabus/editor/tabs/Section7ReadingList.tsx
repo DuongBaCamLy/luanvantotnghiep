@@ -123,7 +123,7 @@ const validUrl = (
   }
 }
 
-export default function Section7ReadingList({
+export default function Section7readings({
   syllabusId,
   readOnly = false,
 }: Props) {

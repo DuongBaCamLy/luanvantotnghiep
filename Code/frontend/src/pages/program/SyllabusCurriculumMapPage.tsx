@@ -1,890 +1,280 @@
-import { useMemo, useState } from "react"
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import {
-  AlertTriangle,
-  BookOpenCheck,
-  Edit3,
-  FilterX,
-  Plus,
-  Search,
-  Target,
-  Trash2,
-} from "lucide-react"
+import { useMemo } from "react"
+import { useQuery } from "@tanstack/react-query"
+import { ArrowLeft, GitBranch, Loader2, Printer, RefreshCw } from "lucide-react"
+import { useNavigate, useSearchParams } from "react-router-dom"
 
-import { ploApi } from "@/api/bookApi"
+import { cohortApi } from "@/api/cohortApi"
+import { curriculumMapApi, type CurriculumMapCourse } from "@/api/curriculumMapApi"
 import { programApi } from "@/api/programApi"
-import type { Plo, PloRequest } from "@/types/book"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { cn } from "@/lib/utils"
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
+  formatSyllabusFilterStatus,
+  readSyllabusFilter,
+  SYLLABUS_CANONICAL_STATUSES,
+  SYLLABUS_FILTER_ALL,
+  SYLLABUS_SEMESTER_OPTIONS,
+} from "@/lib/syllabusCatalogFilters"
 
-const CATEGORY_OPTIONS = [
-  { value: "KNOWLEDGE", label: "Knowledge" },
-  { value: "SKILL", label: "Skill" },
-  { value: "ATTITUDE", label: "Attitude" },
-  { value: "OTHER", label: "Other" },
-] as const
+const COLUMN_WIDTH = 190
+const COLUMN_GAP = 32
+const COLUMN_PITCH = COLUMN_WIDTH + COLUMN_GAP
+const NODE_WIDTH = 178
+const NODE_HEIGHT = 84
+const NODE_TOP = 72
+const NODE_PITCH = 108
 
-const EMPTY_FORM = {
-  programId: "",
-  code: "",
-  description: "",
-  descriptionVn: "",
-  category: "KNOWLEDGE",
-  versionNumber: "1",
+function baseProgramCode(code?: string | null) {
+  return String(code ?? "").trim().replace(/[-_\s]?20\d{2}$/i, "").replace(/[-_\s]+$/g, "")
 }
 
-type PloFormState = typeof EMPTY_FORM
+const nodeId = (courseId: number) => `curriculum-course-${courseId}`
 
-function getBaseProgramCode(value: unknown) {
-  const code = String(value ?? "").trim()
+function relationLabel(type: string) {
+  if (type === "COREQUISITE") return "Co-requisite"
+  if (type === "RECOMMENDED") return "Previous / recommended"
+  return "Prerequisite"
+}
 
-  if (!code) return "—"
+export default function SyllabusCurriculumMapPage() {
+  const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const filter = useMemo(() => readSyllabusFilter(searchParams), [searchParams])
+  const requestedProgramId = filter.programId
+  const requestedCohortId = filter.cohortId
 
-  return (
-    code
-      .replace(/[-_\s]?20\d{2}$/i, "")
-      .replace(/[-_\s]+$/g, "")
-      .trim()
-    || code
+  const programsQuery = useQuery({ queryKey: ["programs"], queryFn: programApi.getAll })
+  const majorsQuery = useQuery({ queryKey: ["majors"], queryFn: programApi.getMajors })
+  const majors = useMemo(
+    () => [...(majorsQuery.data ?? [])].sort((left, right) => left.code.localeCompare(right.code, "en", { numeric: true })),
+    [majorsQuery.data],
   )
-}
-
-function getProgramDisplay(program: {
-  code?: string | null
-  name?: string | null
-  nameVn?: string | null
-}) {
-  const code = getBaseProgramCode(program.code)
-  const name = program.name || program.nameVn || "Unnamed program"
-  return `${code} — ${name}`
-}
-
-function tryRepairUtf8Mojibake(value: string) {
-  if (!/[ÃÂÄÆâ]/.test(value)) {
-    return value
-  }
-
-  try {
-    const characters = Array.from(value)
-
-    if (
-      characters.some(
-        (character) =>
-          character.charCodeAt(0) > 255
-      )
-    ) {
-      return value
-    }
-
-    const bytes = Uint8Array.from(
-      characters.map(
-        (character) =>
-          character.charCodeAt(0)
-      )
-    )
-
-    const repaired = new TextDecoder(
-      "utf-8",
-      { fatal: true }
-    )
-      .decode(bytes)
-      .trim()
-
-    return repaired || value
-  } catch {
-    return value
-  }
-}
-
-function normalizeLegacyText(value?: string | null) {
-  const source = String(value ?? "").trim()
-
-  if (!source) {
-    return ""
-  }
-
-  const punctuationFixed = source
-    .replace(
-      /\bprogram\?\?\?s\b/gi,
-      "program's"
-    )
-    .replace(
-      /\bprogram\?\?\?\b/gi,
-      "program"
-    )
-
-  return tryRepairUtf8Mojibake(
-    punctuationFixed
+  const programs = useMemo(
+    () => (programsQuery.data ?? []).filter((program) => program.isActive !== false),
+    [programsQuery.data],
   )
-}
-
-function hasLegacyEncodingIssue(value?: string | null) {
-  const normalized = normalizeLegacyText(value)
-
-  return (
-    /\?\?\?/.test(normalized)
-    || /�/.test(normalized)
-    || /[ÃÂÄÆâ]/.test(normalized)
+  const selectedProgram = useMemo(
+    () => programs.find((program) => program.id === requestedProgramId),
+    [programs, requestedProgramId],
   )
-}
-
-function displayDescription(value?: string | null) {
-  const normalized = normalizeLegacyText(value)
-
-  if (!normalized) {
-    return null
-  }
-
-  return hasLegacyEncodingIssue(normalized)
-    ? null
-    : normalized
-}
-
-function getErrorMessage(error: unknown, fallback: string) {
-  const responseError = error as {
-    response?: { data?: { message?: string }; status?: number }
-  }
-
-  if (responseError.response?.status === 409) {
-    return "This PLO cannot be deleted because it is referenced by CLO–PLO mappings. Remove the related mappings first."
-  }
-
-  return responseError.response?.data?.message || fallback
-}
-
-function categoryLabel(category?: string) {
-  return (
-    CATEGORY_OPTIONS.find((option) => option.value === category)?.label ||
-    category ||
-    "Uncategorized"
+  const selectedMajorCode = searchParams.get("majorCode")
+    ?? selectedProgram?.majorCode
+    ?? SYLLABUS_FILTER_ALL
+  const eligiblePrograms = useMemo(
+    () => selectedMajorCode === SYLLABUS_FILTER_ALL
+      ? programs
+      : programs.filter((program) => program.majorCode === selectedMajorCode),
+    [programs, selectedMajorCode],
   )
-}
 
-function categoryBadgeClass(category?: string) {
-  switch (category) {
-    case "KNOWLEDGE":
-      return "border-blue-200 bg-blue-50 text-blue-700"
-    case "SKILL":
-      return "border-violet-200 bg-violet-50 text-violet-700"
-    case "ATTITUDE":
-      return "border-amber-200 bg-amber-50 text-amber-700"
-    default:
-      return "border-slate-200 bg-slate-50 text-slate-600"
-  }
-}
+  const cohortsQuery = useQuery({
+    queryKey: ["cohorts"],
+    queryFn: cohortApi.getAll,
+  })
+  const cohorts = useMemo(
+    () => [...(cohortsQuery.data ?? [])]
+      .filter((cohort) => cohort.isActive !== false && eligiblePrograms.some((program) => program.id === cohort.programId))
+      .sort((a, b) => a.entryYear - b.entryYear),
+    [cohortsQuery.data, eligiblePrograms],
+  )
+  const selectedCohort = useMemo(
+    () => cohorts.find((cohort) => cohort.id === requestedCohortId),
+    [cohorts, requestedCohortId],
+  )
 
-export default function PloManagementPage() {
-  const queryClient = useQueryClient()
-  const [programFilter, setProgramFilter] = useState("all")
-  const [categoryFilter, setCategoryFilter] = useState("all")
-  const [statusFilter, setStatusFilter] = useState("all")
-  const [searchQuery, setSearchQuery] = useState("")
-  const [dialogOpen, setDialogOpen] = useState(false)
-  const [editingPlo, setEditingPlo] = useState<Plo | null>(null)
-  const [form, setForm] = useState<PloFormState>(EMPTY_FORM)
-
-  const {
-    data: programs = [],
-    isLoading: isLoadingPrograms,
-    isError: isProgramError,
-  } = useQuery({
-    queryKey: ["programs"],
-    queryFn: programApi.getAll,
+  const mapQuery = useQuery({
+    queryKey: ["curriculum-map", filter.programId, filter.cohortId, filter.semester, filter.status],
+    queryFn: () => curriculumMapApi.get(filter),
+    enabled: Boolean(selectedProgram && selectedCohort),
   })
 
-  const {
-    data: plos = [],
-    isLoading: isLoadingPlos,
-    isError: isPloError,
-  } = useQuery({
-    queryKey: ["plos"],
-    queryFn: ploApi.getAll,
-  })
-
-  const closeDialog = () => {
-    setDialogOpen(false)
-    setEditingPlo(null)
-    setForm(EMPTY_FORM)
-  }
-
-  const createMutation = useMutation({
-    mutationFn: ploApi.create,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["plos"] })
-      closeDialog()
-    },
-    onError: (error) => {
-      window.alert(getErrorMessage(error, "Unable to create PLO."))
-    },
-  })
-
-  const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: PloRequest }) =>
-      ploApi.update(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["plos"] })
-      closeDialog()
-    },
-    onError: (error) => {
-      window.alert(getErrorMessage(error, "Unable to update PLO."))
-    },
-  })
-
-  const deleteMutation = useMutation({
-    mutationFn: ploApi.delete,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["plos"] })
-    },
-    onError: (error) => {
-      window.alert(getErrorMessage(error, "Unable to delete PLO."))
-    },
-  })
-
-  const filteredPlos = useMemo(() => {
-    const keyword = searchQuery.trim().toLowerCase()
-
-    return [...plos]
-      .filter((plo) => {
-        const matchesProgram =
-          programFilter === "all" || plo.programId.toString() === programFilter
-        const matchesCategory =
-          categoryFilter === "all" || plo.category === categoryFilter
-
-        const matchesStatus =
-          statusFilter === "all"
-          || (
-            statusFilter === "active"
-              ? plo.isActive !== false
-              : plo.isActive === false
-          )
-
-        const matchesKeyword =
-          !keyword ||
-          plo.code.toLowerCase().includes(keyword) ||
-          getBaseProgramCode(plo.programCode).toLowerCase().includes(keyword) ||
-          (plo.programName || "").toLowerCase().includes(keyword) ||
-          normalizeLegacyText(plo.description).toLowerCase().includes(keyword) ||
-          normalizeLegacyText(plo.descriptionVn).toLowerCase().includes(keyword)
-
-        return (
-          matchesProgram
-          && matchesCategory
-          && matchesStatus
-          && matchesKeyword
-        )
-      })
-      .sort((left, right) => {
-        const programCompare = (left.programCode || "").localeCompare(
-          right.programCode || "",
-          "vi",
-          { numeric: true }
-        )
-        if (programCompare !== 0) return programCompare
-
-        const versionCompare =
-          (left.versionNumber || 1) - (right.versionNumber || 1)
-        if (versionCompare !== 0) return versionCompare
-
-        return left.code.localeCompare(right.code, "vi", { numeric: true })
-      })
-  }, [categoryFilter, plos, programFilter, searchQuery, statusFilter])
-
-  const stats = useMemo(() => {
-    const activePlos = plos.filter((plo) => plo.isActive !== false)
-    const dataIssues = plos.filter(
-      (plo) =>
-        hasLegacyEncodingIssue(plo.description)
-        || hasLegacyEncodingIssue(plo.descriptionVn)
-    ).length
-
-    return {
-      total: plos.length,
-      programs: new Set(plos.map((plo) => plo.programId)).size,
-      active: activePlos.length,
-      dataIssues,
-    }
-  }, [plos])
-
-  const openCreateDialog = () => {
-    const defaultProgramId =
-      programFilter !== "all"
-        ? programFilter
-        : programs[0]?.id
-          ? programs[0].id.toString()
-          : ""
-
-    setEditingPlo(null)
-    setForm({ ...EMPTY_FORM, programId: defaultProgramId })
-    setDialogOpen(true)
-  }
-
-  const openEditDialog = (plo: Plo) => {
-    setEditingPlo(plo)
-    setForm({
-      programId: plo.programId.toString(),
-      code: plo.code,
-      description: normalizeLegacyText(plo.description),
-      descriptionVn: normalizeLegacyText(plo.descriptionVn),
-      category: plo.category || "KNOWLEDGE",
-      versionNumber: (plo.versionNumber || 1).toString(),
+  const semesterMap = useMemo(() => {
+    const result = new Map<string, CurriculumMapCourse[]>()
+    for (const group of mapQuery.data?.semesters ?? []) result.set(group.semester, group.courses)
+    return result
+  }, [mapQuery.data])
+  const visibleGroups = useMemo(
+    () => [...semesterMap.keys()],
+    [semesterMap],
+  )
+  const courseCount = useMemo(
+    () => [...semesterMap.values()].reduce((total, courses) => total + courses.length, 0),
+    [semesterMap],
+  )
+  const graphLayout = useMemo(() => {
+    const positions = new Map<number, { x: number; y: number }>()
+    let maximumRows = 1
+    visibleGroups.forEach((semester, columnIndex) => {
+      const courses = semesterMap.get(semester) ?? []
+      maximumRows = Math.max(maximumRows, courses.length)
+      courses.forEach((course, rowIndex) => positions.set(course.courseId, {
+        x: columnIndex * COLUMN_PITCH + COLUMN_WIDTH / 2,
+        y: NODE_TOP + rowIndex * NODE_PITCH + NODE_HEIGHT / 2,
+      }))
     })
-    setDialogOpen(true)
-  }
-
-  const handleSubmit = (event: React.FormEvent) => {
-    event.preventDefault()
-
-    const code = form.code.trim().toUpperCase()
-    const description = form.description.trim()
-    const versionNumber = Number(form.versionNumber)
-
-    if (!form.programId || !code || !description) {
-      window.alert("Select a curriculum program and enter the PLO code and English description.")
-      return
+    return {
+      positions,
+      width: Math.max(COLUMN_WIDTH, visibleGroups.length * COLUMN_PITCH - COLUMN_GAP),
+      height: NODE_TOP + maximumRows * NODE_PITCH + 40,
     }
+  }, [semesterMap, visibleGroups])
 
-    if (!Number.isInteger(versionNumber) || versionNumber < 1) {
-      window.alert("PLO version must be an integer greater than or equal to 1.")
-      return
-    }
-
-    const payload: PloRequest = {
-      programId: Number(form.programId),
-      code,
-      description,
-      descriptionVn: form.descriptionVn.trim() || undefined,
-      category: form.category,
-      versionNumber,
-    }
-
-    if (editingPlo) {
-      updateMutation.mutate({ id: editingPlo.id, data: payload })
+  const setMajor = (value: string) => {
+    const next = new URLSearchParams(searchParams)
+    next.delete("programId")
+    next.delete("programCode")
+    next.delete("cohortId")
+    if (value === SYLLABUS_FILTER_ALL) {
+      next.delete("majorId")
+      next.delete("majorCode")
     } else {
-      createMutation.mutate(payload)
+      const major = majors.find((item) => item.code === value)
+      next.set("majorCode", value)
+      if (major) next.set("majorId", String(major.id))
+      const matchingPrograms = programs.filter((program) => program.majorCode === value)
+      if (matchingPrograms.length === 1) {
+        next.set("programId", String(matchingPrograms[0].id))
+        next.set("programCode", matchingPrograms[0].code)
+      }
     }
+    setSearchParams(next)
+  }
+  const setCohort = (value: string) => {
+    const next = new URLSearchParams(searchParams)
+    next.set("cohortId", value)
+    const cohort = cohorts.find((item) => item.id === Number(value))
+    const program = cohort ? programs.find((item) => item.id === cohort.programId) : undefined
+    if (program) {
+      next.set("programId", String(program.id))
+      next.set("programCode", program.code)
+      next.set("majorId", String(program.majorId))
+      next.set("majorCode", program.majorCode)
+    }
+    setSearchParams(next)
+  }
+  const setFilterValue = (key: "semester" | "status", value: string) => {
+    const next = new URLSearchParams(searchParams)
+    if (value === SYLLABUS_FILTER_ALL) next.delete(key)
+    else next.set(key, value)
+    setSearchParams(next)
   }
 
-  const handleDelete = (plo: Plo) => {
-    const confirmed = window.confirm(
-      `Delete ${plo.code} from ${getBaseProgramCode(plo.programCode) || plo.programId}?\n\nA PLO that is referenced by CLO mappings cannot be deleted.`
-    )
-
-    if (confirmed) deleteMutation.mutate(plo.id)
-  }
-
-  const isSaving = createMutation.isPending || updateMutation.isPending
-  const isLoading = isLoadingPrograms || isLoadingPlos
-  const hasError = isProgramError || isPloError
+  const isLoading = programsQuery.isLoading || majorsQuery.isLoading || cohortsQuery.isLoading || mapQuery.isLoading
+  const hasError = programsQuery.isError || majorsQuery.isError || cohortsQuery.isError || mapQuery.isError
 
   return (
-    <div className="space-y-6">
-      <section className="relative overflow-hidden rounded-2xl border border-[#d7e5e8] bg-gradient-to-br from-white via-[#f8fbfb] to-[#eef7f7] px-6 py-5 shadow-sm">
+    <div className="space-y-5 pb-8">
+      <section className="relative overflow-hidden rounded-2xl border border-[#d7e5e8] bg-white px-6 py-5 shadow-sm">
         <div className="absolute inset-x-0 top-0 h-[3px] bg-gradient-to-r from-[#007d84] via-[#15949a] to-[#f0a72f]" />
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#708894]">
-              Academic Outcomes
-            </p>
-            <h1 className="mt-1 font-heading text-2xl font-bold text-primary">
-              Program Learning Outcomes (PLO)
-            </h1>
-            <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-500">
-              Define and maintain the PLO/ILO list for each curriculum program. CLO mapping, coverage diagnostics, and matrix export are managed in the CLO–PLO Heatmap.
-            </p>
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+          <div className="flex items-start gap-3">
+            <Button type="button" variant="ghost" size="icon" onClick={() => navigate(-1)} title="Back"><ArrowLeft className="size-4" /></Button>
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#708894]">SCSE / Curriculum</p>
+              <h1 className="mt-1 text-[28px] font-bold tracking-[-0.5px] text-[#006d73]">Curriculum Map</h1>
+              <p className="mt-1 text-sm text-slate-500">Cohort determines the curriculum; semester places each course; structured relationships draw the arrows.</p>
+            </div>
           </div>
-        <Button
-          onClick={openCreateDialog}
-          disabled={isLoadingPrograms || programs.length === 0}
-          className="gap-2 bg-primary text-white hover:bg-primary/90"
-        >
-          <Plus className="size-4" />
-          Add PLO
-        </Button>
+          <div className="flex flex-wrap items-end gap-3">
+            <MapSelect label="Major" value={selectedMajorCode} placeholder="Major" width="w-[280px]" onChange={setMajor}>
+              <SelectItem value={SYLLABUS_FILTER_ALL}>All Majors</SelectItem>
+              {majors.map((major) => <SelectItem key={major.id} value={major.code}>
+                {major.code}{major.name ? ` — ${major.name}` : major.nameVn ? ` — ${major.nameVn}` : ""}
+              </SelectItem>)}
+            </MapSelect>
+            <MapSelect label="Cohort" value={selectedCohort ? String(selectedCohort.id) : ""} placeholder="Select cohort" width="w-[130px]" onChange={setCohort} disabled={selectedMajorCode === SYLLABUS_FILTER_ALL || cohorts.length === 0}>
+              {cohorts.map((cohort) => <SelectItem key={cohort.id} value={String(cohort.id)}>{cohort.name}</SelectItem>)}
+            </MapSelect>
+            <MapSelect label="Semester" value={filter.semester ?? SYLLABUS_FILTER_ALL} placeholder="All semesters" width="w-[150px]" onChange={(value) => setFilterValue("semester", value)}>
+              <SelectItem value={SYLLABUS_FILTER_ALL}>All Semesters</SelectItem>
+              {SYLLABUS_SEMESTER_OPTIONS.map((semester) => <SelectItem key={semester} value={semester}>Semester {semester}</SelectItem>)}
+            </MapSelect>
+            <MapSelect label="Status" value={filter.status ?? SYLLABUS_FILTER_ALL} placeholder="All statuses" width="w-[180px]" onChange={(value) => setFilterValue("status", value)}>
+              <SelectItem value={SYLLABUS_FILTER_ALL}>All Statuses</SelectItem>
+              {SYLLABUS_CANONICAL_STATUSES.map((status) => <SelectItem key={status} value={status}>{formatSyllabusFilterStatus(status)}</SelectItem>)}
+            </MapSelect>
+            <Button type="button" variant="outline" onClick={() => mapQuery.refetch()} disabled={!selectedCohort || mapQuery.isFetching}><RefreshCw className={cn("size-4", mapQuery.isFetching && "animate-spin")} />Refresh</Button>
+            <Button type="button" variant="outline" onClick={() => window.print()} disabled={!mapQuery.data}><Printer className="size-4" />Print / PDF</Button>
+          </div>
         </div>
       </section>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                Total PLOs
-              </p>
-              <p className="mt-2 text-3xl font-extrabold text-slate-900">
-                {isLoading ? "..." : stats.total}
-              </p>
-            </div>
-            <div className="rounded-xl border border-blue-100 bg-blue-50 p-3 text-blue-600">
-              <Target className="size-5" />
-            </div>
+      <section className="rounded-2xl border border-[#d7e5e8] bg-white shadow-sm">
+        <div className="flex flex-col gap-3 border-b border-slate-200 px-5 py-4 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <h2 className="font-semibold text-[#17343d]">{selectedProgram ? `${baseProgramCode(selectedProgram.code)} — ${selectedProgram.nameVn || selectedProgram.name}` : "Select a program"}</h2>
+            <p className="mt-1 text-xs text-slate-500">{selectedCohort?.name ?? "Select a Cohort"} · {courseCount} courses · {mapQuery.data?.relations.length ?? 0} relationships</p>
+          </div>
+          <div className="flex flex-wrap gap-x-5 gap-y-2 text-xs text-slate-600">
+            <LegendNode className="border-sky-300 bg-sky-100" label="Major course" />
+            <LegendNode className="border-slate-400 bg-white" label="General course" />
+            <LegendLine label="Prerequisite" />
+            <LegendLine dashed label="Previous / recommended" />
+            <LegendLine dotted label="Co-requisite" />
           </div>
         </div>
 
-        <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                Programs with PLOs
-              </p>
-              <p className="mt-2 text-3xl font-extrabold text-slate-900">
-                {isLoading ? "..." : stats.programs}
-              </p>
-            </div>
-            <div className="rounded-xl border border-emerald-100 bg-emerald-50 p-3 text-emerald-600">
-              <BookOpenCheck className="size-5" />
-            </div>
-          </div>
-        </div>
-
-        <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                Active
-              </p>
-              <p className="mt-2 text-3xl font-extrabold text-slate-900">
-                {isLoading ? "..." : stats.active}
-              </p>
-            </div>
-            <Badge className="border border-emerald-200 bg-emerald-50 text-emerald-700">
-              Active
-            </Badge>
-          </div>
-        </div>
-
-        <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                Data Issues
-              </p>
-              <p className="mt-2 text-3xl font-extrabold text-slate-900">
-                {isLoading ? "..." : stats.dataIssues}
-              </p>
-            </div>
-            <div
-              className={
-                stats.dataIssues > 0
-                  ? "rounded-xl border border-amber-100 bg-amber-50 p-3 text-amber-600"
-                  : "rounded-xl border border-slate-100 bg-slate-50 p-3 text-slate-500"
-              }
-            >
-              <AlertTriangle className="size-5" />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
-        <div className="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(300px,1fr)_250px_180px_150px_auto]">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
-            <Input
-              value={searchQuery}
-              onChange={(event) => setSearchQuery(event.target.value)}
-              placeholder="Search PLO code, program, or description..."
-              className="pl-9"
-            />
-          </div>
-
-          <Select value={programFilter} onValueChange={setProgramFilter}>
-            <SelectTrigger>
-              <SelectValue placeholder="All Programs" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Programs</SelectItem>
-              {programs.map((program) => (
-                <SelectItem key={program.id} value={program.id.toString()}>
-                  {getProgramDisplay(program)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-            <SelectTrigger>
-              <SelectValue placeholder="All Categories" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Categories</SelectItem>
-              {CATEGORY_OPTIONS.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger>
-              <SelectValue placeholder="All Statuses" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Statuses</SelectItem>
-              <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="inactive">Inactive</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <Button
-            type="button"
-            variant="outline"
-            disabled={
-              programFilter === "all"
-              && categoryFilter === "all"
-              && statusFilter === "all"
-              && !searchQuery.trim()
-            }
-            onClick={() => {
-              setProgramFilter("all")
-              setCategoryFilter("all")
-              setStatusFilter("all")
-              setSearchQuery("")
-            }}
-          >
-            <FilterX className="size-4" />
-            Clear
-          </Button>
-        </div>
-        <p className="mt-3 text-xs text-slate-500">
-          Showing <span className="font-semibold text-slate-700">{filteredPlos.length}</span> of{" "}
-          <span className="font-semibold text-slate-700">{plos.length}</span> PLOs.
-        </p>
-      </div>
-
-      <div className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-slate-50/80">
-                <TableHead className="w-[105px] font-semibold text-slate-700">
-                  PLO Code
-                </TableHead>
-                <TableHead className="min-w-[180px] font-semibold text-slate-700">
-                  Program
-                </TableHead>
-                <TableHead className="w-[130px] font-semibold text-slate-700">
-                  Category
-                </TableHead>
-                <TableHead className="min-w-[300px] font-semibold text-slate-700">
-                  English Description
-                </TableHead>
-                <TableHead className="min-w-[280px] font-semibold text-slate-700">
-                  Vietnamese Description
-                </TableHead>
-                <TableHead className="w-[90px] text-center font-semibold text-slate-700">
-                  Version
-                </TableHead>
-                <TableHead className="w-[120px] font-semibold text-slate-700">
-                  Status
-                </TableHead>
-                <TableHead className="w-[105px] text-right font-semibold text-slate-700">
-                  Actions
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading ? (
-                <TableRow>
-                  <TableCell colSpan={8} className="py-12 text-center text-slate-400">
-                    Loading PLOs...
-                  </TableCell>
-                </TableRow>
-              ) : hasError ? (
-                <TableRow>
-                  <TableCell colSpan={8} className="py-12 text-center text-rose-600">
-                    Unable to load PLO or curriculum program data.
-                  </TableCell>
-                </TableRow>
-              ) : filteredPlos.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={8} className="py-12 text-center text-slate-400">
-                    {plos.length === 0
-                      ? "No PLO has been defined yet. Add the first PLO for a curriculum program."
-                      : "No PLO matches the current filters."}
-                  </TableCell>
-                </TableRow>
-              ) : (
-                filteredPlos.map((plo) => (
-                  <TableRow key={plo.id} className="align-top hover:bg-slate-50/50">
-                    <TableCell>
-                      <span className="font-mono text-sm font-bold text-primary">
-                        {plo.code}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <p className="font-semibold text-slate-900">
-                        {getBaseProgramCode(plo.programCode) || `#${plo.programId}`}
-                      </p>
-                      <p className="mt-0.5 text-xs text-slate-500">
-                        {plo.programName || "Unnamed program"}
-                      </p>
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        className={`border ${categoryBadgeClass(plo.category)}`}
-                      >
-                        {categoryLabel(plo.category)}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      {displayDescription(plo.description) ? (
-                        <p className="line-clamp-4 whitespace-normal text-sm leading-6 text-slate-700">
-                          {displayDescription(plo.description)}
-                        </p>
-                      ) : hasLegacyEncodingIssue(plo.description) ? (
-                        <DataIssue />
-                      ) : (
-                        <span className="text-sm text-slate-400">
-                          Not provided
-                        </span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {displayDescription(plo.descriptionVn) ? (
-                        <p className="line-clamp-4 whitespace-normal text-sm leading-6 text-slate-600">
-                          {displayDescription(plo.descriptionVn)}
-                        </p>
-                      ) : hasLegacyEncodingIssue(plo.descriptionVn) ? (
-                        <DataIssue />
-                      ) : (
-                        <span className="text-sm text-slate-400">
-                          Not provided
-                        </span>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-center font-semibold text-slate-700">
-                      v{plo.versionNumber || 1}
-                    </TableCell>
-                    <TableCell>
-                      {plo.isActive === false ? (
-                        <Badge className="border border-slate-200 bg-slate-100 text-slate-600">
-                          Inactive
-                        </Badge>
-                      ) : (
-                        <Badge className="border border-emerald-200 bg-emerald-50 text-emerald-700">
-                          Active
-                        </Badge>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex justify-end gap-1">
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          title={`Chỉnh sửa ${plo.code}`}
-                          onClick={() => openEditDialog(plo)}
-                        >
-                          <Edit3 className="size-4 text-blue-600" />
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          title={`Xóa ${plo.code}`}
-                          disabled={deleteMutation.isPending}
-                          onClick={() => handleDelete(plo)}
-                        >
-                          <Trash2 className="size-4 text-rose-600" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </div>
-      </div>
-
-      <Dialog
-        open={dialogOpen}
-        onOpenChange={(open) => {
-          if (!open && !isSaving) closeDialog()
-        }}
-      >
-        <DialogContent className="max-h-[90vh] overflow-y-auto bg-white sm:max-w-2xl">
-          <DialogHeader>
-            <DialogTitle className="font-heading text-primary">
-              {editingPlo ? `Chỉnh sửa ${editingPlo.code}` : "Add PLO mới"}
-            </DialogTitle>
-            <DialogDescription>
-              Each PLO code must be unique within the same curriculum program and version.
-            </DialogDescription>
-          </DialogHeader>
-
-          <form onSubmit={handleSubmit} className="space-y-4 pt-2">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div className="space-y-1.5 sm:col-span-2">
-                <Label htmlFor="plo-program">Program đào tạo *</Label>
-                <Select
-                  value={form.programId}
-                  onValueChange={(value) =>
-                    setForm((current) => ({ ...current, programId: value }))
-                  }
-                >
-                  <SelectTrigger id="plo-program">
-                    <SelectValue placeholder="Select a curriculum program" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {programs.map((program) => (
-                      <SelectItem key={program.id} value={program.id.toString()}>
-                        {getProgramDisplay(program)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="plo-code">PLO Code *</Label>
-                <Input
-                  id="plo-code"
-                  value={form.code}
-                  onChange={(event) =>
-                    setForm((current) => ({
-                      ...current,
-                      code: event.target.value.toUpperCase(),
-                    }))
-                  }
-                  maxLength={20}
-                  placeholder="e.g. PLO1"
-                  required
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="plo-version">Version *</Label>
-                <Input
-                  id="plo-version"
-                  type="number"
-                  min={1}
-                  step={1}
-                  value={form.versionNumber}
-                  onChange={(event) =>
-                    setForm((current) => ({
-                      ...current,
-                      versionNumber: event.target.value,
-                    }))
-                  }
-                  required
-                />
-              </div>
-
-              <div className="space-y-1.5 sm:col-span-2">
-                <Label htmlFor="plo-category">Category PLO</Label>
-                <Select
-                  value={form.category}
-                  onValueChange={(value) =>
-                    setForm((current) => ({ ...current, category: value }))
-                  }
-                >
-                  <SelectTrigger id="plo-category">
-                    <SelectValue placeholder="Select a category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {CATEGORY_OPTIONS.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-1.5 sm:col-span-2">
-                <Label htmlFor="plo-description-en">English Description *</Label>
-                <textarea
-                  id="plo-description-en"
-                  value={form.description}
-                  onChange={(event) =>
-                    setForm((current) => ({
-                      ...current,
-                      description: event.target.value,
-                    }))
-                  }
-                  rows={5}
-                  required
-                  placeholder="Enter the program learning outcome in English..."
-                  className="flex min-h-28 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm outline-none transition-colors placeholder:text-slate-400 focus:border-primary focus:ring-2 focus:ring-primary/15"
-                />
-              </div>
-
-              <div className="space-y-1.5 sm:col-span-2">
-                <Label htmlFor="plo-description-vn">Vietnamese Description</Label>
-                <textarea
-                  id="plo-description-vn"
-                  value={form.descriptionVn}
-                  onChange={(event) =>
-                    setForm((current) => ({
-                      ...current,
-                      descriptionVn: event.target.value,
-                    }))
-                  }
-                  rows={5}
-                  placeholder="Enter the Vietnamese translation..."
-                  className="flex min-h-28 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm outline-none transition-colors placeholder:text-slate-400 focus:border-primary focus:ring-2 focus:ring-primary/15"
-                />
+        {isLoading ? <Status><Loader2 className="size-5 animate-spin text-[#007d84]" />Loading curriculum map...</Status>
+          : hasError ? <Status><GitBranch className="size-8 text-rose-400" /><span className="text-rose-700">Unable to load curriculum data. Verify the Program and Cohort.</span></Status>
+          : !selectedCohort ? <Status>Select a Cohort to generate its map.</Status>
+          : courseCount === 0 ? <Status>No curriculum map can be generated because there are no syllabus records matching the selected filters.</Status>
+          : (
+            <div className="overflow-x-auto p-5">
+              <div className="relative" style={{ width: graphLayout.width, height: graphLayout.height }}>
+                <svg className="pointer-events-none absolute inset-0 z-0 overflow-visible" width={graphLayout.width} height={graphLayout.height} aria-hidden="true">
+                  <defs>
+                    <marker id="curriculum-arrow" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 Z" fill="#475569" /></marker>
+                    <marker id="curriculum-arrow-teal" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 Z" fill="#0f766e" /></marker>
+                  </defs>
+                  {(mapQuery.data?.relations ?? []).map((relation, index) => {
+                    const start = graphLayout.positions.get(relation.fromCourseId)
+                    const end = graphLayout.positions.get(relation.toCourseId)
+                    if (!start || !end) return null
+                    const direction = end.x >= start.x ? 1 : -1
+                    const startX = start.x + direction * (NODE_WIDTH / 2)
+                    const endX = end.x - direction * (NODE_WIDTH / 2 + 5)
+                    const bend = Math.max(38, Math.abs(endX - startX) * 0.42)
+                    const color = relation.relationType === "COREQUISITE" ? "#0f766e" : "#475569"
+                    const dash = relation.relationType === "RECOMMENDED" ? "7 5" : relation.relationType === "COREQUISITE" ? "2 3" : undefined
+                    return <g key={`${relation.fromCourseId}-${relation.toCourseId}-${relation.relationType}-${index}`}>
+                      <title>{`${relation.fromCourseCode} → ${relation.toCourseCode}: ${relationLabel(relation.relationType)}`}</title>
+                      <path d={`M ${startX} ${start.y} C ${startX + direction * bend} ${start.y}, ${endX - direction * bend} ${end.y}, ${endX} ${end.y}`} fill="none" stroke={color} strokeWidth="1.35" strokeDasharray={dash} markerEnd={relation.relationType === "COREQUISITE" ? "url(#curriculum-arrow-teal)" : "url(#curriculum-arrow)"} />
+                    </g>
+                  })}
+                </svg>
+                {visibleGroups.map((semester, columnIndex) => {
+                  const courses = semesterMap.get(semester) ?? []
+                  const left = columnIndex * COLUMN_PITCH
+                  return <div key={semester}>
+                    <div className="absolute top-0 z-20 border-b-2 border-[#007d84] bg-white pb-2 text-center" style={{ left, width: COLUMN_WIDTH }}>
+                      <h3 className="text-sm font-bold text-[#17343d]">{semester}</h3><span className="text-[11px] text-slate-400">{courses.length} courses</span>
+                    </div>
+                    {courses.map((course, rowIndex) => <div key={course.courseId} className="absolute z-10" style={{ left: left + (COLUMN_WIDTH - NODE_WIDTH) / 2, top: NODE_TOP + rowIndex * NODE_PITCH }}><CourseMapNode course={course} /></div>)}
+                    {courses.length === 0 && <div className="absolute flex h-16 items-center justify-center rounded-lg border border-dashed border-slate-200 text-xs text-slate-300" style={{ left, top: NODE_TOP, width: COLUMN_WIDTH }}>No courses</div>}
+                  </div>
+                })}
               </div>
             </div>
-
-            <DialogFooter className="pt-2">
-              <Button type="button" variant="outline" onClick={closeDialog} disabled={isSaving}>
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                disabled={isSaving || programs.length === 0}
-                className="bg-primary text-white hover:bg-primary/90"
-              >
-                {isSaving
-                  ? "Saving..."
-                  : editingPlo
-                    ? "Save Changes"
-                    : "Create PLO"}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+          )}
+      </section>
     </div>
   )
 }
 
-
-function DataIssue() {
-  return (
-    <div className="inline-flex max-w-[250px] items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800">
-      <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
-      <span>
-        Legacy text requires data cleanup
-      </span>
-    </div>
-  )
+function MapSelect({ label, value, placeholder, width, onChange, disabled, children }: { label: string; value: string; placeholder: string; width: string; onChange: (value: string) => void; disabled?: boolean; children: React.ReactNode }) {
+  return <label className="space-y-1 text-[10px] font-semibold uppercase tracking-wider text-slate-500"><span>{label}</span><Select value={value} onValueChange={onChange} disabled={disabled}><SelectTrigger className={cn(width, "bg-white normal-case tracking-normal")}><SelectValue placeholder={placeholder} /></SelectTrigger><SelectContent>{children}</SelectContent></Select></label>
 }
+
+function CourseMapNode({ course }: { course: CurriculumMapCourse }) {
+  const isGeneral = /general|đại cương/i.test(course.courseTypes ?? "")
+  return <div id={nodeId(course.courseId)} className={cn("relative z-10 flex h-[84px] w-[178px] flex-col justify-center rounded-md border px-3 py-2 text-center shadow-sm transition hover:-translate-y-0.5 hover:shadow-md", isGeneral ? "border-slate-400 bg-white" : "border-sky-300 bg-sky-100")} title={`${course.courseCode} · ${course.courseName}\n${course.courseTypes || "Course type not assigned"}`}>
+    <div className="font-mono text-[11px] font-bold text-[#006d73]">{course.courseCode} ({course.creditTheory ?? 0},{course.creditLab ?? 0})</div>
+    <div className="mt-1 text-[11px] font-medium leading-4 text-slate-800">{course.courseName}</div>
+    {course.syllabusVersion && <div className="mt-1 text-[9px] text-slate-400">{course.syllabusVersion}</div>}
+  </div>
+}
+
+function Status({ children }: { children: React.ReactNode }) { return <div className="flex min-h-[460px] items-center justify-center gap-2 px-6 text-center text-sm text-slate-500">{children}</div> }
+function LegendNode({ className, label }: { className: string; label: string }) { return <span className="inline-flex items-center gap-1.5"><i className={cn("h-4 w-6 rounded-sm border", className)} />{label}</span> }
+function LegendLine({ label, dashed, dotted }: { label: string; dashed?: boolean; dotted?: boolean }) { return <span className="inline-flex items-center gap-1.5"><i className={cn("block w-7 border-t-2 border-slate-500", dashed && "border-dashed", dotted && "border-dotted")} />{label}</span> }

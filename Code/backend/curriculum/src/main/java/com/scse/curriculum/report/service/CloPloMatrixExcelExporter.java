@@ -72,15 +72,6 @@ final class CloPloMatrixExcelExporter {
         if (matrix.getProgramId() == null) {
             throw new IllegalArgumentException("programId của ma trận là bắt buộc.");
         }
-        if (matrix.getCohortId() == null) {
-            throw new IllegalArgumentException("cohortId của ma trận là bắt buộc.");
-        }
-        if (isBlank(matrix.getAcademicYear())) {
-            throw new IllegalArgumentException("academicYear của ma trận là bắt buộc.");
-        }
-        if (isBlank(matrix.getSemester())) {
-            throw new IllegalArgumentException("semester của ma trận là bắt buộc.");
-        }
     }
 
   private static void configureWorkbook(
@@ -168,9 +159,7 @@ final class CloPloMatrixExcelExporter {
 
         writeMetadata(sheet, 1, "Chương trình", joinCodeName(matrix.getProgramCode(), preferred(matrix.getProgramNameVn(), matrix.getProgramName())), styles);
         writeMetadata(sheet, 2, "Khóa tuyển sinh", preferred(matrix.getCohortName(), safe(matrix.getCohortEntryYear())), styles);
-        writeMetadata(sheet, 3, "Năm học", matrix.getAcademicYear(), styles);
-        writeMetadata(sheet, 4, "Học kỳ", matrix.getSemester(), styles);
-        writeMetadata(sheet, 5, "Nhóm môn", preferred(matrix.getCourseTypeNameVn(), preferred(matrix.getCourseTypeName(), "Tất cả")), styles);
+        writeMetadata(sheet, 3, "Phạm vi", "Toàn bộ chương trình của cohort", styles);
         writeMetadata(sheet, 6, "Khóa phạm vi", matrix.getScopeKey(), styles);
         writeMetadata(sheet, 7, "Nguồn dữ liệu", matrix.getDataSource(), styles);
         writeMetadata(sheet, 8, "Số môn duy nhất", deduplicated.courses().size(), styles);
@@ -272,10 +261,6 @@ final class CloPloMatrixExcelExporter {
                 {"programCode", safe(matrix.getProgramCode())},
                 {"cohortId", matrix.getCohortId()},
                 {"cohortName", safe(matrix.getCohortName())},
-                {"academicYear", safe(matrix.getAcademicYear())},
-                {"semester", safe(matrix.getSemester())},
-                {"courseTypeId", matrix.getCourseTypeId()},
-                {"courseTypeCode", safe(matrix.getCourseTypeCode())},
                 {"scopeKey", safe(matrix.getScopeKey())},
                 {"uniqueCourseCount", deduplicated.courses().size()},
                 {"duplicateRowsRemoved", deduplicated.duplicatesRemoved()},
@@ -357,7 +342,7 @@ final class CloPloMatrixExcelExporter {
     private static String normalizeLevel(String level) {
         String normalized = normalize(level);
         return switch (normalized) {
-            case "I", "D", "A" -> normalized;
+            case "X", "XX", "XXX" -> normalized;
             default -> "";
         };
     }

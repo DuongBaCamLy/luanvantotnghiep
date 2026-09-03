@@ -6,6 +6,9 @@ export interface UserAccountResponse {
   email: string
   role: UserRole
   instructorId: number | null
+  managedMajorId: number | null
+  managedMajorCode: string | null
+  managedMajorName: string | null
   isActive: boolean
   lastLogin: string | null
   createdAt: string | null
@@ -17,6 +20,7 @@ export interface CreateUserRequest {
   password: string
   role: UserRole
   instructorId: number | null
+  managedMajorId: number | null
 }
 
 export interface UpdateUserRequest {
@@ -25,6 +29,7 @@ export interface UpdateUserRequest {
   password?: string
   role: UserRole
   instructorId: number | null
+  managedMajorId: number | null
   isActive?: boolean
 }
 

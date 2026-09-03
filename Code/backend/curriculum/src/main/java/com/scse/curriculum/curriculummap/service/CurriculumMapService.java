@@ -6,5 +6,7 @@ public interface CurriculumMapService {
 
     CurriculumMapResponse generate(
         Integer programId,
-        Integer cohortId);
+        Integer cohortId,
+        String semester,
+        String status);
 }

@@ -114,7 +114,7 @@ final class CloPloMatrixPdfExporter {
             }
 
             Paragraph legend = new Paragraph(
-                    "Chú thích: I – Introduce; D – Develop; A – Apply.",
+                    "Chú thích: X – mức 1; XX – mức 2; XXX – mức 3.",
                     bodyFont);
             legend.setSpacingBefore(6);
             document.add(legend);
@@ -136,15 +136,6 @@ final class CloPloMatrixPdfExporter {
         }
         if (matrix.getProgramId() == null) {
             throw new IllegalArgumentException("programId của ma trận là bắt buộc.");
-        }
-        if (matrix.getCohortId() == null) {
-            throw new IllegalArgumentException("cohortId của ma trận là bắt buộc.");
-        }
-        if (isBlank(matrix.getAcademicYear())) {
-            throw new IllegalArgumentException("academicYear của ma trận là bắt buộc.");
-        }
-        if (isBlank(matrix.getSemester())) {
-            throw new IllegalArgumentException("semester của ma trận là bắt buộc.");
         }
         if (fonts == null) {
             throw new IllegalArgumentException("Font provider của PDF là bắt buộc.");
@@ -179,11 +170,6 @@ final class CloPloMatrixPdfExporter {
                 preferred(matrix.getProgramNameVn(), matrix.getProgramName())), headingFont, bodyFont);
         addMetadata(metadata, "Khóa tuyển sinh", preferred(
                 matrix.getCohortName(), safe(matrix.getCohortEntryYear())), headingFont, bodyFont);
-        addMetadata(metadata, "Năm học / Học kỳ", safe(matrix.getAcademicYear())
-                + " / Học kỳ " + safe(matrix.getSemester()), headingFont, bodyFont);
-        addMetadata(metadata, "Nhóm môn", preferred(
-                matrix.getCourseTypeNameVn(),
-                preferred(matrix.getCourseTypeName(), "Tất cả")), headingFont, bodyFont);
         addMetadata(metadata, "Khóa phạm vi", safe(matrix.getScopeKey()), headingFont, bodyFont);
         addMetadata(metadata, "Nguồn dữ liệu", safe(matrix.getDataSource()), headingFont, bodyFont);
 
@@ -215,11 +201,7 @@ final class CloPloMatrixPdfExporter {
 
         Paragraph scope = new Paragraph(
                 preferred(matrix.getCohortName(), "N/A")
-                        + " | " + safe(matrix.getAcademicYear())
-                        + " | Học kỳ " + safe(matrix.getSemester())
-                        + " | " + preferred(
-                        matrix.getCourseTypeNameVn(),
-                        preferred(matrix.getCourseTypeName(), "Tất cả")),
+                        + " | Toàn bộ chương trình của cohort",
                 bodyFont);
         scope.setSpacingAfter(6);
         document.add(scope);
@@ -412,7 +394,7 @@ final class CloPloMatrixPdfExporter {
     private static String normalizeLevel(String level) {
         String normalized = normalize(level);
         return switch (normalized) {
-            case "I", "D", "A" -> normalized;
+            case "X", "XX", "XXX" -> normalized;
             default -> "";
         };
     }

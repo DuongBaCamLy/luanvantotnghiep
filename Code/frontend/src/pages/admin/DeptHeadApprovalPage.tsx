@@ -451,9 +451,7 @@ export default function DeptHeadApprovalPage() {
         comment,
       },
       {
-        onSuccess: (
-          result,
-        ) => {
+        onSuccess: () => {
           const isApproval =
             decision
             === "APPROVED"
@@ -467,10 +465,7 @@ export default function DeptHeadApprovalPage() {
                 : "Department review completed. The syllabus has been forwarded to the Dean for final review."
           } else {
             message =
-              result
-                .revisionDraftVersionLabel
-                ? `The reviewed version was preserved in history and ${result.revisionDraftVersionLabel} was created as the instructor's working Draft.`
-                : "The syllabus was returned to the instructor with the reviewer comment."
+              "The same syllabus version was returned to the instructor for revision."
           }
 
           setFeedback({
@@ -699,7 +694,7 @@ export default function DeptHeadApprovalPage() {
             </h2>
 
             <p className="mt-1 text-xs text-slate-500">
-              Only pending requests assigned to your authorized review step and visible department scope are shown.
+              Only pending requests assigned to your authorized review step and Managed Major scope are shown.
             </p>
           </div>
 
@@ -720,7 +715,7 @@ export default function DeptHeadApprovalPage() {
         </div>
 
         <div className="overflow-x-auto">
-          <Table className="min-w-[1120px]">
+          <Table className="min-w-[1450px]">
             <TableHeader className="bg-slate-50/80">
               <TableRow>
                 <TableHead className="min-w-[280px]">
@@ -731,8 +726,16 @@ export default function DeptHeadApprovalPage() {
                   Version
                 </TableHead>
 
+                <TableHead className="min-w-[190px]">
+                  Program / Cohort
+                </TableHead>
+
+                <TableHead className="min-w-[150px]">
+                  Department
+                </TableHead>
+
                 <TableHead className="min-w-[170px]">
-                  Submitted By
+                  Instructor
                 </TableHead>
 
                 <TableHead className="min-w-[170px]">
@@ -757,7 +760,7 @@ export default function DeptHeadApprovalPage() {
               {isLoading ? (
                 <TableRow>
                   <TableCell
-                    colSpan={7}
+                    colSpan={9}
                     className="h-36 text-center text-slate-500"
                   >
                     <div className="flex items-center justify-center gap-2">
@@ -769,7 +772,7 @@ export default function DeptHeadApprovalPage() {
               ) : isError ? (
                 <TableRow>
                   <TableCell
-                    colSpan={7}
+                    colSpan={9}
                     className="h-40 text-center"
                   >
                     <div className="mx-auto max-w-lg">
@@ -802,7 +805,7 @@ export default function DeptHeadApprovalPage() {
                 === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={7}
+                    colSpan={9}
                     className="h-48 text-center"
                   >
                     <div className="mx-auto flex max-w-md flex-col items-center">
@@ -870,13 +873,23 @@ export default function DeptHeadApprovalPage() {
                       </TableCell>
 
                       <TableCell>
+                        <p className="text-sm font-semibold text-slate-700">{item.programCode || "—"}</p>
+                        <p className="mt-0.5 text-xs text-slate-500">{item.cohortName || "—"} · {item.semester || "—"}</p>
+                      </TableCell>
+
+                      <TableCell>
+                        <p className="text-sm font-semibold text-slate-700">{item.departmentCode || "—"}</p>
+                        <p className="mt-0.5 text-xs text-slate-500">{item.departmentName || "—"}</p>
+                      </TableCell>
+
+                      <TableCell>
                         <div className="flex items-center gap-2">
                           <span className="flex size-7 items-center justify-center rounded-full bg-slate-100 text-slate-600">
                             <UserRound className="size-3.5" />
                           </span>
 
                           <span className="text-sm font-medium text-slate-700">
-                            {item.requestedByUsername
+                            {(item.instructorUsername || item.requestedByUsername)
                               || "—"}
                           </span>
                         </div>
@@ -909,7 +922,7 @@ export default function DeptHeadApprovalPage() {
 
                           <p className="mt-0.5 text-[10px] text-slate-400">
                             {isDean
-                              ? "Final decision"
+                              ? `Forwarded by ${item.requestedByUsername || "Department Head"}`
                               : "Approve to forward"}
                           </p>
                         </div>

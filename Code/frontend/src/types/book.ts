@@ -1,4 +1,5 @@
 export type UsageType = "REQUIRED" | "RECOMMENDED" | "SUPPLEMENTARY"
+export type BookType = "TEXTBOOK" | "REFERENCE" | "SUPPLEMENTARY"
 
 export interface Book {
   id: number
@@ -9,7 +10,7 @@ export interface Book {
   edition?: string
   isbn?: string
   url?: string
-  bookType?: string
+  bookType?: BookType
 }
 
 export interface SyllabusBook {
@@ -41,6 +42,7 @@ export interface CreateBookRequest {
   edition?: string
   isbn?: string
   url?: string
+  bookType?: BookType
 }
 
 export interface Plo {

@@ -1,21 +1,22 @@
 import { useState } from "react"
 import { NavLink, useLocation } from "react-router-dom"
-import { ChevronDown, ChevronRight } from "lucide-react"
+import { ChevronDown, ChevronRight, LogOut, UserRound } from "lucide-react"
 
 import { cn } from "@/lib/utils"
-import { NAV_CONFIG } from "@/config/navConfig"
+import { getRoleNav, ROLE_LABEL } from "@/config/navConfig"
 import { useAuthStore } from "@/store/authStore"
 import { t } from "@/i18n"
 import logoImg from "@/assets/logo.jpg"
 
 export default function Sidebar() {
   const user = useAuthStore((state) => state.user)
+  const logout = useAuthStore((state) => state.logout)
   const location = useLocation()
   const [expandedMenus, setExpandedMenus] = useState<Record<string, boolean>>({})
 
   if (!user) return null
 
-  const items = NAV_CONFIG[user.role]
+  const groups = getRoleNav(user.role)
 
   const toggleMenu = (path: string) => {
     setExpandedMenus((previous) => ({
@@ -30,7 +31,17 @@ export default function Sidebar() {
   ) => {
     if (location.pathname === itemPath) return true
 
-    return children?.some((child) => location.pathname === child.path) ?? false
+    const specificChildActive = children?.some((child) =>
+      child.path !== itemPath
+      && (location.pathname === child.path || location.pathname.startsWith(`${child.path}/`)),
+    ) ?? false
+
+    if (specificChildActive) return true
+
+    if (children?.some((child) => child.path === itemPath)
+      && location.pathname.startsWith(`${itemPath}/`)) return true
+
+    return false
   }
 
   return (
@@ -54,12 +65,22 @@ export default function Sidebar() {
         </div>
       </div>
 
-      <nav className="flex-1 space-y-[3px] overflow-y-auto px-[7px] py-3">
-        {items.map((item) => {
+      <div className="px-4 pt-3">
+        <span className="inline-flex rounded-full border border-white/20 bg-white/10 px-2.5 py-1 text-[9px] font-bold uppercase tracking-[0.14em] text-white">
+          {ROLE_LABEL[user.role]}
+        </span>
+      </div>
+
+      <nav className="flex-1 overflow-y-auto px-[7px] py-3">
+        {groups.map((group) => (
+          <section key={group.label} className="mb-4">
+            <p className="px-3 pb-1.5 text-[9px] font-bold uppercase tracking-[0.16em] text-white/45">{group.label}</p>
+            <div className="space-y-[3px]">
+            {group.items.map((item) => {
           const Icon = item.icon
           const hasChildren = !!item.children?.length
           const active = isParentActive(item.path, item.children)
-          const isExpanded = expandedMenus[item.path] || active
+          const isExpanded = expandedMenus[item.path] ?? active
 
           if (hasChildren) {
             return (
@@ -129,8 +150,22 @@ export default function Sidebar() {
               <span className="truncate">{item.label}</span>
             </NavLink>
           )
-        })}
+            })}
+            </div>
+          </section>
+        ))}
       </nav>
+
+      <div className="border-t border-white/10 p-3">
+        <div className="flex items-center gap-3 rounded-lg bg-black/10 p-2.5">
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-full border border-white/20 bg-white/10"><UserRound className="size-4" /></span>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-xs font-semibold">{user.username}</p>
+            <p className="truncate text-[9px] uppercase tracking-wide text-white/60">{ROLE_LABEL[user.role]}</p>
+          </div>
+          <button type="button" onClick={logout} title="Sign out" className="rounded p-1.5 text-white/70 hover:bg-white/10 hover:text-white"><LogOut className="size-4" /></button>
+        </div>
+      </div>
     </aside>
   )
 }

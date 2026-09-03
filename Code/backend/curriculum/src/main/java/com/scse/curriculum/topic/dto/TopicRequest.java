@@ -28,5 +28,9 @@ public class TopicRequest {
 
     private String learningActivity;
 
+    private String assessments;
+
+    private String resources;
+
     private String notes;
 }

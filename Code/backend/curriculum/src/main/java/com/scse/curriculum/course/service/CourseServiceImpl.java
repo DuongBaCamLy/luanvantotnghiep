@@ -7,6 +7,10 @@ import com.scse.curriculum.department.entity.Department;
 import com.scse.curriculum.department.repository.DepartmentRepository;
 import com.scse.curriculum.course.repository.CourseRepository;
 import com.scse.curriculum.common.exception.ResourceNotFoundException;
+import com.scse.curriculum.common.exception.ForbiddenOperationException;
+import com.scse.curriculum.syllabus.service.SyllabusAccessService;
+import com.scse.curriculum.user.entity.UserAccount;
+import com.scse.curriculum.user.entity.UserRole;
 
 import lombok.RequiredArgsConstructor;
 
@@ -22,6 +26,7 @@ public class CourseServiceImpl implements CourseService {
 
     private final CourseRepository repository;
     private final DepartmentRepository departmentRepository;
+    private final SyllabusAccessService syllabusAccessService;
 
     @Override
     public CourseResponse create(
@@ -72,8 +77,10 @@ public class CourseServiceImpl implements CourseService {
 
     @Override
     public List<CourseResponse> getAll() {
+        syllabusAccessService.currentUser();
+        List<Course> source = repository.findAll();
 
-        return repository.findAll()
+        return source
                 .stream()
                 .map(this::map)
                 .toList();
@@ -88,6 +95,7 @@ public class CourseServiceImpl implements CourseService {
                         new ResourceNotFoundException(
                                 "Course not found"));
 
+        assertCanViewCourse(course);
         return map(course);
     }
 
@@ -101,7 +109,12 @@ public class CourseServiceImpl implements CourseService {
                                 new ResourceNotFoundException(
                                         "Course not found"));
 
+        assertCanViewCourse(course);
         return map(course);
+    }
+
+    private void assertCanViewCourse(Course course) {
+        syllabusAccessService.currentUser();
     }
 
     private CourseResponse map(

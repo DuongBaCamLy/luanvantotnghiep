@@ -49,7 +49,7 @@ class CloPloMatrixPdfExporterTest {
                     .contains("Khoa học Máy tính")
                     .contains("Khóa tuyển sinh")
                     .contains("Nhập môn Tin học")
-                    .contains("Học kỳ 1")
+                    .contains("Toàn bộ chương trình của cohort")
                     .contains("PLO1")
                     .contains("PLO18");
 

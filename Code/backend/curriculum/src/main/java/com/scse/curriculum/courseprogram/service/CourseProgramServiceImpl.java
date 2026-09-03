@@ -380,6 +380,19 @@ public CourseProgramResponse assignSyllabus(
                 "Không thể gán đề cương của môn khác vào CTĐT");
     }
 
+    boolean linkedToDifferentCurriculum = repository.findBySyllabus_Id(syllabusId)
+            .stream()
+            .anyMatch(existing -> !Objects.equals(existing.getId(), courseProgram.getId())
+                    && (!Objects.equals(existing.getProgram().getId(), courseProgram.getProgram().getId())
+                    || !Objects.equals(
+                            existing.getCohort() == null ? null : existing.getCohort().getId(),
+                            courseProgram.getCohort() == null ? null : courseProgram.getCohort().getId())));
+
+    if (linkedToDifferentCurriculum) {
+        throw new IllegalArgumentException(
+                "A syllabus can only belong to one program and cohort curriculum context");
+    }
+
     courseProgram.setSyllabus(syllabus);
 
     return map(repository.save(courseProgram));

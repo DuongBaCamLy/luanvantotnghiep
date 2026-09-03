@@ -29,7 +29,6 @@ const fieldLabel = (field: string) => {
     objectives: "Course Objectives",
     examForms: "Examination Forms",
     examRequirements: "Examination Requirements",
-    rubrics: "Rubric",
     major: "Major",
     notes: "Notes",
     code: "Code",
@@ -76,7 +75,9 @@ const fieldLabel = (field: string) => {
 }
 
 const renderChanges = (changes?: Record<string, FieldDiff>) => {
-  if (!changes || Object.keys(changes).length === 0) {
+  const visibleChanges = Object.entries(changes ?? {}).filter(([key]) => key !== "rubrics")
+
+  if (visibleChanges.length === 0) {
     return (
       <p className="text-sm text-slate-500">
         No detailed field changes.
@@ -95,7 +96,7 @@ const renderChanges = (changes?: Record<string, FieldDiff>) => {
           </tr>
         </thead>
         <tbody>
-          {Object.entries(changes).map(([key, change]) => (
+          {visibleChanges.map(([key, change]) => (
             <tr key={key} className="border-b border-slate-100 align-top last:border-0">
               <td className="px-3 py-3 font-semibold text-slate-700">
                 {fieldLabel(key)}
@@ -233,7 +234,7 @@ export default function SyllabusDiffDetails({
     + listCount(diff.topicCloDiff)
     + listCount(diff.assessmentDiff)
     + listCount(diff.assessmentCloDiff)
-    + listCount(diff.readingListDiff)
+    + listCount(diff.readingsDiff)
 
   const hasChanges = diff.hasChanges ?? totalChanges > 0
 
@@ -383,7 +384,7 @@ export default function SyllabusDiffDetails({
 
           <DiffSection
             title="Reading List"
-            diff={diff.readingListDiff}
+            diff={diff.readingsDiff}
             getTitle={(item) => asText(item.title)}
             getDescription={(item) => [
               item.author,

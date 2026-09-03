@@ -31,18 +31,18 @@ public class WorkflowNotificationService {
 
         notifyRecipients(
                 departmentHeads,
-                "Đề cương mới chờ Trưởng bộ môn duyệt",
+                "Syllabus requires your review",
                 courseLabel(syllabus)
-                        + " phiên bản " + syllabus.getVersionLabel()
-                        + " vừa được nộp và đang chờ xử lý.",
+                        + " syllabus submitted by " + syllabus.getCreatedBy().getUsername()
+                        + " requires your review.",
                 "SYLLABUS_SUBMITTED",
                 EmailTone.INFO,
                 "Đề cương mới cần phê duyệt",
                 "Chờ Trưởng bộ môn",
                 syllabus.getCreatedBy().getUsername(),
                 null,
-                "Mở danh sách chờ duyệt",
-                "/dept-head/approvals",
+                "Review syllabus",
+                "/dept-head/syllabus/" + syllabus.getId(),
                 syllabus);
 
         notifyRecipients(

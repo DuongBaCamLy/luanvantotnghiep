@@ -66,11 +66,34 @@ public class ReportServiceImpl implements ReportService {
         return CloPloMatrixPdfExporter.export(matrix, pdfFonts);
     }
 
+    @Override
+    public byte[] generateCloPloMatrixExcel(long programId, Integer cohortId,
+                                            String semester, String search, String status) {
+        return CloPloMatrixExcelExporter.export(
+                loadScopedMatrix(programId, cohortId, semester, search, status));
+    }
+
+    @Override
+    public byte[] generateCloPloMatrixPdf(long programId, Integer cohortId,
+                                          String semester, String search, String status) {
+        return CloPloMatrixPdfExporter.export(
+                loadScopedMatrix(programId, cohortId, semester, search, status), pdfFonts);
+    }
+
+    private DashboardHeatmapResponse loadScopedMatrix(long programId, Integer cohortId,
+                                                       String semester, String search, String status) {
+        DashboardHeatmapResponse matrix = dashboardService.getHeatmapCoverage(
+                programId, cohortId, null, semester, null, search, status);
+        if (matrix == null) throw new IllegalStateException("Không có dữ liệu ma trận CLO–PLO cho phạm vi đã chọn.");
+        if (matrix.getPloDetails() == null) matrix.setPloDetails(new ArrayList<>());
+        if (matrix.getCourseCoverages() == null) matrix.setCourseCoverages(new ArrayList<>());
+        return matrix;
+    }
+
     private DashboardHeatmapResponse loadScopedMatrix(long programId, Integer cohortId, String academicYear, String semester, Integer courseTypeId) {
         if (cohortId == null) throw new IllegalArgumentException("cohortId là bắt buộc.");
-        if (academicYear == null || academicYear.isBlank()) throw new IllegalArgumentException("academicYear là bắt buộc.");
-        if (semester == null || semester.isBlank()) throw new IllegalArgumentException("semester là bắt buộc.");
-        DashboardHeatmapResponse matrix = dashboardService.getHeatmapCoverage(programId, cohortId, academicYear.trim(), semester.trim(), courseTypeId);
+        DashboardHeatmapResponse matrix = dashboardService.getHeatmapCoverage(
+                programId, cohortId, null, null, null);
         if (matrix == null) throw new IllegalStateException("Không có dữ liệu ma trận CLO–PLO cho phạm vi đã chọn.");
         if (matrix.getPloDetails() == null) matrix.setPloDetails(new ArrayList<>());
         if (matrix.getCourseCoverages() == null) matrix.setCourseCoverages(new ArrayList<>());

@@ -21,6 +21,20 @@ public class ApprovalResponse {
 
     private String courseName;
 
+    private String programCode;
+
+    private String programName;
+
+    private String cohortName;
+
+    private String semester;
+
+    private String instructorUsername;
+
+    private String departmentCode;
+
+    private String departmentName;
+
     private Integer versionNumber;
 
     private String versionLabel;

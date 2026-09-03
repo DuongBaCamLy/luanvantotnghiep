@@ -31,6 +31,12 @@ public interface UserAccountRepository extends JpaRepository<UserAccount, Intege
 
     List<UserAccount> findByRoleAndIsActiveTrue(UserRole role);
 
+    List<UserAccount> findByRoleAndManagedMajor_IdAndIsActiveTrue(
+            UserRole role, Integer managedMajorId);
+
+    boolean existsByRoleAndManagedMajor_IdAndIsActiveTrueAndIdNot(
+            UserRole role, Integer managedMajorId, Integer excludedId);
+
     @Query("""
             SELECT u
             FROM UserAccount u, Instructor i

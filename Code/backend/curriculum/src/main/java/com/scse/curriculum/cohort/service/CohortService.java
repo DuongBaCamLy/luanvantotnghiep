@@ -20,4 +20,8 @@ public interface CohortService {
 
     List<CohortResponse> getByProgram(
             Integer programId);
+
+    CohortResponse archive(Integer id);
+
+    CohortResponse reactivate(Integer id);
 }

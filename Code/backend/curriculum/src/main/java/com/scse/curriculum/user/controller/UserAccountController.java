@@ -26,7 +26,7 @@ import lombok.RequiredArgsConstructor;
 @RestController
 @RequestMapping("/api/admin/users")
 @RequiredArgsConstructor
-@PreAuthorize("hasRole('ADMIN')")
+@PreAuthorize("@phaseRoleGuard.isAdmin(authentication)")
 public class UserAccountController {
 
     private final UserAccountService service;

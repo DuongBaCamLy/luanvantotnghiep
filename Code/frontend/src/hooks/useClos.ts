@@ -16,6 +16,7 @@ export function useCreateClo() {
     mutationFn: (data: CreateCloRequest) => cloApi.create(data),
     onSuccess: (_, vars) => {
       qc.invalidateQueries({ queryKey: ["clos", vars.syllabusId] })
+      qc.invalidateQueries({ queryKey: ["clo-plo-heatmap"] })
     },
   })
 }
@@ -26,6 +27,7 @@ export function useDeleteClo(syllabusId: number) {
     mutationFn: (id: number) => cloApi.delete(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["clos", syllabusId] })
+      qc.invalidateQueries({ queryKey: ["clo-plo-heatmap"] })
     },
   })
 }
@@ -44,6 +46,7 @@ export function useCreateCloPloMapping() {
     mutationFn: (data: CreateCloPloMappingRequest) => cloPloMappingApi.create(data),
     onSuccess: (_, vars) => {
       qc.invalidateQueries({ queryKey: ["clo-plo-mappings", vars.cloId] })
+      qc.invalidateQueries({ queryKey: ["clo-plo-heatmap"] })
     },
   })
 }
@@ -54,6 +57,7 @@ export function useDeleteCloPloMapping(cloId: number) {
     mutationFn: (id: number) => cloPloMappingApi.delete(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["clo-plo-mappings", cloId] })
+      qc.invalidateQueries({ queryKey: ["clo-plo-heatmap"] })
     },
   })
 }

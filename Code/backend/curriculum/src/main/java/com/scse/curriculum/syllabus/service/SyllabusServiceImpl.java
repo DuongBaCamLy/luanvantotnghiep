@@ -19,9 +19,9 @@ import com.scse.curriculum.approval.repository.ApprovalRequestRepository;
 import com.scse.curriculum.assessment.entity.AssessmentClo;
 import com.scse.curriculum.assessment.entity.AssessmentCloId;
 import com.scse.curriculum.assessment.entity.AssessmentComponent;
-import com.scse.curriculum.assessment.entity.AssessmentType;
 import com.scse.curriculum.assessment.repository.AssessmentCloRepository;
 import com.scse.curriculum.assessment.repository.AssessmentComponentRepository;
+import com.scse.curriculum.classsection.entity.ClassSection;
 import com.scse.curriculum.classsection.repository.ClassSectionRepository;
 import com.scse.curriculum.clo.entity.BloomLevel;
 import com.scse.curriculum.clo.entity.Clo;
@@ -32,6 +32,8 @@ import com.scse.curriculum.cloplomapping.repository.CloPloMappingRepository;
 import com.scse.curriculum.common.exception.ResourceNotFoundException;
 import com.scse.curriculum.course.entity.Course;
 import com.scse.curriculum.course.repository.CourseRepository;
+import com.scse.curriculum.cohort.entity.Cohort;
+import com.scse.curriculum.cohort.repository.CohortRepository;
 import com.scse.curriculum.enrollment.repository.EnrollmentRepository;
 import com.scse.curriculum.email.WorkflowNotificationService;
 import com.scse.curriculum.studentscore.repository.StudentScoreRepository;
@@ -42,11 +44,14 @@ import com.scse.curriculum.syllabus.dto.SyllabusCreateContextResponse;
 import com.scse.curriculum.syllabus.dto.SyllabusResponse;
 import com.scse.curriculum.syllabus.dto.SubmissionValidationResponse;
 import com.scse.curriculum.syllabus.entity.Syllabus;
+import com.scse.curriculum.syllabus.entity.SyllabusImportStatus;
+import com.scse.curriculum.syllabus.entity.SyllabusSourceType;
 import com.scse.curriculum.syllabus.entity.SyllabusStatus;
 import com.scse.curriculum.syllabus.repository.SyllabusRepository;
 import com.scse.curriculum.syllabusbook.entity.SyllabusBook;
 import com.scse.curriculum.syllabusbook.entity.SyllabusBookId;
 import com.scse.curriculum.syllabusbook.repository.SyllabusBookRepository;
+import com.scse.curriculum.syllabus.importer.repository.SyllabusImportHistoryRepository;
 import com.scse.curriculum.topic.entity.Topic;
 import com.scse.curriculum.topic.entity.TopicType;
 import com.scse.curriculum.topic.repository.TopicRepository;
@@ -54,1235 +59,1605 @@ import com.scse.curriculum.topicclo.entity.TopicClo;
 import com.scse.curriculum.topicclo.entity.TopicCloId;
 import com.scse.curriculum.topicclo.repository.TopicCloRepository;
 import com.scse.curriculum.user.entity.UserAccount;
+import com.scse.curriculum.user.entity.UserRole;
 import com.scse.curriculum.courseprogram.entity.CourseProgram;
+import com.scse.curriculum.courseprogram.entity.CurriculumTerm;
 import com.scse.curriculum.courseprogram.repository.CourseProgramRepository;
+import com.scse.curriculum.plo.entity.Plo;
+import com.scse.curriculum.plo.repository.PloRepository;
 import lombok.RequiredArgsConstructor;
-
+import com.scse.curriculum.syllabus.dto.SyllabusCatalogResponse;
 
 @Service
 @RequiredArgsConstructor
 public class SyllabusServiceImpl implements SyllabusService {
-private final CourseProgramRepository courseProgramRepository;
-    private final SyllabusRepository repository;
-    private final CourseRepository courseRepository;
-    private final EnrollmentRepository enrollmentRepository;
-    private final CloRepository cloRepository;
-    private final CloPloMappingRepository cloPloMappingRepository;
-    private final TopicRepository topicRepository;
-    private final TopicCloRepository topicCloRepository;
-    private final SyllabusBookRepository syllabusBookRepository;
-    private final AssessmentComponentRepository assessmentComponentRepository;
-    private final AssessmentCloRepository assessmentCloRepository;
-    private final StudentScoreRepository studentScoreRepository;
+        private final CourseProgramRepository courseProgramRepository;
+        private final CohortRepository cohortRepository;
+        private final PloRepository ploRepository;
+        private final SyllabusRepository repository;
+        private final CourseRepository courseRepository;
+        private final EnrollmentRepository enrollmentRepository;
+        private final CloRepository cloRepository;
+        private final CloPloMappingRepository cloPloMappingRepository;
+        private final TopicRepository topicRepository;
+        private final TopicCloRepository topicCloRepository;
+        private final SyllabusBookRepository syllabusBookRepository;
+        private final AssessmentComponentRepository assessmentComponentRepository;
+        private final AssessmentCloRepository assessmentCloRepository;
+        private final StudentScoreRepository studentScoreRepository;
 
-    private final ApprovalRequestRepository approvalRequestRepository;
-    private final ClassSectionRepository classSectionRepository;
+        private final ApprovalRequestRepository approvalRequestRepository;
+        private final ClassSectionRepository classSectionRepository;
+        private final SyllabusImportHistoryRepository syllabusImportHistoryRepository;
 
-    private final WorkflowNotificationService workflowNotificationService;
-    private final SyllabusAccessService syllabusAccessService;
-    private final SyllabusSubmissionValidationService submissionValidationService;
-    private final SyllabusDiffService syllabusDiffService;
-    private final EntityManager entityManager;
+        private final WorkflowNotificationService workflowNotificationService;
+        private final SyllabusAccessService syllabusAccessService;
+        private final SyllabusSubmissionValidationService submissionValidationService;
+        private final SyllabusDiffService syllabusDiffService;
+        private final EntityManager entityManager;
 
-    @Override
-    @Transactional
-    public SyllabusResponse create(CreateSyllabusRequest request) {
+        @Override
+        @Transactional
+        public SyllabusResponse create(CreateSyllabusRequest request) {
 
-        // Version number luôn do server cấp, không nhận từ client.
-        Course requestedCourse = courseRepository
-        .findById(request.getCourseId())
-        .orElseThrow(() ->
-                new ResourceNotFoundException(
-                        "Course not found"));
-
-/*
- * FR-03.1:
- * Backend xác thực chính xác ClassSection.
- * Với Faculty, course/year/semester thật được lấy từ assignment.
- */
-SyllabusAccessService.CreationAuthorization
-        creationAuthorization =
-        syllabusAccessService.authorizeCreate(
-                request.getClassSectionId(),
-                requestedCourse,
-                request.getAcademicYear(),
-                request.getSemester());
-
-Course course = creationAuthorization.course();
-UserAccount creator = creationAuthorization.creator();
-
-/*
- * Version phải được tính theo course đã được backend xác thực,
- * không tính trực tiếp từ dữ liệu client.
- */
-Integer version = nextVersionNumber(course.getId());
-
-CourseProgram courseProgram = null;
-
-if (request.getCourseProgramId() != null) {
-    courseProgram = courseProgramRepository
-            .findById(request.getCourseProgramId())
-            .orElseThrow(() ->
-                    new ResourceNotFoundException(
-                            "CourseProgram not found"));
-
-    if (courseProgram.getCourse() == null
-            || !Objects.equals(
-                    courseProgram.getCourse().getId(),
-                    course.getId())) {
-
-        throw new IllegalArgumentException(
-                "The syllabus does not belong to the correct course "
-                        + "in the curriculum program");
-    }
-}
-
-        Syllabus syllabus = Syllabus.builder()
-                .course(course)
-                .versionNumber(version)
-                .versionLabel(request.getVersionLabel() != null
-                        ? request.getVersionLabel()
-                        : "v" + version)
-                .academicYear(
-        creationAuthorization.academicYear())
-                .courseDesignation(request.getCourseDesignation())
-                .courseTypes(request.getCourseTypes())
-                .semester(
-        creationAuthorization.semester())
-                .language(request.getLanguage())
-                .relation(request.getRelation())
-                .teachingMethods(request.getTeachingMethods())
-                .workloadTotal(request.getWorkloadTotal())
-                .workloadContact(request.getWorkloadContact())
-                .workloadPrivate(request.getWorkloadPrivate())
-                .prerequisites(request.getPrerequisites())
-                .objectives(request.getObjectives())
-                .examForms(request.getExamForms())
-                .examRequirements(request.getExamRequirements())
-                .rubrics(request.getRubrics())
-                .major(request.getMajor())
-                .status(SyllabusStatus.DRAFT)
-                .isCurrent(false)
-                .createdBy(creator)
-                .approvedBy(null)
-                .submittedAt(null)
-                .approvedAt(null)
-                .changeSummary(request.getChangeSummary())
-                .notes(request.getNotes())
-                .createdAt(LocalDateTime.now())
-                .updatedAt(LocalDateTime.now())
-                .build();
-
-        if (request.getClos() != null) {
-            List<Clo> clos = request.getClos()
-                    .stream()
-                    .map(dto -> Clo.builder()
-                    .syllabus(syllabus)
-                    .code(dto.getCode())
-                    .description(dto.getDescription())
-                    .descriptionVn(dto.getDescriptionVn())
-                    .competencyLevel(dto.getCompetencyLevel() != null
-                            ? CompetencyLevel.valueOf(dto.getCompetencyLevel())
-                            : null)
-                    .bloomLevel(dto.getBloomLevel() != null
-                            ? BloomLevel.valueOf(dto.getBloomLevel())
-                            : null)
-                    .orderIndex(dto.getOrderIndex())
-                    .build())
-                    .collect(Collectors.toList());
-
-            syllabus.setClos(clos);
-        }
-
-        if (request.getTopics() != null) {
-            List<Topic> topics = request.getTopics()
-                    .stream()
-                    .map(dto -> Topic.builder()
-                    .syllabus(syllabus)
-                    .weekNumber(dto.getWeekNumber())
-                    .orderInWeek(dto.getOrderInWeek())
-                    .name(dto.getName())
-                    .nameVn(dto.getNameVn())
-                    .teachingHours(dto.getTeachingHours())
-                    .labHours(dto.getLabHours())
-                    .selfStudyHours(dto.getSelfStudyHours())
-                    .topicType(dto.getTopicType() != null
-                            ? TopicType.valueOf(dto.getTopicType())
-                            : null)
-                    .teachingMethod(dto.getTeachingMethod())
-                    .learningActivity(dto.getLearningActivity())
-                    .notes(dto.getNotes())
-                    .build())
-                    .collect(Collectors.toList());
-
-            syllabus.setTopics(topics);
-        }
-
-        if (request.getAssessments() != null) {
-            List<AssessmentComponent> assessments
-                    = request.getAssessments()
-                            .stream()
-                            .map(dto -> AssessmentComponent.builder()
-                            .syllabus(syllabus)
-                            .name(dto.getName())
-                            .nameVn(dto.getNameVn())
-                            .assessmentType(dto.getAssessmentType() != null
-                                    ? AssessmentType.valueOf(dto.getAssessmentType())
-                                    : null)
-                            .weightPercent(dto.getWeightPercent() != null
-                                    ? dto.getWeightPercent()
-                                    : 0f)
-                            .minScore(dto.getMinScore() != null
-                                    ? dto.getMinScore()
-                                    : 0f)
-                            .maxScore(dto.getMaxScore() != null
-                                    ? dto.getMaxScore()
-                                    : 100f)
-                            .orderIndex(dto.getOrderIndex() != null
-                                    ? dto.getOrderIndex()
-                                    : 1)
-                            .build())
-                            .collect(Collectors.toList());
-
-            syllabus.setAssessments(assessments);
-        }
-
-        Syllabus savedSyllabus = repository.save(syllabus);
-
-        // Gắn Draft vừa tạo vào mọi nhóm lớp khớp cùng assignment.
-        // Admin có thể tạo dữ liệu migration nên danh sách assignment có thể rỗng.
-        if (!creationAuthorization.assignments().isEmpty()) {
-            creationAuthorization.assignments().forEach(assignment ->
-                    assignment.setSyllabus(savedSyllabus));
-            classSectionRepository.saveAll(creationAuthorization.assignments());
-        }
-
-        if (courseProgram != null) {
-            courseProgram.setSyllabus(savedSyllabus);
-            courseProgramRepository.save(courseProgram);
-        }
-
-        if (request.getSourceSyllabusId() != null) {
-            cloneDetailsFromSource(
-                    request.getSourceSyllabusId(),
-                    savedSyllabus);
-        }
-
-        return map(savedSyllabus);
-    }
-
-    private void cloneDetailsFromSource(
-            Integer sourceId,
-            Syllabus savedSyllabus) {
-
-        List<Clo> sourceClos = cloRepository.findBySyllabusId(sourceId);
-        Map<Integer, Clo> oldCloToNewCloMap = new HashMap<>();
-
-        for (Clo srcClo : sourceClos) {
-            Clo targetClo = Clo.builder()
-                    .syllabus(savedSyllabus)
-                    .code(srcClo.getCode())
-                    .description(srcClo.getDescription())
-                    .descriptionVn(srcClo.getDescriptionVn())
-                    .competencyLevel(srcClo.getCompetencyLevel())
-                    .bloomLevel(srcClo.getBloomLevel())
-                    .orderIndex(srcClo.getOrderIndex())
-                    .build();
-
-            targetClo = cloRepository.save(targetClo);
-            oldCloToNewCloMap.put(srcClo.getId(), targetClo);
-
-            List<CloPloMapping> srcMappings
-                    = cloPloMappingRepository.findByCloId(srcClo.getId());
-
-            for (CloPloMapping srcMap : srcMappings) {
-                CloPloMapping targetMap = CloPloMapping.builder()
-                        .clo(targetClo)
-                        .plo(srcMap.getPlo())
-                        .level(srcMap.getLevel())
-                        .contributionWeight(srcMap.getContributionWeight() == null
-                                ? 1.0f
-                                : srcMap.getContributionWeight())
-                        .notes(srcMap.getNotes())
-                        .build();
-
-                cloPloMappingRepository.save(targetMap);
-            }
-        }
-
-        List<Topic> sourceTopics = topicRepository.findBySyllabusId(sourceId);
-
-        for (Topic srcTopic : sourceTopics) {
-            Topic targetTopic = Topic.builder()
-                    .syllabus(savedSyllabus)
-                    .weekNumber(srcTopic.getWeekNumber())
-                    .orderInWeek(srcTopic.getOrderInWeek())
-                    .name(srcTopic.getName())
-                    .nameVn(srcTopic.getNameVn())
-                    .teachingHours(srcTopic.getTeachingHours())
-                    .labHours(srcTopic.getLabHours())
-                    .selfStudyHours(srcTopic.getSelfStudyHours())
-                    .topicType(srcTopic.getTopicType())
-                    .teachingMethod(srcTopic.getTeachingMethod())
-                    .learningActivity(srcTopic.getLearningActivity())
-                    .notes(srcTopic.getNotes())
-                    .build();
-
-            targetTopic = topicRepository.save(targetTopic);
-
-            List<TopicClo> srcTopicClos
-                    = topicCloRepository.findByIdTopicId(srcTopic.getId());
-
-            for (TopicClo srcTc : srcTopicClos) {
-                Clo targetCloForTc
-                        = oldCloToNewCloMap.get(srcTc.getClo().getId());
-
-                if (targetCloForTc == null) {
-                    throw new IllegalStateException(
-                            "Unable to clone Topic–CLO mapping because the source CLO does not exist in the copy.");
+                if (request.getAssignmentId() == null && request.getCohortId() == null) {
+                        throw new IllegalArgumentException(
+                                        "Cohort is required when an administrator creates or imports a syllabus");
                 }
 
-                TopicCloId tcId
-                        = new TopicCloId(targetTopic.getId(), targetCloForTc.getId());
+                // Version number luôn do server cấp, không nhận từ client.
+                Course requestedCourse = courseRepository
+                                .findById(request.getCourseId())
+                                .orElseThrow(() -> new ResourceNotFoundException(
+                                                "Course not found"));
 
-                TopicClo targetTc = TopicClo.builder()
-                        .id(tcId)
-                        .topic(targetTopic)
-                        .clo(targetCloForTc)
-                        .teachingLevel(srcTc.getTeachingLevel())
-                        .build();
+                /*
+                 * FR-03.1:
+                 * Backend xác thực chính xác ClassSection.
+                 * Với Faculty, course/year/semester thật được lấy từ assignment.
+                 */
+                SyllabusAccessService.CreationAuthorization creationAuthorization = syllabusAccessService
+                                .authorizeCreate(
+                                                request.getAssignmentId(),
+                                                requestedCourse,
+                                                request.getAcademicYear(),
+                                                request.getSemester(),
+                                                request.getProgramId(),
+                                                request.getCohortId());
 
-                topicCloRepository.save(targetTc);
-            }
-        }
+                Course course = creationAuthorization.course();
+                UserAccount creator = creationAuthorization.creator();
 
-        List<SyllabusBook> sourceBooks
-                = syllabusBookRepository.findBySyllabus_Id(sourceId);
+                /*
+                 * Version phải được tính theo course đã được backend xác thực,
+                 * không tính trực tiếp từ dữ liệu client.
+                 */
+                Integer version = nextVersionNumber(course.getId());
+                SyllabusSourceType sourceType = resolveSourceType(request.getSourceType());
+                boolean imported = sourceType == SyllabusSourceType.IMPORT_PDF
+                                || sourceType == SyllabusSourceType.IMPORT_DOCX;
 
-        for (SyllabusBook srcBook : sourceBooks) {
-            SyllabusBookId sbId
-                    = new SyllabusBookId(savedSyllabus.getId(), srcBook.getBook().getId());
+                CourseProgram courseProgram = null;
 
-            SyllabusBook targetBook = SyllabusBook.builder()
-                    .id(sbId)
-                    .syllabus(savedSyllabus)
-                    .book(srcBook.getBook())
-                    .usageType(srcBook.getUsageType())
-                    .orderIndex(srcBook.getOrderIndex())
-                    .build();
+                if (request.getCourseProgramId() != null) {
+                        courseProgram = courseProgramRepository
+                                        .findById(request.getCourseProgramId())
+                                        .orElseThrow(() -> new ResourceNotFoundException(
+                                                        "CourseProgram not found"));
 
-            syllabusBookRepository.save(targetBook);
-        }
+                        if (courseProgram.getCourse() == null
+                                        || !Objects.equals(
+                                                        courseProgram.getCourse().getId(),
+                                                        course.getId())) {
 
-        List<AssessmentComponent> sourceComps
-                = assessmentComponentRepository.findBySyllabusId(sourceId);
+                                throw new IllegalArgumentException(
+                                                "The syllabus does not belong to the correct course "
+                                                                + "in the curriculum program");
+                        }
 
-        for (AssessmentComponent srcComp : sourceComps) {
-            AssessmentComponent targetComp = AssessmentComponent.builder()
-                    .syllabus(savedSyllabus)
-                    .name(srcComp.getName())
-                    .nameVn(srcComp.getNameVn())
-                    .assessmentType(srcComp.getAssessmentType())
-                    .weightPercent(srcComp.getWeightPercent())
-                    .minScore(srcComp.getMinScore())
-                    .maxScore(srcComp.getMaxScore())
-                    .orderIndex(srcComp.getOrderIndex())
-                    .build();
+                        if (courseProgram.getSemesterSuggest() != null
+                                        && !normalizeSemesterLabel(creationAuthorization.semester())
+                                                        .equals("Semester " + courseProgram.getSemesterSuggest())) {
+                                throw new IllegalArgumentException(
+                                                "The teaching assignment semester does not match the selected curriculum entry");
+                        }
 
-            targetComp = assessmentComponentRepository.save(targetComp);
+                        if (request.getCohortId() != null) {
+                                Cohort selectedCohort = cohortRepository.findById(request.getCohortId())
+                                                .orElseThrow(() -> new ResourceNotFoundException("Cohort not found"));
 
-            List<AssessmentClo> srcAssessmentClos
-                    = assessmentCloRepository.findByAssessmentComponent_Id(srcComp.getId());
+                                if (courseProgram.getProgram() == null
+                                                || selectedCohort.getProgram() == null
+                                                || !Objects.equals(courseProgram.getProgram().getId(), selectedCohort.getProgram().getId())) {
+                                        throw new IllegalArgumentException(
+                                                        "The selected Cohort does not belong to the curriculum program");
+                                }
 
-            for (AssessmentClo srcAc : srcAssessmentClos) {
-                Clo targetCloForAc
-                        = oldCloToNewCloMap.get(srcAc.getClo().getId());
-
-                if (targetCloForAc == null) {
-                    throw new IllegalStateException(
-                            "Unable to clone Assessment–CLO mapping because the source CLO does not exist in the copy.");
+                                if (courseProgram.getCohort() == null) {
+                                        CourseProgram baseCourseProgram = courseProgram;
+                                        courseProgram = courseProgramRepository
+                                                        .findByCourse_IdAndProgram_IdAndCohort_Id(
+                                                                        course.getId(),
+                                                                        baseCourseProgram.getProgram().getId(),
+                                                                        selectedCohort.getId())
+                                                        .orElseGet(() -> courseProgramRepository.save(
+                                                                        CourseProgram.builder()
+                                                                                        .termCode(baseCourseProgram.getTermCode())
+                                                                                        .course(baseCourseProgram.getCourse())
+                                                                                        .program(baseCourseProgram.getProgram())
+                                                                                        .cohort(selectedCohort)
+                                                                                        .courseType(baseCourseProgram.getCourseType())
+                                                                                        .semesterSuggest(baseCourseProgram.getSemesterSuggest())
+                                                                                        .yearSuggest(baseCourseProgram.getYearSuggest())
+                                                                                        .required(baseCourseProgram.getRequired())
+                                                                                        .build()));
+                                } else if (!Objects.equals(courseProgram.getCohort().getId(), selectedCohort.getId())) {
+                                        throw new IllegalArgumentException(
+                                                        "The selected curriculum entry does not belong to the requested Cohort");
+                                }
+                        }
                 }
 
-                AssessmentCloId acId
-                        = new AssessmentCloId(targetComp.getId(), targetCloForAc.getId());
+                Syllabus syllabus = Syllabus.builder()
+                                .course(course)
+                                .versionNumber(version)
+                                .versionLabel("v" + version + ".0")
+                                .academicYear(
+                                                creationAuthorization.academicYear())
+                                .courseDesignation(request.getCourseDesignation())
+                                .courseTypes(request.getCourseTypes())
+                                .semester(normalizeSemesterLabel(creationAuthorization.semester()))
+                                .language(request.getLanguage())
+                                .relation(request.getRelation())
+                                .teachingMethods(request.getTeachingMethods())
+                                .workloadTotal(request.getWorkloadTotal())
+                                .workloadContact(request.getWorkloadContact())
+                                .workloadPrivate(request.getWorkloadPrivate())
+                                .prerequisites(request.getPrerequisites())
+                                .objectives(request.getObjectives())
+                                .examForms(request.getExamForms())
+                                .examRequirements(request.getExamRequirements())
+                                .rubrics(request.getRubrics())
+                                .major(request.getMajor())
+                                .status(SyllabusStatus.DRAFT)
+                                .isCurrent(false)
+                                .createdBy(creator)
+                                .approvedBy(null)
+                                .submittedAt(null)
+                                .approvedAt(null)
+                                .changeSummary(request.getChangeSummary())
+                                .notes(request.getNotes())
+                                .sourceType(sourceType)
+                                .originalFileName(imported ? request.getOriginalFileName() : null)
+                                .originalFileType(imported ? request.getOriginalFileType() : null)
+                                .importStatus(imported
+                                                ? SyllabusImportStatus.CONFIRMED
+                                                : SyllabusImportStatus.NONE)
+                                .createdAt(LocalDateTime.now())
+                                .updatedAt(LocalDateTime.now())
+                                .build();
 
-                AssessmentClo targetAc = AssessmentClo.builder()
-                        .id(acId)
-                        .assessmentComponent(targetComp)
-                        .clo(targetCloForAc)
-                        .contributionPercent(srcAc.getContributionPercent())
-                        .build();
+                if (request.getClos() != null) {
+                        List<Clo> clos = request.getClos()
+                                        .stream()
+                                        .map(dto -> Clo.builder()
+                                                        .syllabus(syllabus)
+                                                        .code(dto.getCode())
+                                                        .description(dto.getDescription())
+                                                        .descriptionVn(dto.getDescriptionVn())
+                                                        .competencyLevel(dto.getCompetencyLevel() != null
+                                                                        ? CompetencyLevel.valueOf(
+                                                                                        dto.getCompetencyLevel())
+                                                                        : null)
+                                                        .bloomLevel(dto.getBloomLevel() != null
+                                                                        ? BloomLevel.valueOf(dto.getBloomLevel())
+                                                                        : null)
+                                                        .orderIndex(dto.getOrderIndex())
+                                                        .build())
+                                        .collect(Collectors.toList());
 
-                assessmentCloRepository.save(targetAc);
-            }
+                        syllabus.setClos(clos);
+                }
+
+                if (request.getTopics() != null) {
+                        List<Topic> topics = request.getTopics()
+                                        .stream()
+                                        .map(dto -> Topic.builder()
+                                                        .syllabus(syllabus)
+                                                        .weekNumber(dto.getWeekNumber())
+                                                        .orderInWeek(dto.getOrderInWeek())
+                                                        .name(dto.getName())
+                                                        .nameVn(dto.getNameVn())
+                                                        .teachingHours(topicHoursOrDefault(dto.getTeachingHours(), 3))
+                                                        .labHours(topicHoursOrDefault(dto.getLabHours(), 0))
+                                                        .selfStudyHours(topicHoursOrDefault(dto.getSelfStudyHours(), 6))
+                                                        .topicType(dto.getTopicType() != null
+                                                                        ? TopicType.valueOf(dto.getTopicType())
+                                                                        : null)
+                                                        .teachingMethod(dto.getTeachingMethod())
+                                                        .learningActivity(dto.getLearningActivity())
+                                                        .assessments(dto.getAssessments())
+                                                        .resources(dto.getResources())
+                                                        .notes(dto.getNotes())
+                                                        .build())
+                                        .collect(Collectors.toList());
+
+                        syllabus.setTopics(topics);
+                }
+
+                if (request.getAssessments() != null) {
+                        List<AssessmentComponent> assessments = request.getAssessments()
+                                        .stream()
+                                        .map(dto -> AssessmentComponent.builder()
+                                                        .syllabus(syllabus)
+                                                        .name(dto.getName())
+                                                        .nameVn(dto.getNameVn())
+                                                        .assessmentType(dto.getAssessmentType())
+                                                        .weightPercent(dto.getWeightPercent() != null
+                                                                        ? dto.getWeightPercent()
+                                                                        : 0f)
+                                                        .minScore(dto.getMinScore() != null
+                                                                        ? dto.getMinScore()
+                                                                        : 0f)
+                                                        .maxScore(dto.getMaxScore() != null
+                                                                        ? dto.getMaxScore()
+                                                                        : 100f)
+                                                        .orderIndex(dto.getOrderIndex() != null
+                                                                        ? dto.getOrderIndex()
+                                                                        : 1)
+                                                        .build())
+                                        .collect(Collectors.toList());
+
+                        syllabus.setAssessments(assessments);
+                }
+
+                Syllabus savedSyllabus = repository.save(syllabus);
+
+                // Gắn Draft vừa tạo vào mọi nhóm lớp khớp cùng assignment.
+                // Admin có thể tạo dữ liệu migration nên danh sách assignment có thể rỗng.
+                if (!creationAuthorization.assignments().isEmpty()) {
+                        creationAuthorization.assignments()
+                                        .forEach(assignment -> assignment.setSyllabus(savedSyllabus));
+                        classSectionRepository.saveAll(creationAuthorization.assignments());
+                }
+
+                if (courseProgram != null) {
+                        courseProgram.setSyllabus(savedSyllabus);
+                        courseProgramRepository.save(courseProgram);
+                }
+
+                if (request.getSourceSyllabusId() != null) {
+                        cloneDetailsFromSource(
+                                        request.getSourceSyllabusId(),
+                                        savedSyllabus);
+                }
+
+                return map(savedSyllabus);
         }
-    }
 
-    @Override
-    @Transactional(readOnly = true)
-    public SyllabusCreateContextResponse getCreateContext(Integer courseId) {
-        Course course = courseRepository.findById(courseId)
-                .orElseThrow(() -> new ResourceNotFoundException("Course not found"));
-
-        syllabusAccessService.assertCanCreateContext(course);
-
-        Syllabus latestApproved = repository
-                .findTopByCourseIdAndStatusOrderByVersionNumberDescIdDesc(
-                        courseId, SyllabusStatus.APPROVED)
-                .orElse(null);
-        Syllabus latest = repository
-                .findTopByCourseIdOrderByVersionNumberDescIdDesc(courseId)
-                .orElse(null);
-
-        // Never expose another instructor's working Draft as a template.
-        if (syllabusAccessService.currentUser().getRole() != com.scse.curriculum.user.entity.UserRole.ADMIN
-                && latest != null
-                && latest.getStatus() == SyllabusStatus.DRAFT
-                && !syllabusAccessService.canView(latest)) {
-            latest = latestApproved;
+        private SyllabusSourceType resolveSourceType(String rawSourceType) {
+                if (rawSourceType == null || rawSourceType.isBlank()) {
+                        return SyllabusSourceType.MANUAL;
+                }
+                try {
+                        return SyllabusSourceType.valueOf(rawSourceType.trim().toUpperCase());
+                } catch (IllegalArgumentException ignored) {
+                        return SyllabusSourceType.MANUAL;
+                }
         }
 
-        return SyllabusCreateContextResponse.builder()
-                .course(SyllabusCreateContextResponse.CourseContext.builder()
-                        .id(course.getId())
-                        .courseCode(course.getCourseCode())
-                        .name(course.getName())
-                        .nameVn(course.getNameVn())
-                        .creditTheory(course.getCreditTheory())
-                        .creditLab(course.getCreditLab())
-                        .courseLevel(course.getCourseLevel() == null ? null : course.getCourseLevel().name())
-                        .description(course.getDescription())
-                        .departmentName(course.getDepartment() == null ? null : course.getDepartment().getName())
-                        .build())
-                .latestSyllabus(latest == null ? null : map(latest))
-                .latestApprovedSyllabus(latestApproved == null ? null : map(latestApproved))
-                .build();
-    }
+        private String normalizeSemesterLabel(String value) {
+                if (value == null || value.isBlank()) {
+                        return value;
+                }
 
-    @Override
-    @Transactional(readOnly = true)
-    public List<SyllabusResponse> getAll() {
+                String normalized = value.trim();
+                java.util.regex.Matcher matcher = java.util.regex.Pattern
+                                .compile("(?i)^(?:(?:semester|hk)\\s*)?([1-8])$")
+                                .matcher(normalized);
 
-        return repository.findAllWithRelations()
-                .stream()
-                .filter(syllabusAccessService::canView)
-                .map(this::map)
-                .toList();
-    }
+                if (matcher.matches()) {
+                        return "Semester " + matcher.group(1);
+                }
+                if (normalized.equalsIgnoreCase("summer")
+                                || normalized.equalsIgnoreCase("summer semester")) {
+                        return "Summer Semester";
+                }
+                return normalized;
+        }
 
-    @Override
-    @Transactional(readOnly = true)
-    public SyllabusResponse getById(Integer id) {
+        private void synchronizeLinkedCourseProgramSemester(
+                        Syllabus syllabus,
+                        String semesterLabel) {
+                CurriculumTerm term;
+                try {
+                        term = CurriculumTerm.fromValue(semesterLabel);
+                } catch (IllegalArgumentException ignored) {
+                        return;
+                }
 
-        Syllabus syllabus = repository.findByIdWithRelations(id)
-                .orElseThrow(()
-                        -> new ResourceNotFoundException("Syllabus not found"));
+                Integer semesterNumber = term.getSemesterNumber();
+                if (semesterNumber == null) {
+                        return;
+                }
 
-        syllabusAccessService.assertCanView(syllabus);
-        return map(syllabus);
-    }
+                List<CourseProgram> linkedMappings = courseProgramRepository
+                                .findBySyllabus_Id(syllabus.getId());
+                linkedMappings.forEach(mapping -> {
+                        mapping.setSemesterSuggest(semesterNumber);
+                        mapping.setTermCode(term);
+                });
 
-    @Override
-    @Transactional(readOnly = true)
-    public List<SyllabusResponse> getByCourse(Integer courseId) {
+                if (!linkedMappings.isEmpty()) {
+                        courseProgramRepository.saveAll(linkedMappings);
+                }
+        }
 
-        return repository.findByCourseIdWithRelations(courseId)
-                .stream()
-                .filter(syllabusAccessService::canView)
-                .map(this::map)
-                .toList();
-    }
+        private int topicHoursOrDefault(Integer value, int defaultValue) {
+                return value != null ? value : defaultValue;
+        }
 
-    private SyllabusResponse map(Syllabus syllabus) {
+        private void cloneDetailsFromSource(
+                        Integer sourceId,
+                        Syllabus savedSyllabus) {
 
-        CourseProgram syllabusCourseProgram = courseProgramRepository
-                .findBySyllabus_Id(syllabus.getId())
-                .stream()
-                .filter(courseProgram -> courseProgram.getCohort() != null)
-                .findFirst()
-                .orElse(null);
+                List<Clo> sourceClos = cloRepository.findBySyllabusId(sourceId);
+                Map<Integer, Clo> oldCloToNewCloMap = new HashMap<>();
 
-        return SyllabusResponse.builder()
-                .id(syllabus.getId())
-                .courseId(syllabus.getCourse().getId())
-                .courseCode(syllabus.getCourse().getCourseCode())
-                .courseName(syllabus.getCourse().getName())
-                .versionNumber(syllabus.getVersionNumber())
-                .versionLabel(syllabus.getVersionLabel())
-                .cohortId(syllabusCourseProgram == null
-                        ? null
-                        : syllabusCourseProgram.getCohort().getId())
-                .cohortName(syllabusCourseProgram == null
-                        ? null
-                        : syllabusCourseProgram.getCohort().getName())
-                .academicYear(syllabus.getAcademicYear())
-                .courseDesignation(syllabus.getCourseDesignation())
-                .courseTypes(syllabus.getCourseTypes())
-                .semester(syllabus.getSemester())
-                .language(syllabus.getLanguage())
-                .relation(syllabus.getRelation())
-                .teachingMethods(syllabus.getTeachingMethods())
-                .workloadTotal(syllabus.getWorkloadTotal())
-                .workloadContact(syllabus.getWorkloadContact())
-                .workloadPrivate(syllabus.getWorkloadPrivate())
-                .prerequisites(syllabus.getPrerequisites())
-                .objectives(syllabus.getObjectives())
-                .examForms(syllabus.getExamForms())
-                .examRequirements(syllabus.getExamRequirements())
-                .rubrics(syllabus.getRubrics())
-                .major(syllabus.getMajor())
-                .status(syllabus.getStatus().name())
-                .isCurrent(syllabus.getIsCurrent())
-                .createdById(syllabus.getCreatedBy().getId())
-                .createdByUsername(syllabus.getCreatedBy().getUsername())
-                .approvedById(syllabus.getApprovedBy() == null
-                        ? null
-                        : syllabus.getApprovedBy().getId())
-                .approvedByUsername(syllabus.getApprovedBy() == null
-                        ? null
-                        : syllabus.getApprovedBy().getUsername())
-                .submittedAt(syllabus.getSubmittedAt())
-                .approvedAt(syllabus.getApprovedAt())
-                .changeSummary(syllabus.getChangeSummary())
-                .notes(syllabus.getNotes())
-                .clos(syllabus.getClos() != null
-                        ? syllabus.getClos()
+                for (Clo srcClo : sourceClos) {
+                        Clo targetClo = Clo.builder()
+                                        .syllabus(savedSyllabus)
+                                        .code(srcClo.getCode())
+                                        .description(srcClo.getDescription())
+                                        .descriptionVn(srcClo.getDescriptionVn())
+                                        .competencyLevel(srcClo.getCompetencyLevel())
+                                        .bloomLevel(srcClo.getBloomLevel())
+                                        .orderIndex(srcClo.getOrderIndex())
+                                        .build();
+
+                        targetClo = cloRepository.save(targetClo);
+                        oldCloToNewCloMap.put(srcClo.getId(), targetClo);
+
+                        List<CloPloMapping> srcMappings = cloPloMappingRepository.findByCloId(srcClo.getId());
+
+                        for (CloPloMapping srcMap : srcMappings) {
+                                CloPloMapping targetMap = CloPloMapping.builder()
+                                                .clo(targetClo)
+                                                .plo(srcMap.getPlo())
+                                                .level(srcMap.getLevel())
+                                                .contributionWeight(srcMap.getContributionWeight() == null
+                                                                ? 1.0f
+                                                                : srcMap.getContributionWeight())
+                                                .notes(srcMap.getNotes())
+                                                .build();
+
+                                cloPloMappingRepository.save(targetMap);
+                        }
+                }
+
+                List<Topic> sourceTopics = topicRepository.findBySyllabusId(sourceId);
+
+                for (Topic srcTopic : sourceTopics) {
+                        Topic targetTopic = Topic.builder()
+                                        .syllabus(savedSyllabus)
+                                        .weekNumber(srcTopic.getWeekNumber())
+                                        .orderInWeek(srcTopic.getOrderInWeek())
+                                        .name(srcTopic.getName())
+                                        .nameVn(srcTopic.getNameVn())
+                                        .teachingHours(srcTopic.getTeachingHours())
+                                        .labHours(srcTopic.getLabHours())
+                                        .selfStudyHours(srcTopic.getSelfStudyHours())
+                                        .topicType(srcTopic.getTopicType())
+                                        .teachingMethod(srcTopic.getTeachingMethod())
+                                        .learningActivity(srcTopic.getLearningActivity())
+                                        .assessments(srcTopic.getAssessments())
+                                        .resources(srcTopic.getResources())
+                                        .notes(srcTopic.getNotes())
+                                        .build();
+
+                        targetTopic = topicRepository.save(targetTopic);
+
+                        List<TopicClo> srcTopicClos = topicCloRepository.findByIdTopicId(srcTopic.getId());
+
+                        for (TopicClo srcTc : srcTopicClos) {
+                                Clo targetCloForTc = oldCloToNewCloMap.get(srcTc.getClo().getId());
+
+                                if (targetCloForTc == null) {
+                                        throw new IllegalStateException(
+                                                        "Unable to clone Topic–CLO mapping because the source CLO does not exist in the copy.");
+                                }
+
+                                TopicCloId tcId = new TopicCloId(targetTopic.getId(), targetCloForTc.getId());
+
+                                TopicClo targetTc = TopicClo.builder()
+                                                .id(tcId)
+                                                .topic(targetTopic)
+                                                .clo(targetCloForTc)
+                                                .teachingLevel(srcTc.getTeachingLevel())
+                                                .build();
+
+                                topicCloRepository.save(targetTc);
+                        }
+                }
+
+                List<SyllabusBook> sourceBooks = syllabusBookRepository.findBySyllabus_Id(sourceId);
+
+                for (SyllabusBook srcBook : sourceBooks) {
+                        SyllabusBookId sbId = new SyllabusBookId(savedSyllabus.getId(), srcBook.getBook().getId());
+
+                        SyllabusBook targetBook = SyllabusBook.builder()
+                                        .id(sbId)
+                                        .syllabus(savedSyllabus)
+                                        .book(srcBook.getBook())
+                                        .usageType(srcBook.getUsageType())
+                                        .orderIndex(srcBook.getOrderIndex())
+                                        .build();
+
+                        syllabusBookRepository.save(targetBook);
+                }
+
+                List<AssessmentComponent> sourceComps = assessmentComponentRepository.findBySyllabusId(sourceId);
+
+                for (AssessmentComponent srcComp : sourceComps) {
+                        AssessmentComponent targetComp = AssessmentComponent.builder()
+                                        .syllabus(savedSyllabus)
+                                        .name(srcComp.getName())
+                                        .nameVn(srcComp.getNameVn())
+                                        .assessmentType(srcComp.getAssessmentType())
+                                        .weightPercent(srcComp.getWeightPercent())
+                                        .minScore(srcComp.getMinScore())
+                                        .maxScore(srcComp.getMaxScore())
+                                        .orderIndex(srcComp.getOrderIndex())
+                                        .build();
+
+                        targetComp = assessmentComponentRepository.save(targetComp);
+
+                        List<AssessmentClo> srcAssessmentClos = assessmentCloRepository
+                                        .findByAssessmentComponent_Id(srcComp.getId());
+
+                        for (AssessmentClo srcAc : srcAssessmentClos) {
+                                Clo targetCloForAc = oldCloToNewCloMap.get(srcAc.getClo().getId());
+
+                                if (targetCloForAc == null) {
+                                        throw new IllegalStateException(
+                                                        "Unable to clone Assessment–CLO mapping because the source CLO does not exist in the copy.");
+                                }
+
+                                AssessmentCloId acId = new AssessmentCloId(targetComp.getId(), targetCloForAc.getId());
+
+                                AssessmentClo targetAc = AssessmentClo.builder()
+                                                .id(acId)
+                                                .assessmentComponent(targetComp)
+                                                .clo(targetCloForAc)
+                                                .contributionPercent(srcAc.getContributionPercent())
+                                                .build();
+
+                                assessmentCloRepository.save(targetAc);
+                        }
+                }
+        }
+
+        @Override
+        @Transactional(readOnly = true)
+        public SyllabusCreateContextResponse getCreateContext(Integer courseId) {
+                Course course = courseRepository.findById(courseId)
+                                .orElseThrow(() -> new ResourceNotFoundException("Course not found"));
+
+                syllabusAccessService.assertCanCreateContext(course);
+
+                Syllabus latestApproved = repository
+                                .findTopByCourseIdAndStatusOrderByVersionNumberDescIdDesc(
+                                                courseId, SyllabusStatus.APPROVED)
+                                .orElse(null);
+                Syllabus latest = repository
+                                .findTopByCourseIdOrderByVersionNumberDescIdDesc(courseId)
+                                .orElse(null);
+
+                // Never expose another instructor's working Draft as a template.
+                if (syllabusAccessService.currentUser().getRole() != com.scse.curriculum.user.entity.UserRole.ADMIN
+                                && latest != null
+                                && latest.getStatus() == SyllabusStatus.DRAFT
+                                && !syllabusAccessService.canView(latest)) {
+                        latest = latestApproved;
+                }
+
+                // Priority 2 fallback: curriculum/course context (CourseProgram -> Program ->
+                // PLO).
+                List<CourseProgram> coursePrograms = courseProgramRepository.findByCourse_Id(courseId);
+
+                List<SyllabusCreateContextResponse.CourseProgramSummary> courseProgramSummaries = coursePrograms
                                 .stream()
-                                .map(clo -> new CreateSyllabusRequest.CloDTO(
-                                clo.getCode(),
-                                clo.getDescription(),
-                                clo.getDescriptionVn(),
-                                clo.getCompetencyLevel() != null
-                                ? clo.getCompetencyLevel().name()
-                                : null,
-                                clo.getBloomLevel() != null
-                                ? clo.getBloomLevel().name()
-                                : null,
-                                clo.getOrderIndex()
-                        ))
-                                .collect(Collectors.toList())
-                        : new ArrayList<>())
-                .topics(syllabus.getTopics() != null
-                        ? syllabus.getTopics()
+                                .map(cp -> SyllabusCreateContextResponse.CourseProgramSummary.builder()
+                                                .id(cp.getId())
+                                                .programId(cp.getProgram() == null ? null : cp.getProgram().getId())
+                                                .programCode(cp.getProgram() == null ? null : cp.getProgram().getCode())
+                                                .programName(cp.getProgram() == null ? null : cp.getProgram().getName())
+                                                .cohortId(cp.getCohort() == null ? null : cp.getCohort().getId())
+                                                .cohortName(cp.getCohort() == null ? null : cp.getCohort().getName())
+                                                .courseTypeId(cp.getCourseType() == null ? null
+                                                                : cp.getCourseType().getId())
+                                                .courseTypeName(cp.getCourseType() == null ? null
+                                                                : cp.getCourseType().getName())
+                                                .semesterSuggest(cp.getSemesterSuggest())
+                                                .required(cp.getRequired())
+                                                .build())
+                                .toList();
+
+                List<Integer> programIds = coursePrograms.stream()
+                                .map(cp -> cp.getProgram() == null ? null : cp.getProgram().getId())
+                                .filter(Objects::nonNull)
+                                .distinct()
+                                .toList();
+
+                List<SyllabusCreateContextResponse.PloSummary> ploSummaries = new ArrayList<>();
+                for (Integer programId : programIds) {
+                        for (Plo plo : ploRepository.findByProgramId(programId)) {
+                                ploSummaries.add(SyllabusCreateContextResponse.PloSummary.builder()
+                                                .id(plo.getId())
+                                                .programId(programId)
+                                                .programCode(plo.getProgram() == null ? null
+                                                                : plo.getProgram().getCode())
+                                                .code(plo.getCode())
+                                                .description(plo.getDescription())
+                                                .build());
+                        }
+                }
+
+                // Priority 3 fallback: static defaults, only used when nothing else supplies a
+                // value.
+                String defaultCourseType = coursePrograms.stream()
+                                .map(cp -> cp.getCourseType() == null ? null : cp.getCourseType().getName())
+                                .filter(Objects::nonNull)
+                                .findFirst()
+                                .orElse(null);
+
+                String defaultSemester = coursePrograms.stream()
+                                .map(CourseProgram::getSemesterSuggest)
+                                .filter(Objects::nonNull)
+                                .findFirst()
+                                .map(semesterSuggest -> "HK" + semesterSuggest)
+                                .orElse(null);
+
+                SyllabusCreateContextResponse.DefaultsContext defaults = SyllabusCreateContextResponse.DefaultsContext
+                                .builder()
+                                .language("English")
+                                .teachingMethods("Lecture")
+                                .semester(defaultSemester)
+                                .courseTypes(defaultCourseType)
+                                .build();
+
+                return SyllabusCreateContextResponse.builder()
+                                .course(SyllabusCreateContextResponse.CourseContext.builder()
+                                                .id(course.getId())
+                                                .courseCode(course.getCourseCode())
+                                                .name(course.getName())
+                                                .nameVn(course.getNameVn())
+                                                .creditTheory(course.getCreditTheory())
+                                                .creditLab(course.getCreditLab())
+                                                .courseLevel(course.getCourseLevel() == null ? null
+                                                                : course.getCourseLevel().name())
+                                                .description(course.getDescription())
+                                                .departmentName(course.getDepartment() == null ? null
+                                                                : course.getDepartment().getName())
+                                                .build())
+                                .latestSyllabus(latest == null ? null : map(latest))
+                                .latestApprovedSyllabus(latestApproved == null ? null : map(latestApproved))
+                                .coursePrograms(courseProgramSummaries)
+                                .plos(ploSummaries)
+                                .defaults(defaults)
+                                .build();
+        }
+
+        @Override
+        @Transactional(readOnly = true)
+        public List<SyllabusResponse> getAll() {
+                UserAccount currentUser = syllabusAccessService.currentUser();
+                List<Syllabus> source = repository.findAllWithRelations();
+
+                return source
                                 .stream()
-                                .map(topic -> new CreateSyllabusRequest.TopicDTO(
-                                topic.getWeekNumber(),
-                                topic.getOrderInWeek(),
-                                topic.getName(),
-                                topic.getNameVn(),
-                                topic.getTeachingHours(),
-                                topic.getLabHours(),
-                                topic.getSelfStudyHours(),
-                                topic.getTopicType() != null
-                                ? topic.getTopicType().name()
-                                : null,
-                                topic.getTeachingMethod(),
-                                topic.getLearningActivity(),
-                                topic.getNotes()
-                        ))
-                                .collect(Collectors.toList())
-                        : new ArrayList<>())
-                .assessments(syllabus.getAssessments() != null
-                        ? syllabus.getAssessments()
+                                .filter(syllabusAccessService::canView)
+                                .map(this::map)
+                                .toList();
+        }
+
+        @Override
+        @Transactional(readOnly = true)
+        public SyllabusResponse getById(Integer id) {
+
+                Syllabus syllabus = repository.findByIdWithRelations(id)
+                                .orElseThrow(() -> new ResourceNotFoundException("Syllabus not found"));
+
+                syllabusAccessService.assertCanView(syllabus);
+                return map(syllabus);
+        }
+
+        @Override
+        @Transactional(readOnly = true)
+        public SyllabusResponse getByIdForEdit(Integer id) {
+                Syllabus syllabus = repository.findByIdWithRelations(id)
+                                .orElseThrow(() -> new ResourceNotFoundException("Syllabus not found"));
+
+                syllabusAccessService.assertCanModify(syllabus);
+                return map(syllabus);
+        }
+
+        @Override
+        @Transactional(readOnly = true)
+        public List<SyllabusResponse> getByCourse(Integer courseId) {
+
+                return repository.findByCourseIdWithRelations(courseId)
                                 .stream()
-                                .map(assessment -> new CreateSyllabusRequest.AssessmentDTO(
-                                assessment.getName(),
-                                assessment.getNameVn(),
-                                assessment.getAssessmentType() != null
-                                ? assessment.getAssessmentType().name()
-                                : null,
-                                assessment.getWeightPercent(),
-                                assessment.getMinScore(),
-                                assessment.getMaxScore(),
-                                assessment.getOrderIndex()
-                        ))
-                                .collect(Collectors.toList())
-                        : new ArrayList<>())
-                .createdAt(syllabus.getCreatedAt())
-                .updatedAt(syllabus.getUpdatedAt())
-                .build();
-    }
-
-    @Override
-    @Transactional
-    public SyllabusResponse update(
-            Integer id,
-            CreateSyllabusRequest request) {
-
-        Syllabus syllabus = repository.findByIdWithRelations(id)
-                .orElseThrow(()
-                        -> new ResourceNotFoundException("Syllabus not found"));
-
-        syllabusAccessService.assertCanModify(syllabus);
-        assertContentIsMutable(syllabus);
-
-        if (request.getCourseId() != null
-                && (syllabus.getCourse() == null
-                || !request.getCourseId().equals(syllabus.getCourse().getId()))) {
-
-            Course course = courseRepository.findById(request.getCourseId())
-                    .orElseThrow(()
-                            -> new ResourceNotFoundException("Course not found"));
-
-            syllabus.setCourse(course);
+                                .filter(syllabusAccessService::canView)
+                                .map(this::map)
+                                .toList();
         }
 
-        if (request.getVersionLabel() != null) {
-    syllabus.setVersionLabel(request.getVersionLabel());
-}
-if (request.getAcademicYear() != null) {
-    syllabus.setAcademicYear(request.getAcademicYear());
-}
-if (request.getChangeSummary() != null) {
-    syllabus.setChangeSummary(request.getChangeSummary());
-}
-if (request.getNotes() != null) {
-    syllabus.setNotes(request.getNotes());
-}
-
-if (request.getCourseDesignation() != null) {
-    syllabus.setCourseDesignation(request.getCourseDesignation());
-}
-if (request.getCourseTypes() != null) {
-    syllabus.setCourseTypes(request.getCourseTypes());
-}
-if (request.getSemester() != null) {
-    syllabus.setSemester(request.getSemester());
-}
-if (request.getLanguage() != null) {
-    syllabus.setLanguage(request.getLanguage());
-}
-if (request.getRelation() != null) {
-    syllabus.setRelation(request.getRelation());
-}
-if (request.getTeachingMethods() != null) {
-    syllabus.setTeachingMethods(request.getTeachingMethods());
-}
-if (request.getWorkloadTotal() != null) {
-    syllabus.setWorkloadTotal(request.getWorkloadTotal());
-}
-if (request.getWorkloadContact() != null) {
-    syllabus.setWorkloadContact(request.getWorkloadContact());
-}
-if (request.getWorkloadPrivate() != null) {
-    syllabus.setWorkloadPrivate(request.getWorkloadPrivate());
-}
-if (request.getPrerequisites() != null) {
-    syllabus.setPrerequisites(request.getPrerequisites());
-}
-if (request.getObjectives() != null) {
-    syllabus.setObjectives(request.getObjectives());
-}
-if (request.getExamForms() != null) {
-    syllabus.setExamForms(request.getExamForms());
-}
-if (request.getExamRequirements() != null) {
-    syllabus.setExamRequirements(request.getExamRequirements());
-}
-if (request.getRubrics() != null) {
-    syllabus.setRubrics(request.getRubrics());
-}
-if (request.getMajor() != null) {
-    syllabus.setMajor(request.getMajor());
-}
-
-        // Nếu đổi course/năm học/học kỳ, quyền phải được kiểm tra lại
-        // trên giá trị cuối cùng, tránh chuyển Draft sang môn không được phân công.
-        syllabusAccessService.assertCanUseAssignmentFor(
-                syllabus.getCourse(),
-                syllabus.getAcademicYear(),
-                syllabus.getSemester());
-
-        if (request.getClos() != null
-                || request.getTopics() != null
-                || request.getAssessments() != null) {
-
-            prepareManagedCollectionsForUpdate(syllabus, request);
-            repository.flush();
-        }
-
-        if (request.getClos() != null) {
-            request.getClos().forEach(dto
-                    -> syllabus.getClos().add(Clo.builder()
-                            .syllabus(syllabus)
-                            .code(dto.getCode())
-                            .description(dto.getDescription())
-                            .descriptionVn(dto.getDescriptionVn())
-                            .competencyLevel(dto.getCompetencyLevel() != null
-                                    ? CompetencyLevel.valueOf(dto.getCompetencyLevel())
-                                    : null)
-                            .bloomLevel(dto.getBloomLevel() != null
-                                    ? BloomLevel.valueOf(dto.getBloomLevel())
-                                    : null)
-                            .orderIndex(dto.getOrderIndex())
-                            .build()));
-        }
-
-        if (request.getTopics() != null) {
-            request.getTopics().forEach(dto
-                    -> syllabus.getTopics().add(Topic.builder()
-                            .syllabus(syllabus)
-                            .weekNumber(dto.getWeekNumber())
-                            .orderInWeek(dto.getOrderInWeek())
-                            .name(dto.getName())
-                            .nameVn(dto.getNameVn())
-                            .teachingHours(dto.getTeachingHours())
-                            .labHours(dto.getLabHours())
-                            .selfStudyHours(dto.getSelfStudyHours())
-                            .topicType(dto.getTopicType() != null
-                                    ? TopicType.valueOf(dto.getTopicType())
-                                    : null)
-                            .teachingMethod(dto.getTeachingMethod())
-                            .learningActivity(dto.getLearningActivity())
-                            .notes(dto.getNotes())
-                            .build()));
-        }
-
-        if (request.getAssessments() != null) {
-            request.getAssessments().forEach(dto
-                    -> syllabus.getAssessments().add(AssessmentComponent.builder()
-                            .syllabus(syllabus)
-                            .name(dto.getName())
-                            .nameVn(dto.getNameVn())
-                            .assessmentType(dto.getAssessmentType() != null
-                                    ? AssessmentType.valueOf(dto.getAssessmentType())
-                                    : null)
-                            .weightPercent(dto.getWeightPercent() != null
-                                    ? dto.getWeightPercent()
-                                    : 0f)
-                            .minScore(dto.getMinScore() != null
-                                    ? dto.getMinScore()
-                                    : 0f)
-                            .maxScore(dto.getMaxScore() != null
-                                    ? dto.getMaxScore()
-                                    : 100f)
-                            .orderIndex(dto.getOrderIndex() != null
-                                    ? dto.getOrderIndex()
-                                    : 1)
-                            .build()));
-        }
-
-        syllabus.setUpdatedAt(LocalDateTime.now());
-
-        Syllabus saved = repository.save(syllabus);
-        repository.flush();
-
-        return map(repository.findByIdWithRelations(saved.getId())
-                .orElseThrow(()
-                        -> new ResourceNotFoundException("Syllabus not found")));
-    }
-
-    private void prepareManagedCollectionsForUpdate(
-            Syllabus syllabus,
-            CreateSyllabusRequest request) {
-
-        Integer syllabusId = syllabus.getId();
-
-        if (request.getAssessments() != null || request.getClos() != null) {
-            List<AssessmentComponent> assessments
-                    = assessmentComponentRepository.findBySyllabusId(syllabusId);
-
-            for (AssessmentComponent assessment : assessments) {
-                studentScoreRepository.deleteAll(
-                        studentScoreRepository.findByAssessmentComponent_Id(
-                                assessment.getId()));
-
-                assessmentCloRepository.deleteAll(
-                        assessmentCloRepository.findByAssessmentComponent_Id(
-                                assessment.getId()));
-            }
-        }
-
-        if (request.getTopics() != null || request.getClos() != null) {
-            List<Topic> topics
-                    = topicRepository.findBySyllabusId(syllabusId);
-
-            for (Topic topic : topics) {
-                topicCloRepository.deleteAll(
-                        topicCloRepository.findByIdTopicId(topic.getId()));
-            }
-        }
-
-        if (request.getClos() != null) {
-            List<Clo> clos
-                    = cloRepository.findBySyllabusId(syllabusId);
-
-            for (Clo clo : clos) {
-                assessmentCloRepository.deleteAll(
-                        assessmentCloRepository.findByClo_Id(clo.getId()));
-
-                topicCloRepository.deleteAll(
-                        topicCloRepository.findByIdCloId(clo.getId()));
-
-                cloPloMappingRepository.deleteAll(
-                        cloPloMappingRepository.findByCloId(clo.getId()));
-            }
-        }
-
-        if (request.getAssessments() != null) {
-            syllabus.getAssessments().clear();
-        }
-
-        if (request.getTopics() != null) {
-            syllabus.getTopics().clear();
-        }
-
-        if (request.getClos() != null) {
-            syllabus.getClos().clear();
-        }
-    }
-
-    @Override
-    @Transactional
-    public void delete(Integer id) {
-
-        Syllabus syllabus = repository.findByIdWithRelations(id)
-                .orElseThrow(()
-                        -> new ResourceNotFoundException("Syllabus not found"));
-
-        syllabusAccessService.assertCanModify(syllabus);
-        assertContentIsMutable(syllabus);
-
-        deleteSyllabusDetailData(id);
-
-        syllabusBookRepository.deleteAll(
-                syllabusBookRepository.findBySyllabus_Id(id));
-
-        approvalRequestRepository.deleteAll(
-                approvalRequestRepository.findBySyllabusId(id));
-
-        classSectionRepository.deleteAll(
-                classSectionRepository.findBySyllabusId(id));
-
-        repository.deleteById(id);
-        repository.flush();
-    }
-
-    private void deleteSyllabusDetailData(Integer syllabusId) {
-
-        List<AssessmentComponent> assessments
-                = assessmentComponentRepository.findBySyllabusId(syllabusId);
-
-        for (AssessmentComponent assessment : assessments) {
-            studentScoreRepository.deleteAll(
-                    studentScoreRepository.findByAssessmentComponent_Id(
-                            assessment.getId()));
-
-            assessmentCloRepository.deleteAll(
-                    assessmentCloRepository.findByAssessmentComponent_Id(
-                            assessment.getId()));
-        }
-
-        assessmentComponentRepository.deleteAll(assessments);
-        assessmentComponentRepository.flush();
-
-        List<Topic> topics = topicRepository.findBySyllabusId(syllabusId);
-
-        for (Topic topic : topics) {
-            topicCloRepository.deleteAll(
-                    topicCloRepository.findByIdTopicId(topic.getId()));
-        }
-
-        topicRepository.deleteAll(topics);
-        topicRepository.flush();
-
-        List<Clo> clos = cloRepository.findBySyllabusId(syllabusId);
-
-        for (Clo clo : clos) {
-            assessmentCloRepository.deleteAll(
-                    assessmentCloRepository.findByClo_Id(clo.getId()));
-
-            topicCloRepository.deleteAll(
-                    topicCloRepository.findByIdCloId(clo.getId()));
-
-            cloPloMappingRepository.deleteAll(
-                    cloPloMappingRepository.findByCloId(clo.getId()));
-        }
-
-        cloRepository.deleteAll(clos);
-        cloRepository.flush();
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public SubmissionValidationResponse validateForSubmit(Integer id) {
-
-        Syllabus syllabus = repository.findByIdWithRelations(id)
-                .orElseThrow(()
-                        -> new ResourceNotFoundException(
-                                "Syllabus not found"));
-
-        syllabusAccessService.assertCanModify(syllabus);
-        assertContentIsMutable(syllabus);
-
-        return submissionValidationService.validate(syllabus);
-    }
-
-    @Override
-    @Transactional
-    public SyllabusResponse submit(Integer id) {
-
-        Syllabus draft = repository.findByIdWithRelations(id)
-                .orElseThrow(()
-                        -> new ResourceNotFoundException(
-                                "Syllabus not found"));
-
-        // Chỉ Faculty được phân công môn này hoặc Admin mới được nộp.
-        syllabusAccessService.assertCanModify(draft);
-        assertContentIsMutable(draft);
-
-        // FR-03.10: backend validate toàn bộ nội dung trước mọi bước submit.
-        submissionValidationService.validateOrThrow(draft);
-
-        // FR-05.1: xác định đúng Trưởng bộ môn trước khi tạo snapshot.
-        List<UserAccount> deptHeads =
-                syllabusAccessService.findActiveDeptHeadsFor(draft.getCourse());
-
-        /*
-         * Không cho tồn tại hai version đang chờ duyệt cho cùng
-         * course + academicYear + semester.
+        /**
+         * "Person responsible for the course": derived from the linked teaching
+         * assignment's instructor, matching the PDF export. Not the account that
+         * created/imported the draft (createdBy).
          */
-        boolean hasPendingApproval = approvalRequestRepository
-                .existsBySyllabus_Course_IdAndSyllabus_AcademicYearAndSyllabus_SemesterAndStatus(
-                        draft.getCourse().getId(),
-                        draft.getAcademicYear(),
-                        draft.getSemester(),
-                        ApprovalStatus.PENDING);
-
-        if (hasPendingApproval) {
-            throw new IllegalStateException(
-                    "This course already has a version pending approval.");
+        private String resolveResponsibleInstructors(Integer syllabusId) {
+                return classSectionRepository.findForPdfBySyllabusId(syllabusId)
+                                .stream()
+                                .map(ClassSection::getInstructor)
+                                .filter(Objects::nonNull)
+                                .map(instructor -> instructor.getFullName())
+                                .filter(value -> value != null && !value.isBlank())
+                                .distinct()
+                                .sorted(String.CASE_INSENSITIVE_ORDER)
+                                .reduce((left, right) -> left + ", " + right)
+                                .orElse(null);
         }
 
-        /*
-         * FR-03.5:
-         * 1. Tạo một row syllabus mới làm snapshot SUBMITTED.
-         * 2. Deep-copy CLO, CLO-PLO, Topic, Topic-CLO, Assessment,
-         *    Assessment-CLO và Reading List.
-         * 3. Bản Draft nguồn được ARCHIVED, không xóa.
+        private SyllabusResponse map(Syllabus syllabus) {
+
+                CourseProgram syllabusCourseProgram = courseProgramRepository
+                                .findBySyllabus_Id(syllabus.getId())
+                                .stream()
+                                .filter(courseProgram -> courseProgram.getCohort() != null)
+                                .findFirst()
+                                .orElse(null);
+
+                return SyllabusResponse.builder()
+                                .id(syllabus.getId())
+                                .courseId(syllabus.getCourse().getId())
+                                .courseCode(syllabus.getCourse().getCourseCode())
+                                .courseName(syllabus.getCourse().getName())
+                                .versionNumber(syllabus.getVersionNumber())
+                                .versionLabel(syllabus.getVersionLabel())
+                                .cohortId(syllabusCourseProgram == null
+                                                ? null
+                                                : syllabusCourseProgram.getCohort().getId())
+                                .cohortName(syllabusCourseProgram == null
+                                                ? null
+                                                : syllabusCourseProgram.getCohort().getName())
+                                .courseProgramId(syllabusCourseProgram == null ? null : syllabusCourseProgram.getId())
+                                .programId(syllabusCourseProgram == null ? null : syllabusCourseProgram.getProgram().getId())
+                                .programCode(syllabusCourseProgram == null ? null : syllabusCourseProgram.getProgram().getCode())
+                                .programName(syllabusCourseProgram == null ? null : syllabusCourseProgram.getProgram().getName())
+                                .academicYear(syllabusCourseProgram == null || syllabusCourseProgram.getCohort() == null
+                                                ? syllabus.getAcademicYear()
+                                                : syllabusCourseProgram.getCohort().getName())
+                                .creditTheory(syllabus.getCourse().getCreditTheory())
+                                .creditLab(syllabus.getCourse().getCreditLab())
+                                .responsibleInstructors(resolveResponsibleInstructors(syllabus.getId()))
+                                .courseDesignation(syllabus.getCourseDesignation())
+                                .courseTypes(syllabus.getCourseTypes())
+                                .semester(syllabus.getSemester())
+                                .language(syllabus.getLanguage())
+                                .relation(syllabus.getRelation())
+                                .teachingMethods(syllabus.getTeachingMethods())
+                                .workloadTotal(syllabus.getWorkloadTotal())
+                                .workloadContact(syllabus.getWorkloadContact())
+                                .workloadPrivate(syllabus.getWorkloadPrivate())
+                                .prerequisites(syllabus.getPrerequisites())
+                                .objectives(syllabus.getObjectives())
+                                .examForms(syllabus.getExamForms())
+                                .examRequirements(syllabus.getExamRequirements())
+                                .rubrics(syllabus.getRubrics())
+                                .major(syllabus.getMajor())
+                                .sourceType(syllabus.getSourceType() == null
+                                                ? null
+                                                : syllabus.getSourceType().name())
+                                .originalFileName(syllabus.getOriginalFileName())
+                                .originalFileType(syllabus.getOriginalFileType())
+                                .importStatus(syllabus.getImportStatus() == null
+                                                ? null
+                                                : syllabus.getImportStatus().name())
+                                .finalApprovalDate(syllabus.getFinalApprovalDate())
+                                .status(syllabus.getStatus().name())
+                                .isCurrent(syllabus.getIsCurrent())
+                                .createdById(syllabus.getCreatedBy().getId())
+                                .createdByUsername(syllabus.getCreatedBy().getUsername())
+                                .approvedById(syllabus.getApprovedBy() == null
+                                                ? null
+                                                : syllabus.getApprovedBy().getId())
+                                .approvedByUsername(syllabus.getApprovedBy() == null
+                                                ? null
+                                                : syllabus.getApprovedBy().getUsername())
+                                .submittedAt(syllabus.getSubmittedAt())
+                                .approvedAt(syllabus.getApprovedAt())
+                                .changeSummary(syllabus.getChangeSummary())
+                                .notes(syllabus.getNotes())
+                                .clos(syllabus.getClos() != null
+                                                ? syllabus.getClos()
+                                                                .stream()
+                                                                .map(clo -> new CreateSyllabusRequest.CloDTO(
+                                                                                clo.getId(),
+                                                                                clo.getCode(),
+                                                                                clo.getDescription(),
+                                                                                clo.getDescriptionVn(),
+                                                                                clo.getCompetencyLevel() != null
+                                                                                                ? clo.getCompetencyLevel()
+                                                                                                                .name()
+                                                                                                : null,
+                                                                                clo.getBloomLevel() != null
+                                                                                                ? clo.getBloomLevel()
+                                                                                                                .name()
+                                                                                                : null,
+                                                                                clo.getOrderIndex()))
+                                                                .collect(Collectors.toList())
+                                                : new ArrayList<>())
+                                .topics(syllabus.getTopics() != null
+                                                ? syllabus.getTopics()
+                                                                .stream()
+                                                                .map(topic -> new CreateSyllabusRequest.TopicDTO(
+                                                                                topic.getId(),
+                                                                                topic.getWeekNumber(),
+                                                                                topic.getOrderInWeek(),
+                                                                                topic.getName(),
+                                                                                topic.getNameVn(),
+                                                                                topic.getTeachingHours(),
+                                                                                topic.getLabHours(),
+                                                                                topic.getSelfStudyHours(),
+                                                                                topic.getTopicType() != null
+                                                                                                ? topic.getTopicType()
+                                                                                                                .name()
+                                                                                                : null,
+                                                                                topic.getTeachingMethod(),
+                                                                                topic.getLearningActivity(),
+                                                                                topic.getAssessments(),
+                                                                                topic.getResources(),
+                                                                                topic.getNotes()))
+                                                                .collect(Collectors.toList())
+                                                : new ArrayList<>())
+                                .assessments(syllabus.getAssessments() != null
+                                                ? syllabus.getAssessments()
+                                                                .stream()
+                                                                .map(assessment -> new CreateSyllabusRequest.AssessmentDTO(
+                                                                                assessment.getId(),
+                                                                                assessment.getName(),
+                                                                                assessment.getNameVn(),
+                                                                                assessment.getAssessmentType(),
+                                                                                assessment.getWeightPercent(),
+                                                                                assessment.getMinScore(),
+                                                                                assessment.getMaxScore(),
+                                                                                assessment.getOrderIndex()))
+                                                                .collect(Collectors.toList())
+                                                : new ArrayList<>())
+                                .createdAt(syllabus.getCreatedAt())
+                                .updatedAt(syllabus.getUpdatedAt())
+                                .build();
+        }
+
+        @Override
+        @Transactional
+        public SyllabusResponse update(
+                        Integer id,
+                        CreateSyllabusRequest request) {
+
+                Syllabus syllabus = repository.findByIdWithRelations(id)
+                                .orElseThrow(() -> new ResourceNotFoundException("Syllabus not found"));
+
+                syllabusAccessService.assertCanModify(syllabus);
+                assertContentIsMutable(syllabus);
+
+                if (request.getCourseId() != null
+                                && (syllabus.getCourse() == null
+                                                || !request.getCourseId().equals(syllabus.getCourse().getId()))) {
+
+                        Course course = courseRepository.findById(request.getCourseId())
+                                        .orElseThrow(() -> new ResourceNotFoundException("Course not found"));
+
+                        syllabus.setCourse(course);
+                }
+
+                if (request.getVersionLabel() != null) {
+                        syllabus.setVersionLabel(request.getVersionLabel());
+                }
+                if (request.getAcademicYear() != null) {
+                        syllabus.setAcademicYear(request.getAcademicYear());
+                }
+                if (request.getChangeSummary() != null) {
+                        syllabus.setChangeSummary(request.getChangeSummary());
+                }
+                if (request.getNotes() != null) {
+                        syllabus.setNotes(request.getNotes());
+                }
+
+                if (request.getCourseDesignation() != null) {
+                        syllabus.setCourseDesignation(request.getCourseDesignation());
+                }
+                if (request.getCourseTypes() != null) {
+                        syllabus.setCourseTypes(request.getCourseTypes());
+                }
+                if (request.getSemester() != null) {
+                        String normalizedSemester = normalizeSemesterLabel(request.getSemester());
+                        syllabus.setSemester(normalizedSemester);
+                        synchronizeLinkedCourseProgramSemester(syllabus, normalizedSemester);
+                }
+                if (request.getLanguage() != null) {
+                        syllabus.setLanguage(request.getLanguage());
+                }
+                if (request.getRelation() != null) {
+                        syllabus.setRelation(request.getRelation());
+                }
+                if (request.getTeachingMethods() != null) {
+                        syllabus.setTeachingMethods(request.getTeachingMethods());
+                }
+                if (request.getWorkloadTotal() != null) {
+                        syllabus.setWorkloadTotal(request.getWorkloadTotal());
+                }
+                if (request.getWorkloadContact() != null) {
+                        syllabus.setWorkloadContact(request.getWorkloadContact());
+                }
+                if (request.getWorkloadPrivate() != null) {
+                        syllabus.setWorkloadPrivate(request.getWorkloadPrivate());
+                }
+                if (request.getPrerequisites() != null) {
+                        syllabus.setPrerequisites(request.getPrerequisites());
+                }
+                if (request.getObjectives() != null) {
+                        syllabus.setObjectives(request.getObjectives());
+                }
+                if (request.getExamForms() != null) {
+                        syllabus.setExamForms(request.getExamForms());
+                }
+                if (request.getExamRequirements() != null) {
+                        syllabus.setExamRequirements(request.getExamRequirements());
+                }
+                if (request.getRubrics() != null) {
+                        syllabus.setRubrics(request.getRubrics());
+                }
+                if (request.getMajor() != null) {
+                        syllabus.setMajor(request.getMajor());
+                }
+
+                // Nếu đổi course/năm học/học kỳ, quyền phải được kiểm tra lại
+                // trên giá trị cuối cùng, tránh chuyển Draft sang môn không được phân công.
+                syllabusAccessService.assertCanUseAssignmentFor(
+                                syllabus.getCourse(),
+                                syllabus.getAcademicYear(),
+                                syllabus.getSemester());
+
+                if (request.getClos() != null) {
+                        reconcileClos(syllabus, request.getClos());
+                }
+
+                if (request.getTopics() != null) {
+                        reconcileTopics(syllabus, request.getTopics());
+                }
+
+                if (request.getAssessments() != null) {
+                        reconcileAssessments(syllabus, request.getAssessments());
+                }
+
+                syllabus.setUpdatedAt(LocalDateTime.now());
+
+                Syllabus saved = repository.save(syllabus);
+                repository.flush();
+
+                return map(repository.findByIdWithRelations(saved.getId())
+                                .orElseThrow(() -> new ResourceNotFoundException("Syllabus not found")));
+        }
+
+        /**
+         * Reconcile child rows in place so their database IDs remain stable. The
+         * mapping tables reference those IDs, therefore delete-and-recreate would
+         * silently erase CLO-PLO, Topic-CLO, Assessment-CLO and student scores.
+         *
+         * Explicit IDs are preferred. Natural-key fallbacks keep older clients
+         * working, but newly returned Draft payloads always contain child IDs.
          */
-        Syllabus submittedSnapshot = createSubmittedSnapshot(draft);
+        private void reconcileClos(
+                        Syllabus syllabus,
+                        List<CreateSyllabusRequest.CloDTO> requested) {
 
-        ApprovalRequest approvalRequest = ApprovalRequest.builder()
-                .syllabus(submittedSnapshot)
-                .step(ApprovalStep.STEP1_DEPT_HEAD)
-                .status(ApprovalStatus.PENDING)
-                .requestedBy(submittedSnapshot.getCreatedBy())
-                .reviewedBy(null)
-                .comment(null)
-                .createdAt(LocalDateTime.now())
-                .resolvedAt(null)
-                .build();
+                List<Clo> existing = new ArrayList<>(syllabus.getClos());
+                List<Clo> retained = new ArrayList<>();
 
-        approvalRequestRepository.save(approvalRequest);
+                for (CreateSyllabusRequest.CloDTO dto : requested) {
+                        Clo clo = findCloForUpdate(existing, retained, dto);
+                        if (clo == null) {
+                                clo = Clo.builder().syllabus(syllabus).build();
+                                syllabus.getClos().add(clo);
+                        }
 
-        // FR-05.4: tạo đồng thời in-app notification và email outbox.
-        workflowNotificationService.notifySubmitted(
-                submittedSnapshot,
-                deptHeads);
+                        clo.setCode(dto.getCode());
+                        clo.setDescription(dto.getDescription());
+                        clo.setDescriptionVn(dto.getDescriptionVn());
+                        clo.setCompetencyLevel(dto.getCompetencyLevel() == null
+                                        ? null
+                                        : CompetencyLevel.valueOf(dto.getCompetencyLevel()));
+                        clo.setBloomLevel(dto.getBloomLevel() == null
+                                        ? null
+                                        : BloomLevel.valueOf(dto.getBloomLevel()));
+                        clo.setOrderIndex(dto.getOrderIndex());
+                        retained.add(clo);
+                }
 
-        return map(submittedSnapshot);
-    }
+                List<Clo> removed = existing.stream()
+                                .filter(clo -> !retained.contains(clo))
+                                .toList();
 
-    private void assertContentIsMutable(Syllabus syllabus) {
-        if (syllabus.getStatus() != SyllabusStatus.DRAFT) {
-            throw new IllegalStateException(
-                    "Only a DRAFT may be edited or deleted. Submitted versions are immutable; clone the syllabus to create a new Draft.");
-        }
-    }
-
-    private int nextVersionNumber(Integer courseId) {
-        Integer maxVersion =
-                repository.findMaxVersionNumberByCourseId(courseId);
-        return (maxVersion == null ? 0 : maxVersion) + 1;
-    }
-
-    private Syllabus createSubmittedSnapshot(Syllabus draft) {
-        LocalDateTime now = LocalDateTime.now();
-        int nextVersion = nextVersionNumber(draft.getCourse().getId());
-
-        Syllabus snapshot = Syllabus.builder()
-                .course(draft.getCourse())
-                .versionNumber(nextVersion)
-                .versionLabel("v" + nextVersion + ".0")
-                .academicYear(draft.getAcademicYear())
-                .courseDesignation(draft.getCourseDesignation())
-                .courseTypes(draft.getCourseTypes())
-                .semester(draft.getSemester())
-                .language(draft.getLanguage())
-                .relation(draft.getRelation())
-                .teachingMethods(draft.getTeachingMethods())
-                .workloadTotal(draft.getWorkloadTotal())
-                .workloadContact(draft.getWorkloadContact())
-                .workloadPrivate(draft.getWorkloadPrivate())
-                .prerequisites(draft.getPrerequisites())
-                .objectives(draft.getObjectives())
-                .examForms(draft.getExamForms())
-                .examRequirements(draft.getExamRequirements())
-                .rubrics(draft.getRubrics())
-                .major(draft.getMajor())
-                .status(SyllabusStatus.SUBMITTED)
-                .isCurrent(false)
-                .createdBy(draft.getCreatedBy())
-                .approvedBy(null)
-                .submittedAt(now)
-                .approvedAt(null)
-                .changeSummary(draft.getChangeSummary())
-                .notes(draft.getNotes())
-                .createdAt(now)
-                .updatedAt(now)
-                .build();
-
-        final Syllabus savedSnapshot = repository.saveAndFlush(snapshot);
-
-        // Deep-copy toàn bộ nội dung chi tiết sang snapshot mới.
-        cloneDetailsFromSource(draft.getId(), savedSnapshot);
-
-        // Các liên kết đang trỏ vào working draft phải chuyển sang snapshot.
-        courseProgramRepository.findBySyllabus_Id(draft.getId())
-                .forEach(courseProgram -> courseProgram.setSyllabus(savedSnapshot));
-
-        classSectionRepository.findBySyllabusId(draft.getId())
-                .forEach(classSection -> classSection.setSyllabus(savedSnapshot));
-
-        // Không xóa Draft cũ: lưu lại làm lịch sử và khóa nội dung.
-        draft.setStatus(SyllabusStatus.ARCHIVED);
-        draft.setIsCurrent(false);
-        draft.setUpdatedAt(now);
-        repository.save(draft);
-
-        repository.flush();
-        entityManager.clear();
-
-        return repository.findByIdWithRelations(savedSnapshot.getId())
-                .orElseThrow(()
-                        -> new ResourceNotFoundException(
-                                "Submitted snapshot not found"));
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<SyllabusResponse> getByStatus(String status) {
-
-        SyllabusStatus syllabusStatus
-                = SyllabusStatus.valueOf(status.trim().toUpperCase());
-
-        return repository.findByStatusWithRelations(syllabusStatus)
-                .stream()
-                .filter(syllabusAccessService::canView)
-                .map(this::map)
-                .toList();
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public SyllabusDiffResponse getDiff(
-            Integer oldId,
-            Integer newId) {
-
-        Syllabus oldSyllabus = repository.findByIdWithRelations(oldId)
-                .orElseThrow(()
-                        -> new ResourceNotFoundException("Old Syllabus not found"));
-
-        Syllabus newSyllabus = repository.findByIdWithRelations(newId)
-                .orElseThrow(()
-                        -> new ResourceNotFoundException("New Syllabus not found"));
-
-        syllabusAccessService.assertCanView(oldSyllabus);
-        syllabusAccessService.assertCanView(newSyllabus);
-
-        if (!Objects.equals(
-                oldSyllabus.getCourse().getId(),
-                newSyllabus.getCourse().getId())) {
-            throw new IllegalArgumentException(
-                    "Only versions of the same course can be compared");
+                for (Clo clo : removed) {
+                        deleteAllIfPresent(assessmentCloRepository.findByClo_Id(clo.getId()),
+                                        assessmentCloRepository);
+                        deleteAllIfPresent(topicCloRepository.findByIdCloId(clo.getId()),
+                                        topicCloRepository);
+                        deleteAllIfPresent(cloPloMappingRepository.findByCloId(clo.getId()),
+                                        cloPloMappingRepository);
+                }
+                syllabus.getClos().removeAll(removed);
         }
 
-        return syllabusDiffService.compare(oldSyllabus, newSyllabus);
-    }
+        private Clo findCloForUpdate(
+                        List<Clo> existing,
+                        List<Clo> retained,
+                        CreateSyllabusRequest.CloDTO dto) {
 
-    @Override
-    @Transactional
-    public SyllabusResponse clone(
-            Integer id,
-            CloneSyllabusRequest request) {
+                if (dto.getId() != null) {
+                        return findOwnedChildById(existing, retained, dto.getId(), Clo::getId, "CLO");
+                }
 
-        if (request == null) {
-            throw new IllegalArgumentException(
-                    "Select a target semester or teaching assignment before cloning the syllabus.");
+                Clo match = existing.stream()
+                                .filter(candidate -> !retained.contains(candidate))
+                                .filter(candidate -> sameText(candidate.getCode(), dto.getCode()))
+                                .findFirst()
+                                .orElse(null);
+
+                if (match == null && dto.getOrderIndex() != null) {
+                        match = existing.stream()
+                                        .filter(candidate -> !retained.contains(candidate))
+                                        .filter(candidate -> Objects.equals(candidate.getOrderIndex(), dto.getOrderIndex()))
+                                        .findFirst()
+                                        .orElse(null);
+                }
+                return match;
         }
 
-        Syllabus source = repository.findByIdWithRelations(id)
-                .orElseThrow(()
-                        -> new ResourceNotFoundException("Syllabus not found"));
+        private void reconcileTopics(
+                        Syllabus syllabus,
+                        List<CreateSyllabusRequest.TopicDTO> requested) {
 
-        /*
-         * FR-03.2 + FR-01.5:
-         * - Không nhận userId/createdBy từ client.
-         * - Faculty phải clone vào đúng assignment đang hoạt động của mình.
-         * - Course, năm học và học kỳ đích đều do backend xác thực.
-         */
-        SyllabusAccessService.CloneAuthorization authorization =
-                syllabusAccessService.authorizeClone(
-                        source,
-                        request.getClassSectionId(),
-                        request.getAcademicYear(),
-                        request.getSemester());
+                List<Topic> existing = new ArrayList<>(syllabus.getTopics());
+                List<Topic> retained = new ArrayList<>();
 
-        int nextVersion = nextVersionNumber(source.getCourse().getId());
-        LocalDateTime now = LocalDateTime.now();
+                for (CreateSyllabusRequest.TopicDTO dto : requested) {
+                        Topic topic = findTopicForUpdate(existing, retained, dto);
+                        if (topic == null) {
+                                topic = Topic.builder().syllabus(syllabus).build();
+                                syllabus.getTopics().add(topic);
+                        }
 
-        String changeSummary = request.getChangeSummary();
-        if (changeSummary == null || changeSummary.isBlank()) {
-            changeSummary = "Cloned from "
-                    + source.getVersionLabel()
-                    + " ("
-                    + source.getAcademicYear()
-                    + " - "
-                    + source.getSemester()
-                    + ")";
+                        topic.setWeekNumber(dto.getWeekNumber());
+                        topic.setOrderInWeek(dto.getOrderInWeek());
+                        topic.setName(dto.getName());
+                        topic.setNameVn(dto.getNameVn());
+                        topic.setTeachingHours(topicHoursOrDefault(dto.getTeachingHours(), 3));
+                        topic.setLabHours(topicHoursOrDefault(dto.getLabHours(), 0));
+                        topic.setSelfStudyHours(topicHoursOrDefault(dto.getSelfStudyHours(), 6));
+                        topic.setTopicType(dto.getTopicType() == null
+                                        ? null
+                                        : TopicType.valueOf(dto.getTopicType()));
+                        topic.setTeachingMethod(dto.getTeachingMethod());
+                        topic.setLearningActivity(dto.getLearningActivity());
+                        topic.setAssessments(dto.getAssessments());
+                        topic.setResources(dto.getResources());
+                        topic.setNotes(dto.getNotes());
+                        retained.add(topic);
+                }
+
+                List<Topic> removed = existing.stream()
+                                .filter(topic -> !retained.contains(topic))
+                                .toList();
+                for (Topic topic : removed) {
+                        deleteAllIfPresent(topicCloRepository.findByIdTopicId(topic.getId()),
+                                        topicCloRepository);
+                }
+                syllabus.getTopics().removeAll(removed);
         }
 
-        Syllabus draft = Syllabus.builder()
-                .course(authorization.course())
-                .versionNumber(nextVersion)
-                .versionLabel("v" + nextVersion + ".0")
-                .academicYear(authorization.academicYear())
-                .courseDesignation(source.getCourseDesignation())
-                .courseTypes(source.getCourseTypes())
-                .semester(authorization.semester())
-                .language(source.getLanguage())
-                .relation(source.getRelation())
-                .teachingMethods(source.getTeachingMethods())
-                .workloadTotal(source.getWorkloadTotal())
-                .workloadContact(source.getWorkloadContact())
-                .workloadPrivate(source.getWorkloadPrivate())
-                .prerequisites(source.getPrerequisites())
-                .objectives(source.getObjectives())
-                .examForms(source.getExamForms())
-                .examRequirements(source.getExamRequirements())
-                .rubrics(source.getRubrics())
-                .major(source.getMajor())
-                .status(SyllabusStatus.DRAFT)
-                .isCurrent(false)
-                .createdBy(authorization.creator())
-                .approvedBy(null)
-                .submittedAt(null)
-                .approvedAt(null)
-                .notes(source.getNotes())
-                .changeSummary(changeSummary.trim())
-                .createdAt(now)
-                .updatedAt(now)
-                .build();
+        private Topic findTopicForUpdate(
+                        List<Topic> existing,
+                        List<Topic> retained,
+                        CreateSyllabusRequest.TopicDTO dto) {
 
-        draft = repository.saveAndFlush(draft);
+                if (dto.getId() != null) {
+                        return findOwnedChildById(existing, retained, dto.getId(), Topic::getId, "Topic");
+                }
 
-        // Deep-copy: Reading List, CLO-PLO, Topic-CLO, Assessment-CLO.
-        cloneDetailsFromSource(source.getId(), draft);
+                Topic match = existing.stream()
+                                .filter(candidate -> !retained.contains(candidate))
+                                .filter(candidate -> Objects.equals(candidate.getWeekNumber(), dto.getWeekNumber())
+                                                && Objects.equals(candidate.getOrderInWeek(), dto.getOrderInWeek()))
+                                .findFirst()
+                                .orElse(null);
 
-        if (!authorization.assignments().isEmpty()) {
-            final Syllabus clonedDraft = draft;
-            authorization.assignments().forEach(assignment ->
-                    assignment.setSyllabus(clonedDraft));
-            classSectionRepository.saveAll(authorization.assignments());
+                if (match == null) {
+                        match = existing.stream()
+                                        .filter(candidate -> !retained.contains(candidate))
+                                        .filter(candidate -> sameText(candidate.getName(), dto.getName()))
+                                        .findFirst()
+                                        .orElse(null);
+                }
+                return match;
         }
 
-        if (request.getCohortId() != null) {
-            List<CourseProgram> cohortCoursePrograms = courseProgramRepository
-                    .findByCourse_IdAndCohort_Id(
-                            draft.getCourse().getId(),
-                            request.getCohortId());
-            if (cohortCoursePrograms.isEmpty()) {
-                throw new IllegalArgumentException(
-                        "The selected target cohort is not configured for this course.");
-            }
-            final Syllabus clonedDraft = draft;
-            cohortCoursePrograms.forEach(courseProgram ->
-                    courseProgram.setSyllabus(clonedDraft));
-            courseProgramRepository.saveAll(cohortCoursePrograms);
+        private void reconcileAssessments(
+                        Syllabus syllabus,
+                        List<CreateSyllabusRequest.AssessmentDTO> requested) {
+
+                List<AssessmentComponent> existing = new ArrayList<>(syllabus.getAssessments());
+                List<AssessmentComponent> retained = new ArrayList<>();
+
+                for (CreateSyllabusRequest.AssessmentDTO dto : requested) {
+                        AssessmentComponent assessment = findAssessmentForUpdate(existing, retained, dto);
+                        if (assessment == null) {
+                                assessment = AssessmentComponent.builder().syllabus(syllabus).build();
+                                syllabus.getAssessments().add(assessment);
+                        }
+
+                        assessment.setName(dto.getName());
+                        assessment.setNameVn(dto.getNameVn());
+                        assessment.setAssessmentType(dto.getAssessmentType());
+                        assessment.setWeightPercent(dto.getWeightPercent() == null ? 0f : dto.getWeightPercent());
+                        assessment.setMinScore(dto.getMinScore() == null ? 0f : dto.getMinScore());
+                        assessment.setMaxScore(dto.getMaxScore() == null ? 100f : dto.getMaxScore());
+                        assessment.setOrderIndex(dto.getOrderIndex() == null ? 1 : dto.getOrderIndex());
+                        retained.add(assessment);
+                }
+
+                List<AssessmentComponent> removed = existing.stream()
+                                .filter(assessment -> !retained.contains(assessment))
+                                .toList();
+
+                for (AssessmentComponent assessment : removed) {
+                        if (!studentScoreRepository.findByAssessmentComponent_Id(assessment.getId()).isEmpty()) {
+                                throw new IllegalStateException(
+                                                "Assessment component " + assessment.getId()
+                                                                + " cannot be removed because student scores exist.");
+                        }
+                        deleteAllIfPresent(
+                                        assessmentCloRepository.findByAssessmentComponent_Id(assessment.getId()),
+                                        assessmentCloRepository);
+                }
+                syllabus.getAssessments().removeAll(removed);
         }
 
-        repository.flush();
-        entityManager.clear();
+        private AssessmentComponent findAssessmentForUpdate(
+                        List<AssessmentComponent> existing,
+                        List<AssessmentComponent> retained,
+                        CreateSyllabusRequest.AssessmentDTO dto) {
 
-        return map(repository.findByIdWithRelations(draft.getId())
-                .orElseThrow(()
-                        -> new ResourceNotFoundException(
-                                "Cloned syllabus not found")));
-    }
+                if (dto.getId() != null) {
+                        return findOwnedChildById(existing, retained, dto.getId(),
+                                        AssessmentComponent::getId, "Assessment component");
+                }
 
-    @Override
-    @Transactional
-    public SyllabusResponse createRevisionDraft(
-            Integer rejectedSyllabusId,
-            String reviewerComment) {
+                AssessmentComponent match = existing.stream()
+                                .filter(candidate -> !retained.contains(candidate))
+                                .filter(candidate -> sameText(candidate.getName(), dto.getName()))
+                                .findFirst()
+                                .orElse(null);
 
-        Syllabus source = repository.findByIdWithRelations(rejectedSyllabusId)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException("Syllabus not found"));
-
-        if (source.getStatus() != SyllabusStatus.REJECTED) {
-    throw new IllegalStateException(
-            "A revision Draft can only be created from a REJECTED version.");
-}
-
-        LocalDateTime now = LocalDateTime.now();
-        int nextVersion = nextVersionNumber(source.getCourse().getId());
-        String normalizedComment = reviewerComment == null
-                ? ""
-                : reviewerComment.trim();
-        String changeSummary = "Revision of " + source.getVersionLabel();
-        if (!normalizedComment.isBlank()) {
-            changeSummary += " - Reviewer comment: " + normalizedComment;
+                if (match == null && dto.getOrderIndex() != null) {
+                        match = existing.stream()
+                                        .filter(candidate -> !retained.contains(candidate))
+                                        .filter(candidate -> Objects.equals(candidate.getOrderIndex(), dto.getOrderIndex()))
+                                        .findFirst()
+                                        .orElse(null);
+                }
+                return match;
         }
 
-        Syllabus draft = Syllabus.builder()
-                .course(source.getCourse())
-                .versionNumber(nextVersion)
-                .versionLabel("v" + nextVersion + ".0")
-                .academicYear(source.getAcademicYear())
-                .courseDesignation(source.getCourseDesignation())
-                .courseTypes(source.getCourseTypes())
-                .semester(source.getSemester())
-                .language(source.getLanguage())
-                .relation(source.getRelation())
-                .teachingMethods(source.getTeachingMethods())
-                .workloadTotal(source.getWorkloadTotal())
-                .workloadContact(source.getWorkloadContact())
-                .workloadPrivate(source.getWorkloadPrivate())
-                .prerequisites(source.getPrerequisites())
-                .objectives(source.getObjectives())
-                .examForms(source.getExamForms())
-                .examRequirements(source.getExamRequirements())
-                .rubrics(source.getRubrics())
-                .major(source.getMajor())
-                .status(SyllabusStatus.DRAFT)
-                .isCurrent(false)
-                .createdBy(source.getCreatedBy())
-                .approvedBy(null)
-                .submittedAt(null)
-                .approvedAt(null)
-                .changeSummary(changeSummary)
-                .notes(source.getNotes())
-                .createdAt(now)
-                .updatedAt(now)
-                .build();
+        private <T> T findOwnedChildById(
+                        List<T> existing,
+                        List<T> retained,
+                        Integer requestedId,
+                        java.util.function.Function<T, Integer> idExtractor,
+                        String childType) {
 
-        draft = repository.saveAndFlush(draft);
-        cloneDetailsFromSource(source.getId(), draft);
+                T match = existing.stream()
+                                .filter(candidate -> !retained.contains(candidate))
+                                .filter(candidate -> Objects.equals(idExtractor.apply(candidate), requestedId))
+                                .findFirst()
+                                .orElse(null);
 
-        final Syllabus revisionDraft = draft;
-        courseProgramRepository.findBySyllabus_Id(source.getId())
-                .forEach(link -> link.setSyllabus(revisionDraft));
-        classSectionRepository.findBySyllabusId(source.getId())
-                .forEach(section -> section.setSyllabus(revisionDraft));
+                if (match == null) {
+                        throw new IllegalArgumentException(
+                                        childType + " id " + requestedId
+                                                        + " does not belong to this syllabus or is duplicated.");
+                }
+                return match;
+        }
 
-        repository.flush();
-        entityManager.clear();
+        private boolean sameText(String left, String right) {
+                if (left == null || right == null) {
+                        return left == null && right == null;
+                }
+                return left.trim().equalsIgnoreCase(right.trim());
+        }
 
-        return map(repository.findByIdWithRelations(draft.getId())
-                .orElseThrow(() ->
-                        new ResourceNotFoundException("Revision draft not found")));
-    }
+        private <T, ID> void deleteAllIfPresent(
+                        List<T> entities,
+                        org.springframework.data.jpa.repository.JpaRepository<T, ID> repository) {
+                if (entities != null && !entities.isEmpty()) {
+                        repository.deleteAll(entities);
+                }
+        }
+        @Override
+        @Transactional
+        public void delete(Integer id) {
+
+                Syllabus syllabus = repository.findByIdWithRelations(id)
+                                .orElseThrow(() -> new ResourceNotFoundException("Syllabus not found"));
+
+                syllabusAccessService.assertCanModify(syllabus);
+                assertContentIsMutable(syllabus);
+
+                /*
+                 * CourseProgram la curriculum data: GIU record, chi bo link syllabus.
+                 */
+                List<CourseProgram> linkedCoursePrograms =
+                                courseProgramRepository.findBySyllabus_Id(id);
+
+                for (CourseProgram courseProgram : linkedCoursePrograms) {
+                        courseProgram.setSyllabus(null);
+                }
+
+                if (!linkedCoursePrograms.isEmpty()) {
+                        courseProgramRepository.saveAll(linkedCoursePrograms);
+                        courseProgramRepository.flush();
+                }
+
+                /*
+                 * ClassSection / Teaching Assignment: GIU record, chi bo link syllabus.
+                 */
+                List<ClassSection> linkedClassSections =
+                                classSectionRepository.findBySyllabusId(id);
+
+                for (ClassSection classSection : linkedClassSections) {
+                        classSection.setSyllabus(null);
+                }
+
+                if (!linkedClassSections.isEmpty()) {
+                        classSectionRepository.saveAll(linkedClassSections);
+                        classSectionRepository.flush();
+                }
+
+                /*
+                 * Xoa CHI snapshot cua syllabus nay.
+                 * KHONG xoa SourceDocument / Original Word.
+                 */
+                deleteOwnedSourceSnapshot(id);
+
+                /*
+                 * Xoa structured child data thuoc rieng syllabus.
+                 */
+                deleteSyllabusDetailData(id);
+
+                /*
+                 * Xoa relationship syllabus_book, KHONG xoa Book.
+                 */
+                syllabusBookRepository.deleteAll(
+                                syllabusBookRepository.findBySyllabus_Id(id));
+
+                approvalRequestRepository.deleteAll(
+                                approvalRequestRepository.findBySyllabusId(id));
+
+                syllabusImportHistoryRepository.deleteAll(
+                                syllabusImportHistoryRepository
+                                                .findBySyllabusIdOrderByCreatedAtDesc(id));
+
+                /*
+                 * Day tat ca UPDATE/DELETE child xuong DB truoc parent.
+                 */
+                entityManager.flush();
+
+                repository.deleteById(id);
+                repository.flush();
+        }
+        @Override
+        @Transactional
+        public int deleteAll() {
+
+                List<Integer> syllabusIds = repository.findAll()
+                                .stream()
+                                .map(Syllabus::getId)
+                                .filter(Objects::nonNull)
+                                .toList();
+
+                for (Integer syllabusId : syllabusIds) {
+
+                        /*
+                         * GIU CourseProgram, chi bo link syllabus.
+                         */
+                        List<CourseProgram> linkedCoursePrograms =
+                                        courseProgramRepository.findBySyllabus_Id(syllabusId);
+
+                        for (CourseProgram courseProgram : linkedCoursePrograms) {
+                                courseProgram.setSyllabus(null);
+                        }
+
+                        if (!linkedCoursePrograms.isEmpty()) {
+                                courseProgramRepository.saveAll(linkedCoursePrograms);
+                                courseProgramRepository.flush();
+                        }
+
+                        /*
+                         * GIU ClassSection / Teaching Assignment, chi bo link syllabus.
+                         */
+                        List<ClassSection> linkedClassSections =
+                                        classSectionRepository.findBySyllabusId(syllabusId);
+
+                        for (ClassSection classSection : linkedClassSections) {
+                                classSection.setSyllabus(null);
+                        }
+
+                        if (!linkedClassSections.isEmpty()) {
+                                classSectionRepository.saveAll(linkedClassSections);
+                                classSectionRepository.flush();
+                        }
+
+                        /*
+                         * Xoa CHI snapshot cua syllabus nay.
+                         * KHONG xoa SourceDocument / Original Word.
+                         */
+                        deleteOwnedSourceSnapshot(syllabusId);
+
+                        deleteSyllabusDetailData(syllabusId);
+
+                        syllabusBookRepository.deleteAll(
+                                        syllabusBookRepository.findBySyllabus_Id(syllabusId));
+
+                        approvalRequestRepository.deleteAll(
+                                        approvalRequestRepository.findBySyllabusId(syllabusId));
+
+                        syllabusImportHistoryRepository.deleteAll(
+                                        syllabusImportHistoryRepository
+                                                        .findBySyllabusIdOrderByCreatedAtDesc(syllabusId));
+
+                        /*
+                         * Day child cleanup xuong DB truoc parent.
+                         */
+                        entityManager.flush();
+
+                        repository.deleteById(syllabusId);
+                        repository.flush();
+                }
+
+                return syllabusIds.size();
+        }
+
+        private void deleteOwnedSourceSnapshot(Integer syllabusId) {
+
+                /*
+                 * Xoa truc tiep dung row FK dang chan syllabus.
+                 * FOREIGN KEY van bat.
+                 *
+                 * CHI bang syllabus_source_snapshot bi tac dong.
+                 * KHONG xoa source_document.
+                 */
+                entityManager.flush();
+
+                entityManager.createNativeQuery("""
+                                DELETE FROM syllabus_source_snapshot
+                                WHERE syllabus_id = :syllabusId
+                                """)
+                                .setParameter("syllabusId", syllabusId)
+                                .executeUpdate();
+
+                Number remaining = (Number) entityManager.createNativeQuery("""
+                                SELECT COUNT(*)
+                                FROM syllabus_source_snapshot
+                                WHERE syllabus_id = :syllabusId
+                                """)
+                                .setParameter("syllabusId", syllabusId)
+                                .getSingleResult();
+
+                if (remaining.longValue() != 0L) {
+                        throw new IllegalStateException(
+                                        "Source snapshot cleanup failed for syllabus "
+                                                        + syllabusId
+                                                        + ". The syllabus was NOT deleted.");
+                }
+        }
+
+
+        private void deleteSyllabusDetailData(Integer syllabusId) {
+
+                List<AssessmentComponent> assessments = assessmentComponentRepository.findBySyllabusId(syllabusId);
+
+                for (AssessmentComponent assessment : assessments) {
+                        studentScoreRepository.deleteAll(
+                                        studentScoreRepository.findByAssessmentComponent_Id(
+                                                        assessment.getId()));
+
+                        assessmentCloRepository.deleteAll(
+                                        assessmentCloRepository.findByAssessmentComponent_Id(
+                                                        assessment.getId()));
+                }
+
+                assessmentComponentRepository.deleteAll(assessments);
+                assessmentComponentRepository.flush();
+
+                List<Topic> topics = topicRepository.findBySyllabusId(syllabusId);
+
+                for (Topic topic : topics) {
+                        topicCloRepository.deleteAll(
+                                        topicCloRepository.findByIdTopicId(topic.getId()));
+                }
+
+                topicRepository.deleteAll(topics);
+                topicRepository.flush();
+
+                List<Clo> clos = cloRepository.findBySyllabusId(syllabusId);
+
+                for (Clo clo : clos) {
+                        assessmentCloRepository.deleteAll(
+                                        assessmentCloRepository.findByClo_Id(clo.getId()));
+
+                        topicCloRepository.deleteAll(
+                                        topicCloRepository.findByIdCloId(clo.getId()));
+
+                        cloPloMappingRepository.deleteAll(
+                                        cloPloMappingRepository.findByCloId(clo.getId()));
+                }
+
+                cloRepository.deleteAll(clos);
+                cloRepository.flush();
+        }
+
+        @Override
+        @Transactional(readOnly = true)
+        public SubmissionValidationResponse validateForSubmit(Integer id) {
+
+                Syllabus syllabus = repository.findByIdWithRelations(id)
+                                .orElseThrow(() -> new ResourceNotFoundException(
+                                                "Syllabus not found"));
+
+                syllabusAccessService.assertCanModify(syllabus);
+                assertContentIsMutable(syllabus);
+
+                return submissionValidationService.validate(syllabus);
+        }
+
+        @Override
+        @Transactional
+        public SyllabusResponse submit(Integer id) {
+
+                Syllabus draft = repository.findByIdWithRelations(id)
+                                .orElseThrow(() -> new ResourceNotFoundException(
+                                                "Syllabus not found"));
+
+                // Chỉ Faculty được phân công môn này hoặc Admin mới được nộp.
+                syllabusAccessService.assertCanModify(draft);
+                assertContentIsMutable(draft);
+
+                // FR-03.10: backend validate toàn bộ nội dung trước mọi bước submit.
+                submissionValidationService.validateOrThrow(draft);
+
+                // FR-05.1: xác định đúng Trưởng bộ môn trước khi tạo snapshot.
+                List<UserAccount> deptHeads = syllabusAccessService.findActiveDeptHeadsFor(draft);
+
+                /*
+                 * Không cho tồn tại hai version đang chờ duyệt cho cùng
+                 * course + academicYear + semester.
+                 */
+                boolean hasPendingApproval = approvalRequestRepository
+                                .existsBySyllabus_Course_IdAndSyllabus_AcademicYearAndSyllabus_SemesterAndStatus(
+                                                draft.getCourse().getId(),
+                                                draft.getAcademicYear(),
+                                                draft.getSemester(),
+                                                ApprovalStatus.PENDING);
+
+                if (hasPendingApproval) {
+                        throw new IllegalStateException(
+                                        "This course already has a version pending approval.");
+                }
+
+                // Submit is a workflow transition on the same syllabus/version.
+                // New versions are created only by explicit clone/new-version flows.
+                LocalDateTime submittedAt = LocalDateTime.now();
+                draft.setStatus(SyllabusStatus.SUBMITTED);
+                draft.setSubmittedAt(submittedAt);
+                draft.setUpdatedAt(submittedAt);
+                Syllabus submittedSyllabus = repository.saveAndFlush(draft);
+
+                ApprovalRequest approvalRequest = ApprovalRequest.builder()
+                                .syllabus(submittedSyllabus)
+                                .step(ApprovalStep.STEP1_DEPT_HEAD)
+                                .status(ApprovalStatus.PENDING)
+                                .requestedBy(submittedSyllabus.getCreatedBy())
+                                .reviewedBy(null)
+                                .comment(null)
+                                .createdAt(LocalDateTime.now())
+                                .resolvedAt(null)
+                                .build();
+
+                approvalRequestRepository.save(approvalRequest);
+
+                // FR-05.4: tạo đồng thời in-app notification và email outbox.
+                workflowNotificationService.notifySubmitted(
+                                submittedSyllabus,
+                                deptHeads);
+
+                return map(submittedSyllabus);
+        }
+
+        private void assertContentIsMutable(Syllabus syllabus) {
+                if (syllabus.getStatus() != SyllabusStatus.DRAFT
+                                && syllabus.getStatus() != SyllabusStatus.REVISION_REQUESTED) {
+                        throw new IllegalStateException(
+                                        "Only a DRAFT or REVISION_REQUESTED syllabus may be changed.");
+                }
+        }
+
+        /** Used only by explicit create/clone/new-version operations, never by submit. */
+        private int nextVersionNumber(Integer courseId) {
+                Integer maxVersion = repository.findMaxVersionNumberByCourseId(courseId);
+                return (maxVersion == null ? 0 : maxVersion) + 1;
+        }
+
+        @Override
+        @Transactional(readOnly = true)
+        public List<SyllabusResponse> getByStatus(String status) {
+
+                SyllabusStatus syllabusStatus = SyllabusStatus.valueOf(status.trim().toUpperCase());
+
+                return repository.findByStatusWithRelations(syllabusStatus)
+                                .stream()
+                                .filter(syllabusAccessService::canView)
+                                .map(this::map)
+                                .toList();
+        }
+
+        @Override
+        @Transactional(readOnly = true)
+        public SyllabusDiffResponse getDiff(
+                        Integer oldId,
+                        Integer newId) {
+
+                Syllabus oldSyllabus = repository.findByIdWithRelations(oldId)
+                                .orElseThrow(() -> new ResourceNotFoundException("Old Syllabus not found"));
+
+                Syllabus newSyllabus = repository.findByIdWithRelations(newId)
+                                .orElseThrow(() -> new ResourceNotFoundException("New Syllabus not found"));
+
+                syllabusAccessService.assertCanView(oldSyllabus);
+                syllabusAccessService.assertCanView(newSyllabus);
+
+                if (!Objects.equals(
+                                oldSyllabus.getCourse().getId(),
+                                newSyllabus.getCourse().getId())) {
+                        throw new IllegalArgumentException(
+                                        "Only versions of the same course can be compared");
+                }
+
+                return syllabusDiffService.compare(oldSyllabus, newSyllabus);
+        }
+
+        @Override
+        @Transactional
+        public SyllabusResponse clone(
+                        Integer id,
+                        CloneSyllabusRequest request) {
+
+                if (request == null) {
+                        throw new IllegalArgumentException(
+                                        "Select a target semester or teaching assignment before cloning the syllabus.");
+                }
+
+                Syllabus source = repository.findByIdWithRelations(id)
+                                .orElseThrow(() -> new ResourceNotFoundException("Syllabus not found"));
+
+                /*
+                 * FR-03.2 + FR-01.5:
+                 * - Không nhận userId/createdBy từ client.
+                 * - Faculty phải clone vào đúng assignment đang hoạt động của mình.
+                 * - Course, năm học và học kỳ đích đều do backend xác thực.
+                 */
+                SyllabusAccessService.CloneAuthorization authorization = syllabusAccessService.authorizeClone(
+                                source,
+                                request.getClassSectionId(),
+                                request.getAcademicYear(),
+                                request.getSemester());
+
+                int nextVersion = nextVersionNumber(source.getCourse().getId());
+                LocalDateTime now = LocalDateTime.now();
+
+                String changeSummary = request.getChangeSummary();
+                if (changeSummary == null || changeSummary.isBlank()) {
+                        changeSummary = "Cloned from "
+                                        + source.getVersionLabel()
+                                        + " ("
+                                        + source.getAcademicYear()
+                                        + " - "
+                                        + source.getSemester()
+                                        + ")";
+                }
+
+                Syllabus draft = Syllabus.builder()
+                                .course(authorization.course())
+                                .versionNumber(nextVersion)
+                                .versionLabel("v" + nextVersion + ".0")
+                                .academicYear(authorization.academicYear())
+                                .courseDesignation(source.getCourseDesignation())
+                                .courseTypes(source.getCourseTypes())
+                                .semester(authorization.semester())
+                                .language(source.getLanguage())
+                                .relation(source.getRelation())
+                                .teachingMethods(source.getTeachingMethods())
+                                .workloadTotal(source.getWorkloadTotal())
+                                .workloadContact(source.getWorkloadContact())
+                                .workloadPrivate(source.getWorkloadPrivate())
+                                .prerequisites(source.getPrerequisites())
+                                .objectives(source.getObjectives())
+                                .examForms(source.getExamForms())
+                                .examRequirements(source.getExamRequirements())
+                                .rubrics(source.getRubrics())
+                                .major(source.getMajor())
+                                .status(SyllabusStatus.DRAFT)
+                                .isCurrent(false)
+                                .createdBy(authorization.creator())
+                                .approvedBy(null)
+                                .submittedAt(null)
+                                .approvedAt(null)
+                                .notes(source.getNotes())
+                                .changeSummary(changeSummary.trim())
+                                .createdAt(now)
+                                .updatedAt(now)
+                                .build();
+
+                draft = repository.saveAndFlush(draft);
+
+                // Deep-copy: Reading List, CLO-PLO, Topic-CLO, Assessment-CLO.
+                cloneDetailsFromSource(source.getId(), draft);
+
+                if (!authorization.assignments().isEmpty()) {
+                        final Syllabus clonedDraft = draft;
+                        authorization.assignments().forEach(assignment -> assignment.setSyllabus(clonedDraft));
+                        classSectionRepository.saveAll(authorization.assignments());
+                }
+
+                if (request.getCohortId() != null) {
+                        List<CourseProgram> cohortCoursePrograms = courseProgramRepository
+                                        .findByCourse_IdAndCohort_Id(
+                                                        draft.getCourse().getId(),
+                                                        request.getCohortId())
+                                        .stream()
+                                        .filter(courseProgram -> courseProgram.getSemesterSuggest() == null
+                                                        || normalizeSemesterLabel(authorization.semester())
+                                                                        .equals("Semester " + courseProgram.getSemesterSuggest()))
+                                        .toList();
+                        if (cohortCoursePrograms.isEmpty()) {
+                                throw new IllegalArgumentException(
+                                                "The selected target cohort is not configured for this course.");
+                        }
+                        final Syllabus clonedDraft = draft;
+                        cohortCoursePrograms.forEach(courseProgram -> courseProgram.setSyllabus(clonedDraft));
+                        courseProgramRepository.saveAll(cohortCoursePrograms);
+                }
+
+                repository.flush();
+                entityManager.clear();
+
+                return map(repository.findByIdWithRelations(draft.getId())
+                                .orElseThrow(() -> new ResourceNotFoundException(
+                                                "Cloned syllabus not found")));
+        }
 
 }

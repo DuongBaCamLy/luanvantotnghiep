@@ -41,5 +41,11 @@ public class Clo {
     private BloomLevel bloomLevel;
 
     @Column(name = "order_index")
-    private Integer orderIndex;
+    @Builder.Default
+    private Integer orderIndex = 1;
+
+    @PrePersist
+    private void initializeOrderIndex() {
+        if (orderIndex == null) orderIndex = 1;
+    }
 }

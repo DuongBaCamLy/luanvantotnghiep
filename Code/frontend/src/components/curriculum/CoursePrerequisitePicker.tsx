@@ -46,6 +46,7 @@ export function CoursePrerequisitePicker({ courseId, disabled }: Props) {
     onSuccess: () => {
       setPickCourseId("")
       queryClient.invalidateQueries({ queryKey: ["course-relationships", courseId] })
+      queryClient.invalidateQueries({ queryKey: ["curriculum-map"] })
     },
     onError: (err: any) => {
       const msg = err?.response?.data?.message || "Không thể thêm ràng buộc học phần"
@@ -55,8 +56,10 @@ export function CoursePrerequisitePicker({ courseId, disabled }: Props) {
 
   const removeMutation = useMutation({
     mutationFn: (id: number) => courseRelationshipApi.delete(id),
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: ["course-relationships", courseId] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["course-relationships", courseId] })
+      queryClient.invalidateQueries({ queryKey: ["curriculum-map"] })
+    },
   })
 
   const availableCourses = courses.filter(
@@ -75,7 +78,7 @@ export function CoursePrerequisitePicker({ courseId, disabled }: Props) {
             <span className="font-mono">{rel.relatedCourseCode}</span>
             <span className="text-slate-400">· {RELATION_LABELS[rel.relationType]}</span>
             {!disabled && (
-              <button onClick={() => removeMutation.mutate(rel.id)} className="text-slate-400 hover:text-rose-500">
+              <button type="button" onClick={() => removeMutation.mutate(rel.id)} className="text-slate-400 hover:text-rose-500">
                 <X className="size-3" />
               </button>
             )}
@@ -106,6 +109,7 @@ export function CoursePrerequisitePicker({ courseId, disabled }: Props) {
             </SelectContent>
           </Select>
           <button
+            type="button"
             disabled={!pickCourseId || addMutation.isPending}
             onClick={() => addMutation.mutate()}
             className="h-9 px-3 rounded-lg bg-slate-900 text-white text-xs font-bold disabled:opacity-40"

@@ -6,9 +6,34 @@ import lombok.Data;
 
 @Data
 public class ConfirmSyllabusImportRequest {
-    @NotNull @Valid
+
+
+    @NotNull
+    @Valid
     private SyllabusImportData data;
 
-    /** MERGE is deliberately the default so a partial import cannot erase other sections. */
-    private String importMode = "MERGE";
+
+    @NotNull
+    private Integer courseId;
+
+    @NotNull
+    private Integer programId;
+
+    @NotNull
+    private Integer cohortId;
+
+    private Integer courseProgramId;
+
+    /** Required for Instructor imports; identifies the authenticated user's assignment. */
+    private Integer assignmentId;
+
+
+    private String importMode="CREATE";
+
+
+    private String originalFileName;
+
+
+    private String originalFileType;
+
 }

@@ -10,6 +10,8 @@ import com.lowagie.text.Rectangle;
 import com.lowagie.text.pdf.PdfPCell;
 import com.lowagie.text.pdf.PdfPTable;
 import com.lowagie.text.pdf.PdfWriter;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -46,16 +48,19 @@ public class SyllabusPdfRenderer {
             DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm", Locale.ENGLISH);
 
     private final SyllabusPdfFontProvider fonts;
+    private final ObjectMapper objectMapper;
     private final String institutionName;
     private final String schoolName;
 
     public SyllabusPdfRenderer(
             SyllabusPdfFontProvider fonts,
+            ObjectMapper objectMapper,
             @Value("${app.pdf.institution-name:VIETNAM NATIONAL UNIVERSITY HCMC - INTERNATIONAL UNIVERSITY}")
             String institutionName,
             @Value("${app.pdf.school-name:SCHOOL OF COMPUTER SCIENCE AND ENGINEERING}")
             String schoolName) {
         this.fonts = fonts;
+        this.objectMapper = objectMapper;
         this.institutionName = institutionName;
         this.schoolName = schoolName;
     }
@@ -91,20 +96,12 @@ public class SyllabusPdfRenderer {
             document.open();
 
             addInstitutionHeader(document, data);
-            addIdentityCard(document, data, mode);
             addGeneralInformation(document, data);
-            addCourseLearningOutcomes(document, data);
-
-            /*
-             * Content overview is included only when real content exists.
-             * It no longer renders a generic fallback paragraph that wastes space.
-             */
-            addContentOverview(document, data);
 
             addLearningOutcomesMatrix(document, writer, data);
             addPlannedLearningActivities(document, data);
             addAssessmentPlan(document, data);
-            addReadingList(document, data);
+            addRubrics(document, data);
             addRevisionAndApproval(document, data);
 
             document.close();
@@ -154,15 +151,14 @@ public class SyllabusPdfRenderer {
         document.add(title);
 
         Paragraph courseName = new Paragraph(
-                safe(data.courseName()),
-                fonts.bold(11.5f, TEXT));
+                "Course Name: " + safe(data.courseName()),
+                fonts.bold(10.5f, TEXT));
         courseName.setAlignment(Element.ALIGN_CENTER);
         courseName.setSpacingAfter(2);
         document.add(courseName);
 
         Paragraph courseCode = new Paragraph(
-                "Course Code: "
-                        + safe(data.courseCode()),
+                "Course Code: " + safe(data.courseCode()),
                 fonts.regular(9, MUTED));
         courseCode.setAlignment(Element.ALIGN_CENTER);
         courseCode.setSpacingAfter(10);
@@ -275,7 +271,7 @@ public class SyllabusPdfRenderer {
         addGeneralRow(
                 table,
                 "Person responsible for the course",
-                data.responsiblePersons());
+                responsiblePersons(data));
 
         addGeneralRowIfPresent(
                 table,
@@ -335,6 +331,22 @@ public class SyllabusPdfRenderer {
 
         addGeneralRowIfPresent(
                 table,
+                "Course learning outcomes",
+                data.clos().stream()
+                        .map(clo -> safe(clo.code()) + ". "
+                                + firstNonBlank(clo.description(), clo.descriptionVn()))
+                        .collect(Collectors.joining("\n")));
+
+        addGeneralRowIfPresent(
+                table,
+                "Content",
+                data.topics().stream()
+                        .map(topic -> safeNumber(topic.weekNumber()) + ". "
+                                + firstNonBlank(topic.name(), topic.nameVn()))
+                        .collect(Collectors.joining("\n")));
+
+        addGeneralRowIfPresent(
+                table,
                 "Examination forms",
                 data.examForms());
 
@@ -345,10 +357,14 @@ public class SyllabusPdfRenderer {
 
         addGeneralRowIfPresent(
                 table,
-                "Rubrics / grading guidance",
-                data.rubrics());
+                "Reading list",
+                java.util.stream.IntStream.range(0, data.books().size())
+                        .mapToObj(index -> (index + 1) + ". " + citation(data.books().get(index)))
+                        .collect(Collectors.joining("\n")));
 
         document.add(table);
+
+        addCompetencyLevelSummary(document, data);
     }
 
     private void addCourseLearningOutcomes(
@@ -428,6 +444,53 @@ public class SyllabusPdfRenderer {
             addBodyCell(
                     table,
                     clo.descriptionVn(),
+                    Element.ALIGN_LEFT);
+        }
+
+        document.add(table);
+
+        addCompetencyLevelSummary(document, data);
+    }
+
+    /**
+     * Matches the reference syllabus's "Competency level -> CLO" sub-table
+     * (Knowledge/Skill/Attitude rows listing the CLO codes at that level).
+     */
+    private void addCompetencyLevelSummary(
+            Document document,
+            SyllabusPdfDocument data)
+            throws DocumentException {
+
+        Map<String, List<String>> cloCodesByLevel = new LinkedHashMap<>();
+        cloCodesByLevel.put("KNOWLEDGE", new ArrayList<>());
+        cloCodesByLevel.put("SKILL", new ArrayList<>());
+        cloCodesByLevel.put("ATTITUDE", new ArrayList<>());
+
+        for (SyllabusPdfDocument.CloRow clo : data.clos()) {
+            String level = clo.competencyLevel();
+            if (level != null && cloCodesByLevel.containsKey(level)) {
+                cloCodesByLevel.get(level).add(clo.code());
+            }
+        }
+
+        boolean anyAssigned = cloCodesByLevel.values().stream().anyMatch(codes -> !codes.isEmpty());
+        if (!anyAssigned) {
+            return;
+        }
+
+        PdfPTable table = new PdfPTable(2);
+        table.setWidthPercentage(100);
+        table.setWidths(new float[]{35, 65});
+        table.setSpacingAfter(8);
+
+        addHeaderCell(table, "Competency level");
+        addHeaderCell(table, "Course learning outcome (CLO)");
+
+        for (Map.Entry<String, List<String>> entry : cloCodesByLevel.entrySet()) {
+            addBodyCell(table, titleCase(entry.getKey()), Element.ALIGN_LEFT);
+            addBodyCell(
+                    table,
+                    entry.getValue().isEmpty() ? "-" : String.join(", ", entry.getValue()),
                     Element.ALIGN_LEFT);
         }
 
@@ -644,11 +707,11 @@ public class SyllabusPdfRenderer {
         table.setWidths(
                 new float[]{
                         8,
-                        29,
-                        12,
-                        14,
+                        34,
+                        10,
                         18,
-                        19
+                        20,
+                        10
                 });
 
         table.setHeaderRows(1);
@@ -662,7 +725,7 @@ public class SyllabusPdfRenderer {
 
         addHeaderCell(
                 table,
-                "Topics");
+                "Topic");
 
         addHeaderCell(
                 table,
@@ -670,15 +733,15 @@ public class SyllabusPdfRenderer {
 
         addHeaderCell(
                 table,
-                "Hours\nL/Lab/Self");
+                "Assessments");
 
         addHeaderCell(
                 table,
-                "Teaching method");
+                "Learning activities");
 
         addHeaderCell(
                 table,
-                "Learning activities / Notes");
+                "Resources");
 
         for (
                 SyllabusPdfDocument.TopicRow topic
@@ -706,35 +769,38 @@ public class SyllabusPdfRenderer {
 
             addBodyCell(
                     table,
-                    safeNumber(
-                            topic.teachingHours())
-                            + "/"
-                            + safeNumber(
-                            topic.labHours())
-                            + "/"
-                            + safeNumber(
-                            topic.selfStudyHours()),
+                    assessmentsForTopic(topic, data.assessments()),
+                    Element.ALIGN_LEFT);
+
+            addBodyCell(
+                    table,
+                    joinNonBlank(
+                            ", ",
+                            topic.teachingMethod(),
+                            topic.learningActivity()),
+                    Element.ALIGN_LEFT);
+
+            addBodyCell(
+                    table,
+                    firstNonBlankOrEmpty(topic.notes(), "1"),
                     Element.ALIGN_CENTER);
-
-            addBodyCell(
-                    table,
-                    joinNonBlank(
-                            "\n",
-                            titleCase(
-                                    topic.topicType()),
-                            topic.teachingMethod()),
-                    Element.ALIGN_LEFT);
-
-            addBodyCell(
-                    table,
-                    joinNonBlank(
-                            "\n",
-                            topic.learningActivity(),
-                            topic.notes()),
-                    Element.ALIGN_LEFT);
         }
 
         document.add(table);
+    }
+
+    private String assessmentsForTopic(
+            SyllabusPdfDocument.TopicRow topic,
+            List<SyllabusPdfDocument.AssessmentRow> assessments) {
+        if (topic.cloCodes() == null || topic.cloCodes().isEmpty()) {
+            return "";
+        }
+        return assessments.stream()
+                .filter(assessment -> assessment.cloContributions().stream()
+                        .anyMatch(mapping -> topic.cloCodes().contains(mapping.cloCode())))
+                .map(assessment -> firstNonBlank(assessment.name(), assessment.nameVn()))
+                .distinct()
+                .collect(Collectors.joining(", "));
     }
 
     private void addAssessmentPlan(
@@ -755,20 +821,16 @@ public class SyllabusPdfRenderer {
             return;
         }
 
-        PdfPTable table =
-                new PdfPTable(6);
+        int columnCount = 1 + data.clos().size();
+        PdfPTable table = new PdfPTable(columnCount);
 
         table.setWidthPercentage(100);
-
-        table.setWidths(
-                new float[]{
-                        23,
-                        15,
-                        12,
-                        14,
-                        20,
-                        16
-                });
+        float[] widths = new float[columnCount];
+        widths[0] = 38;
+        for (int index = 1; index < columnCount; index++) {
+            widths[index] = 62f / Math.max(1, data.clos().size());
+        }
+        table.setWidths(widths);
 
         table.setHeaderRows(1);
         table.setSplitLate(false);
@@ -777,22 +839,10 @@ public class SyllabusPdfRenderer {
 
         addHeaderCell(
                 table,
-                "Assessment");
-        addHeaderCell(
-                table,
-                "Type");
-        addHeaderCell(
-                table,
-                "Weight");
-        addHeaderCell(
-                table,
-                "Score range");
-        addHeaderCell(
-                table,
-                "CLO coverage");
-        addHeaderCell(
-                table,
-                "Target / notes");
+                "Assessment Type");
+        for (SyllabusPdfDocument.CloRow clo : data.clos()) {
+            addHeaderCell(table, clo.code());
+        }
 
         float totalWeight = 0;
 
@@ -808,89 +858,36 @@ public class SyllabusPdfRenderer {
 
             addBodyCell(
                     table,
-                    bilingual(
-                            assessment.name(),
-                            assessment.nameVn()),
+                    firstNonBlank(assessment.name(), assessment.nameVn())
+                            + (assessment.weightPercent() == null
+                            ? ""
+                            : " (" + number(assessment.weightPercent()) + "%)"),
                     Element.ALIGN_LEFT);
-
-            addBodyCell(
-                    table,
-                    titleCase(
-                            assessment.assessmentType()),
-                    Element.ALIGN_LEFT);
-
-            addBodyCell(
-                    table,
-                    percent(
-                            assessment.weightPercent()),
-                    Element.ALIGN_CENTER);
-
-            addBodyCell(
-                    table,
-                    scoreRange(
-                            assessment.minScore(),
-                            assessment.maxScore()),
-                    Element.ALIGN_CENTER);
-
-            addBodyCell(
-                    table,
-                    assessment
-                            .cloContributions()
-                            .stream()
-                            .map(
-                                    item ->
-                                            safe(
-                                                    item.cloCode())
-                                                    + (
-                                                    item.contributionPercent()
-                                                            == null
-                                                            ? ""
-                                                            : " ("
-                                                            + number(
-                                                            item.contributionPercent())
-                                                            + "%)"
-                                            ))
-                            .collect(
-                                    Collectors.joining(
-                                            "; ")),
-                    Element.ALIGN_LEFT);
-
-            addBodyCell(
-                    table,
-                    "",
-                    Element.ALIGN_CENTER);
+            for (SyllabusPdfDocument.CloRow clo : data.clos()) {
+                String contribution = assessment.cloContributions().stream()
+                        .filter(item -> clo.code().equalsIgnoreCase(safe(item.cloCode())))
+                        .map(item -> percent(item.contributionPercent()))
+                        .findFirst()
+                        .orElse("");
+                addBodyCell(table, contribution, Element.ALIGN_CENTER);
+            }
         }
 
         document.add(table);
 
-        Color totalColor =
-                Math.abs(
-                        totalWeight - 100f)
-                        < 0.01f
-                        ? BLUE
-                        : new Color(
-                        185,
-                        28,
-                        28);
-
         Paragraph summary =
                 new Paragraph(
-                        "Total assessment weight: "
-                                + number(
-                                totalWeight)
-                                + "%",
-                        fonts.bold(
-                                8,
-                                totalColor));
+                        "Note: %Pass is the target percentage of students having scores greater than 50 out of 100. "
+                                + "Total assessment weight: " + number(totalWeight) + "%.",
+                        fonts.regular(8, TEXT));
 
-        summary.setAlignment(
-                Element.ALIGN_RIGHT);
+        summary.setAlignment(Element.ALIGN_LEFT);
         summary.setSpacingAfter(8);
 
         document.add(summary);
     }
 
-    private void addReadingList(
+    private void addreadings(
             Document document,
             SyllabusPdfDocument data)
             throws DocumentException {
@@ -972,6 +969,92 @@ public class SyllabusPdfRenderer {
         document.add(table);
     }
 
+    private void addRubrics(
+            Document document,
+            SyllabusPdfDocument data)
+            throws DocumentException {
+
+        addSectionTitle(document, "Rubrics (optional)");
+
+        String raw = data.rubrics();
+        if (raw == null || raw.isBlank()) {
+            addEmptyState(document, "No grading rubric has been defined.");
+            return;
+        }
+
+        try {
+            JsonNode root = objectMapper.readTree(raw);
+            JsonNode rubrics = root.path("rubrics");
+            if (!rubrics.isArray()) {
+                addRubricLegacyText(document, raw);
+                return;
+            }
+
+            int rubricNumber = 1;
+            for (JsonNode rubric : rubrics) {
+                String title = rubric.path("title").asText("Rubric " + rubricNumber);
+                Paragraph heading = new Paragraph(
+                        "5." + rubricNumber + ". " + title,
+                        fonts.bold(9, NAVY));
+                heading.setSpacingBefore(4);
+                heading.setSpacingAfter(4);
+                document.add(heading);
+
+                JsonNode labels = rubric.path("scaleLabels");
+                JsonNode criteria = rubric.path("criteria");
+                int scaleCount = labels.isArray() ? labels.size() : 0;
+                if (scaleCount == 0 || !criteria.isArray() || criteria.isEmpty()) {
+                    addEmptyState(document, "No criteria have been defined for this rubric.");
+                    rubricNumber++;
+                    continue;
+                }
+
+                PdfPTable table = new PdfPTable(scaleCount + 1);
+                table.setWidthPercentage(100);
+                float[] widths = new float[scaleCount + 1];
+                widths[0] = 30;
+                for (int index = 1; index < widths.length; index++) {
+                    widths[index] = 70f / scaleCount;
+                }
+                table.setWidths(widths);
+                table.setHeaderRows(1);
+                table.setSplitLate(false);
+                table.setSplitRows(true);
+                table.setSpacingAfter(8);
+
+                addHeaderCell(table, "Criterion");
+                for (JsonNode label : labels) {
+                    addHeaderCell(table, label.asText("Level"));
+                }
+
+                for (JsonNode criterion : criteria) {
+                    addBodyCell(table, criterion.path("criterion").asText(""), Element.ALIGN_LEFT);
+                    JsonNode levels = criterion.path("levels");
+                    for (int index = 0; index < scaleCount; index++) {
+                        addBodyCell(
+                                table,
+                                levels.isArray() && index < levels.size()
+                                        ? levels.get(index).asText("")
+                                        : "",
+                                Element.ALIGN_LEFT);
+                    }
+                }
+                document.add(table);
+                rubricNumber++;
+            }
+        } catch (Exception ignored) {
+            addRubricLegacyText(document, raw);
+        }
+    }
+
+    private void addRubricLegacyText(Document document, String raw)
+            throws DocumentException {
+        Paragraph paragraph = new Paragraph(raw, fonts.regular(8, TEXT));
+        paragraph.setLeading(11);
+        paragraph.setSpacingAfter(8);
+        document.add(paragraph);
+    }
+
     private void addRevisionAndApproval(
             Document document,
             SyllabusPdfDocument data)
@@ -984,7 +1067,7 @@ public class SyllabusPdfRenderer {
          */
         addSectionTitle(
                 document,
-                "6. Revision and approval");
+                "Revision and approval");
 
         PdfPTable table =
                 new PdfPTable(2);
@@ -1511,6 +1594,30 @@ public class SyllabusPdfRenderer {
                 .replaceAll(
                         "\\.$",
                         "");
+    }
+
+    private String responsiblePersons(SyllabusPdfDocument data) {
+        if (!isBlank(data.responsiblePersons())
+                && !"Not assigned".equalsIgnoreCase(data.responsiblePersons().trim())) {
+            return data.responsiblePersons();
+        }
+
+        if (!isBlank(data.notes())) {
+            try {
+                String personResponsible = objectMapper
+                        .readTree(data.notes())
+                        .path("personResponsible")
+                        .asText("")
+                        .trim();
+                if (!personResponsible.isBlank()) {
+                    return personResponsible;
+                }
+            } catch (Exception ignored) {
+                // Legacy notes can be plain text; keep the assignment fallback.
+            }
+        }
+
+        return firstNonBlank(data.responsiblePersons(), "Not assigned");
     }
 
     private static String safeNumber(

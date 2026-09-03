@@ -140,8 +140,8 @@ function baseProgramCode(value: unknown): string {
   )
 }
 
-function getRoleBase(pathname: string): "/admin" | "/dean" {
-  return pathname.startsWith("/dean") ? "/dean" : "/admin"
+function getRoleBase(pathname: string): string {
+  return `/${pathname.split("/")[1] || "admin"}`
 }
 
 export default function ProgramDiffPage() {
@@ -405,7 +405,7 @@ export default function ProgramDiffPage() {
                     value={String(cohort.id)}
                     disabled={String(cohort.id) === newCohortId}
                   >
-                    {cohort.name} · {cohort.entryYear}
+                    {cohort.name}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -449,7 +449,7 @@ export default function ProgramDiffPage() {
                     value={String(cohort.id)}
                     disabled={String(cohort.id) === oldCohortId}
                   >
-                    {cohort.name} · {cohort.entryYear}
+                    {cohort.name}
                   </SelectItem>
                 ))}
               </SelectContent>

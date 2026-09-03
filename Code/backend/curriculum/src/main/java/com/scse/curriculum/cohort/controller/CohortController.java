@@ -54,4 +54,16 @@ public CohortResponse create(
         return service.getByName(name);
     }
 
+    @PostMapping("/{id}/archive")
+    @PreAuthorize("hasRole('ADMIN')")
+    public CohortResponse archive(@PathVariable Integer id) {
+        return service.archive(id);
+    }
+
+    @PostMapping("/{id}/reactivate")
+    @PreAuthorize("hasRole('ADMIN')")
+    public CohortResponse reactivate(@PathVariable Integer id) {
+        return service.reactivate(id);
+    }
+
 }

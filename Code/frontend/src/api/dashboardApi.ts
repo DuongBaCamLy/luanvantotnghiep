@@ -326,7 +326,15 @@ syllabusStatusOverview: Record<string, number>
   courseGroupStatistics: AdminCourseGroupStatistic[]
 }
 
-export type ContributionLevel = "I" | "D" | "A"
+export type ContributionLevel = "X" | "XX" | "XXX"
+
+export interface HeatmapCloContribution {
+  cloId: number
+  cloCode: string
+  description: string
+  descriptionVn?: string | null
+  level: ContributionLevel
+}
 
 export interface HeatmapPloColumn {
   id: number
@@ -346,6 +354,7 @@ export interface HeatmapCellCoverage {
   level: ContributionLevel | null
   mappingCount: number
   cloCodes: string[]
+  cloContributions: HeatmapCloContribution[]
 }
 
 export interface HeatmapCourseCoverage {
@@ -393,10 +402,10 @@ export interface HeatmapWarning {
 }
 
 export interface HeatmapQuery {
-  cohortId: number
-  academicYear: string
-  semester: string
-  courseTypeId?: number
+  cohortId?: number
+  search?: string
+  semester?: string
+  status?: string
 }
 
 export interface DashboardHeatmapResponse {

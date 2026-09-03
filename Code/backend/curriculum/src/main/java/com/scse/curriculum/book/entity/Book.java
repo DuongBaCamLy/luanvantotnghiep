@@ -16,11 +16,13 @@ public class Book {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 500)
     private String title;
 
+    @Column(length = 500)
     private String author;
 
+    @Column(length = 255)
     private String publisher;
 
     private Integer year;
@@ -29,9 +31,16 @@ public class Book {
 
     private String isbn;
 
+    @Column(length = 1000)
     private String url;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "book_type")
-    private BookType bookType;
+    @Column(name = "book_type", nullable = false)
+    @Builder.Default
+    private BookType bookType = BookType.REFERENCE;
+
+    @PrePersist
+    private void initializeBookType() {
+        if (bookType == null) bookType = BookType.REFERENCE;
+    }
 }

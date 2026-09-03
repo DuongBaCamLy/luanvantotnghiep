@@ -55,7 +55,7 @@ public interface ClassSectionRepository
             LEFT JOIN FETCH cs.syllabus s
             WHERE (
                 :departmentId IS NULL
-                OR c.department.id = :departmentId
+                OR cs.program.major.id = :departmentId
             )
             ORDER BY
                 cs.academicYear DESC,
@@ -75,7 +75,7 @@ public interface ClassSectionRepository
             WHERE cs.id = :id
               AND (
                   :departmentId IS NULL
-                  OR c.department.id = :departmentId
+                  OR cs.program.major.id = :departmentId
               )
             """)
     Optional<ClassSection> findByIdInScope(
@@ -91,7 +91,7 @@ public interface ClassSectionRepository
             WHERE c.id = :courseId
               AND (
                   :departmentId IS NULL
-                  OR c.department.id = :departmentId
+                  OR cs.program.major.id = :departmentId
               )
             ORDER BY
                 cs.academicYear DESC,
@@ -110,7 +110,7 @@ public interface ClassSectionRepository
             LEFT JOIN FETCH cs.syllabus s
             WHERE (
                 :departmentId IS NULL
-                OR c.department.id = :departmentId
+                OR cs.program.major.id = :departmentId
             )
             AND (
                 LOWER(c.courseCode)
@@ -243,6 +243,16 @@ public interface ClassSectionRepository
             @Param("courseId") Integer courseId,
             @Param("academicYear") String academicYear,
             @Param("semester") Integer semester);
+
+    /**
+     * A direct ClassSection -> Syllabus link is the authoritative assignment
+     * for an existing syllabus.  It must be checked independently from the
+     * textual academic-year fields because imported legacy syllabi may store
+     * a cohort code there while ClassSection stores the teaching year.
+     */
+    boolean existsByInstructor_IdAndSyllabus_IdAndIsActiveTrue(
+            Integer instructorId,
+            Integer syllabusId);
 
     @Query("""
             SELECT section

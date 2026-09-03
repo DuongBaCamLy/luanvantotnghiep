@@ -4,7 +4,21 @@ export interface Department {
   name: string
   nameVn: string
   isActive: boolean
+  headUserId: number | null
+  headUsername: string | null
+  headInstructorId: number | null
+  headFullName: string | null
   createdAt: string
+}
+
+export interface DepartmentHeadCandidate {
+  userAccountId: number
+  username: string
+  instructorId: number | null
+  staffCode: string | null
+  fullName: string | null
+  departmentId: number | null
+  departmentName: string | null
 }
 
 export interface CreateDepartmentRequest {

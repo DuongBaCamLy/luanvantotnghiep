@@ -49,8 +49,8 @@ function semesterLabel(semester: number): string {
   return `Semester ${semester}`
 }
 
-function getRoleBase(pathname: string): "/admin" | "/dean" {
-  return pathname.startsWith("/dean") ? "/dean" : "/admin"
+function getRoleBase(pathname: string): string {
+  return `/${pathname.split("/")[1] || "admin"}`
 }
 
 export default function ProgramTimelinePage() {
@@ -273,7 +273,7 @@ export default function ProgramTimelinePage() {
                 <SelectContent>
                   {activeCohorts.map((cohort) => (
                     <SelectItem key={cohort.id} value={String(cohort.id)}>
-                      {cohort.name} · {cohort.entryYear}
+                      {cohort.name}
                     </SelectItem>
                   ))}
                 </SelectContent>

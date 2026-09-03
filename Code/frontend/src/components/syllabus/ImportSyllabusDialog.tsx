@@ -1,437 +1,184 @@
 import { useRef, useState } from "react"
-import axios from "axios"
-import {
-  AlertTriangle,
-  CheckCircle2,
-  FileText,
-  Upload,
-  X,
-} from "lucide-react"
-import { useQueryClient } from "@tanstack/react-query"
+import { AlertTriangle, CheckCircle2, FileSearch, Loader2 } from "lucide-react"
+import { toast } from "sonner"
 
-import { Button } from "@/components/ui/button"
 import { syllabusImportApi } from "@/api/syllabusImportApi"
-import type {
-  SyllabusImportMode,
-  SyllabusImportPreviewResponse,
-} from "@/types/syllabusImport"
+import { Button } from "@/components/ui/button"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { isUsableSyllabusImportPreview } from "@/lib/syllabusImportDraft"
+import type { SyllabusImportPreviewResponse } from "@/types/syllabusImport"
 
-interface Props {
-  syllabusId: number
+type Props = {
   open: boolean
   onClose: () => void
-  onImported?: () => void
+  expectedCourseCode?: string
+  expectedCourseName?: string
+  onPreviewConfirmed: (preview: SyllabusImportPreviewResponse) => void
 }
 
-const messageOf = (error: unknown): string => {
-  if (axios.isAxiosError(error)) {
-    const data = error.response?.data as
-      | { message?: string }
-      | undefined
+const normalizeCourseCode = (value?: string) => String(value ?? "")
+  .trim()
+  .toUpperCase()
+  .replace(/[\s_-]+/g, "")
 
-    return data?.message ?? "Không thể import file."
-  }
+const normalizeCourseName = (value?: string) => String(value ?? "")
+  .trim()
+  .toUpperCase()
+  .replace(/[^A-Z0-9+#]+/g, "")
 
-  return error instanceof Error
-    ? error.message
-    : "Không thể import file."
+const codesMatch = (source?: string, target?: string) => {
+  const left = normalizeCourseCode(source)
+  const right = normalizeCourseCode(target)
+  if (!left || !right) return true
+  if (left === right) return true
+  // The course master uses an institutional IU suffix (IT116IU) while the
+  // approved CS programme PDF prints the academic code (IT116).
+  return left.replace(/IU$/, "") === right.replace(/IU$/, "")
 }
 
-export default function ImportSyllabusDialog({
-  syllabusId,
-  open,
-  onClose,
-  onImported,
-}: Props) {
-  const inputRef = useRef<HTMLInputElement>(null)
-  const queryClient = useQueryClient()
+export default function ImportSyllabusDialog({ open, onClose, expectedCourseCode, expectedCourseName, onPreviewConfirmed }: Props) {
+  const [file, setFile] = useState<File | null>(null)
+  const [preview, setPreview] = useState<SyllabusImportPreviewResponse | null>(null)
+  const [loading, setLoading] = useState(false)
+  const previewRequestId = useRef(0)
 
-  const [preview, setPreview] =
-    useState<SyllabusImportPreviewResponse | null>(null)
-
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState("")
-  const [importMode, setImportMode] = useState<SyllabusImportMode>("MERGE")
-
-  if (!open) {
-    return null
-  }
-
-  const chooseFile = async (file?: File) => {
-    if (!file) {
-      return
-    }
-
-    setBusy(true)
-    setError("")
+  const close = () => {
+    previewRequestId.current += 1
+    setFile(null)
     setPreview(null)
-
-    try {
-      const result =
-        await syllabusImportApi.preview(
-          syllabusId,
-          file
-        )
-
-      setPreview(result)
-    } catch (e) {
-      setError(messageOf(e))
-    } finally {
-      setBusy(false)
-    }
+    setLoading(false)
+    onClose()
   }
 
-  const confirm = async () => {
-    if (!preview?.valid) {
+  const handlePreview = async () => {
+    if (!file) {
+      toast.error("Please select a DOCX or PDF syllabus file.")
       return
     }
-
-    setBusy(true)
-    setError("")
-
+    if (!/\.(docx|pdf)$/i.test(file.name)) {
+      toast.error("Only DOCX and PDF syllabus files are supported.")
+      return
+    }
+    const requestId = ++previewRequestId.current
     try {
-      await syllabusImportApi.confirm(
-        syllabusId,
-        preview.data,
-        importMode,
-      )
-
-      await Promise.all([
-        queryClient.invalidateQueries({
-          queryKey: ["syllabus", syllabusId],
-        }),
-        queryClient.invalidateQueries({
-          queryKey: ["clos", syllabusId],
-        }),
-        queryClient.invalidateQueries({
-          queryKey: ["topics", syllabusId],
-        }),
-        queryClient.invalidateQueries({
-          queryKey: ["assessments", syllabusId],
-        }),
-        queryClient.invalidateQueries({
-          queryKey: ["syllabus-books", syllabusId],
-        }),
-      ])
-
-      alert("Import đề cương thành công.")
-
-      onImported?.()
-      onClose()
-    } catch (e) {
-      setError(messageOf(e))
+      setLoading(true)
+      setPreview(null)
+      const result = await syllabusImportApi.preview(file)
+      if (requestId !== previewRequestId.current) return
+      setPreview(result)
+      if (isUsableSyllabusImportPreview(result)) {
+        toast.success("Syllabus extracted successfully. Review every field before saving.")
+      } else {
+        toast.warning("The file is missing one or more required syllabus sections.")
+      }
+    } catch (error) {
+      if (requestId !== previewRequestId.current) return
+      console.error(error)
+      toast.error("Cannot extract syllabus data from this file.")
     } finally {
-      setBusy(false)
+      if (requestId === previewRequestId.current) setLoading(false)
     }
   }
 
-  const summaryItems = preview
-    ? [
-        {
-          label: "CLO",
-          value: preview.data.clos.length,
-        },
-        {
-          label: "Topics",
-          value: preview.data.topics.length,
-        },
-        {
-          label: "Assessments",
-          value: preview.data.assessments.length,
-        },
-        {
-          label: "Reading List",
-          value: preview.data.readingList.length,
-        },
-        {
-          label: "CLO–PLO",
-          value: preview.data.cloPloMappings?.length ?? 0,
-        },
-        {
-          label: "Topic–CLO",
-          value: preview.data.topicCloMappings?.length ?? 0,
-        },
-        {
-          label: "Assessment–CLO",
-          value: preview.data.assessmentCloMappings?.length ?? 0,
-        },
-      ]
-    : []
+  const importedCourseCode = preview?.data?.sourceCourseCode
+  const importedCourseName = preview?.data?.sourceCourseName
+  const previewReady = isUsableSyllabusImportPreview(preview)
+  const exactCourseCodeMatch = normalizeCourseCode(importedCourseCode) === normalizeCourseCode(expectedCourseCode)
+  const institutionalAliasMatch = Boolean(
+    importedCourseCode
+    && expectedCourseCode
+    && !exactCourseCodeMatch
+    && codesMatch(importedCourseCode, expectedCourseCode)
+    && (!importedCourseName || !expectedCourseName
+      || normalizeCourseName(importedCourseName) === normalizeCourseName(expectedCourseName)),
+  )
+  const courseCodeMismatch = Boolean(
+    importedCourseCode
+    && expectedCourseCode
+    && !exactCourseCodeMatch
+    && !institutionalAliasMatch,
+  )
+
+  const handleContinue = () => {
+    if (!previewReady || courseCodeMismatch) return
+    onPreviewConfirmed(preview)
+  }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-xl bg-white shadow-xl">
-        <div className="flex items-start justify-between border-b p-5">
-          <div>
-            <h2 className="flex items-center gap-2 text-xl font-semibold">
-              <FileText className="h-5 w-5" />
-              Import syllabus từ PDF / Word / Excel
-            </h2>
+    <Dialog open={open} onOpenChange={(value) => !value && close()}>
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-4xl">
+        <DialogHeader>
+          <DialogTitle>Import Syllabus File</DialogTitle>
+          <DialogDescription>
+            Upload a DOCX syllabus (recommended) or a PDF. The importer recognizes semantic fields across template versions; nothing is saved until you review and press Save.
+          </DialogDescription>
+        </DialogHeader>
 
-            <p className="mt-1 text-sm text-muted-foreground">
-              Xem trước dữ liệu, kiểm tra lỗi rồi mới xác nhận
-              ghi vào bản Draft.
-            </p>
+        <div className="space-y-5">
+          <div className="space-y-2">
+            <Label>Syllabus file</Label>
+            <Input type="file" accept=".docx,.pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/pdf" disabled={loading} onChange={(event) => {
+              previewRequestId.current += 1
+              setFile(event.target.files?.[0] ?? null)
+              setPreview(null)
+              setLoading(false)
+            }} />
           </div>
-
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            onClick={onClose}
-            disabled={busy}
-            aria-label="Đóng"
-          >
-            <X className="h-5 w-5" />
+          <Button type="button" disabled={loading || !file} onClick={handlePreview}>
+            {loading ? <Loader2 className="size-4 animate-spin" /> : <FileSearch className="size-4" />}
+            {loading ? "Extracting..." : "Extract & Preview"}
           </Button>
-        </div>
-
-        <div className="space-y-5 p-5">
-          <div className="rounded-lg border border-dashed p-6 text-center">
-            <Upload className="mx-auto h-8 w-8 text-muted-foreground" />
-
-            <p className="mt-2 font-medium">
-              Chọn file .pdf, .docx hoặc .xlsx, tối đa 10 MB
-            </p>
-
-            <input
-              ref={inputRef}
-              type="file"
-              accept=".pdf,.docx,.xlsx"
-              className="hidden"
-              onChange={(event) => {
-                const file =
-                  event.target.files?.[0]
-
-                void chooseFile(file)
-
-                event.target.value = ""
-              }}
-            />
-
-            <Button
-              type="button"
-              className="mt-3 gap-2"
-              variant="outline"
-              disabled={busy}
-              onClick={() =>
-                inputRef.current?.click()
-              }
-            >
-              <Upload className="h-4 w-4" />
-
-              {busy
-                ? "Đang đọc file..."
-                : "Chọn file"}
-            </Button>
-          </div>
-
-          {error && (
-            <div className="flex gap-2 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-              <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" />
-              <span>{error}</span>
-            </div>
-          )}
 
           {preview && (
-            <>
-              <div
-                className={`rounded-lg border p-4 ${
-                  preview.valid
-                    ? "border-emerald-200 bg-emerald-50"
-                    : "border-red-200 bg-red-50"
-                }`}
-              >
-                <div className="flex items-start gap-3">
-                  {preview.valid ? (
-                    <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" />
-                  ) : (
-                    <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-red-600" />
-                  )}
-
-                  <div>
-                    <p className="font-medium">
-                      {preview.fileName}
-                    </p>
-
-                    <p className="mt-1 text-sm">
-                      {preview.errorCount} lỗi,{" "}
-                      {preview.warningCount} cảnh báo
-                    </p>
-                  </div>
+            <div className="space-y-4 rounded-xl border border-slate-200 bg-slate-50/60 p-4">
+              <div className="flex items-start gap-2">
+                {previewReady ? <CheckCircle2 className="mt-0.5 size-5 text-emerald-600" /> : <AlertTriangle className="mt-0.5 size-5 text-amber-600" />}
+                <div>
+                  <p className="font-semibold text-slate-900">{preview.fileName}</p>
+                  <p className="text-xs text-slate-500">
+                    {previewReady ? "Ready to auto-fill the complete Syllabus Form." : `${preview.errorCount} validation issue(s); required sections are incomplete.`}
+                    {preview.warningCount > 0 ? ` ${preview.warningCount} warning(s) require review.` : ""}
+                  </p>
                 </div>
               </div>
-
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                {summaryItems.map((item) => (
-                  <div
-                    key={item.label}
-                    className="rounded-lg border p-4"
-                  >
-                    <p className="text-sm text-muted-foreground">
-                      {item.label}
-                    </p>
-
-                    <p className="mt-1 text-2xl font-semibold">
-                      {item.value}
-                    </p>
-                  </div>
-                ))}
-              </div>
-
-              <div className="rounded-lg border border-sky-200 bg-sky-50/60 p-4">
-                <label
-                  htmlFor="syllabus-import-mode"
-                  className="block text-sm font-medium text-slate-900"
-                >
-                  Import mode
-                </label>
-                <select
-                  id="syllabus-import-mode"
-                  value={importMode}
-                  onChange={(event) =>
-                    setImportMode(event.target.value as SyllabusImportMode)
-                  }
-                  className="mt-2 h-9 w-full rounded-md border border-slate-300 bg-white px-3 text-sm sm:max-w-md"
-                >
-                  <option value="MERGE">Merge with existing Draft (recommended)</option>
-                  <option value="UPDATE_DETECTED_FIELDS_ONLY">Update detected fields only</option>
-                  <option value="REPLACE_ALL">Replace all imported sections</option>
-                </select>
-                <p className="mt-2 text-xs text-slate-600">
-                  The default keeps sections that the file does not contain. Replace all removes existing structured sections before applying the preview.
-                </p>
-              </div>
-
-              {preview.issues.length > 0 && (
-                <div className="overflow-hidden rounded-lg border">
-                  <div className="border-b bg-muted/40 px-4 py-3">
-                    <h3 className="font-medium">
-                      Chi tiết kiểm tra
-                    </h3>
-                  </div>
-
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead className="bg-muted/30">
-                        <tr>
-                          <th className="px-4 py-3 text-left">
-                            Mức
-                          </th>
-
-                          <th className="px-4 py-3 text-left">
-                            Phần
-                          </th>
-
-                          <th className="px-4 py-3 text-left">
-                            Dòng
-                          </th>
-
-                          <th className="px-4 py-3 text-left">
-                            Thông báo
-                          </th>
-                        </tr>
-                      </thead>
-
-                      <tbody>
-                        {preview.issues.map(
-                          (issue, index) => (
-                            <tr
-                              key={`${issue.section}-${issue.row ?? "none"}-${index}`}
-                              className="border-t"
-                            >
-                              <td className="px-4 py-3">
-                                {issue.severity}
-                              </td>
-
-                              <td className="px-4 py-3">
-                                {issue.section}
-                              </td>
-
-                              <td className="px-4 py-3">
-                                {issue.row ?? "—"}
-                              </td>
-
-                              <td className="px-4 py-3">
-                                {issue.message}
-                              </td>
-                            </tr>
-                          )
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
+              {preview.issues?.length > 0 && <ul className="space-y-1 text-xs text-amber-800">{preview.issues.map((issue, index) => {
+                const location = [issue.section, issue.row ? `row ${issue.row}` : "", issue.field].filter(Boolean).join(" / ")
+                return <li key={`${issue.message}-${index}`}>- {location ? `[${location}] ` : ""}{issue.message}</li>
+              })}</ul>}
+              {courseCodeMismatch && (
+                <div className="flex items-start gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs leading-5 text-rose-800">
+                  <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+                  <span>
+                    File belongs to course <b>{importedCourseCode}</b>, but the selected course is <b>{expectedCourseCode}</b>. Choose the matching course before continuing.
+                  </span>
                 </div>
               )}
-
-              <div className="rounded-lg border p-4">
-                <h3 className="mb-4 font-medium">
-                  Xem trước thông tin chung
-                </h3>
-
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div>
-                    <span className="text-sm text-muted-foreground">
-                      Imported course:
-                    </span>{" "}
-                    {preview.data.sourceCourseCode || "—"}
-                    {preview.data.sourceCourseName ? ` — ${preview.data.sourceCourseName}` : ""}
-                  </div>
-
-                  <div>
-                    <span className="text-sm text-muted-foreground">
-                      Language:
-                    </span>{" "}
-                    {preview.data.language || "—"}
-                  </div>
-
-                  <div>
-                    <span className="text-sm text-muted-foreground">
-                      Semester:
-                    </span>{" "}
-                    {preview.data.semester || "—"}
-                  </div>
-
-                  <div>
-                    <span className="text-sm text-muted-foreground">
-                      Major:
-                    </span>{" "}
-                    {preview.data.major || "—"}
-                  </div>
-
-                  <div>
-                    <span className="text-sm text-muted-foreground">
-                      Workload total:
-                    </span>{" "}
-                    {preview.data.workloadTotal || "—"}
-                  </div>
+              {institutionalAliasMatch && (
+                <div className="rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-xs leading-5 text-sky-800">
+                  The PDF uses academic course code <b>{importedCourseCode}</b>. It matches selected institutional course <b>{expectedCourseCode}</b> ({expectedCourseName}); the selected course identity will be kept when saving.
                 </div>
+              )}
+              <div className="grid gap-3 text-sm sm:grid-cols-4">
+                <PreviewCount label="CLOs" value={preview.data?.clos?.length ?? 0} />
+                <PreviewCount label="Topics" value={Math.max(preview.data?.topics?.length ?? 0, preview.data?.weeklyActivities?.length ?? 0)} />
+                <PreviewCount label="Assessments" value={preview.data?.assessments?.length ?? 0} />
+                <PreviewCount label="Readings" value={preview.data?.readings?.length ?? 0} />
               </div>
-            </>
+            </div>
           )}
         </div>
 
-        <div className="flex justify-end gap-2 border-t p-5">
-          <Button
-            type="button"
-            variant="outline"
-            disabled={busy}
-            onClick={onClose}
-          >
-            Hủy
-          </Button>
-
-          <Button
-            type="button"
-            disabled={!preview?.valid || busy}
-            onClick={() => void confirm()}
-          >
-            {busy
-              ? "Đang import..."
-              : "Xác nhận import"}
-          </Button>
-        </div>
-      </div>
-    </div>
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={close}>Cancel</Button>
+          {preview && <Button type="button" disabled={loading || !previewReady || courseCodeMismatch} onClick={handleContinue}>Review in Syllabus Form</Button>}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
+}
+
+function PreviewCount({ label, value }: { label: string; value: number }) {
+  return <div className="rounded-lg border bg-white px-3 py-2"><p className="text-xs text-slate-500">{label}</p><p className="font-semibold text-slate-900">{value}</p></div>
 }

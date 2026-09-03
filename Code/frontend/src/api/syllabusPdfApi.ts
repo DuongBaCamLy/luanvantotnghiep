@@ -50,6 +50,20 @@ export const syllabusPdfApi = {
     )
   },
 
+  downloadPreview: async (
+    syllabusId: number,
+    fallbackName?: string
+  ): Promise<void> => {
+    const response = await api.get<Blob>(
+      `/api/syllabuses/${syllabusId}/pdf/preview`,
+      { responseType: "blob" }
+    )
+    downloadResponse(
+      response,
+      fallbackName || `Syllabus_${syllabusId}_Preview.pdf`
+    )
+  },
+
   downloadFromReports: async (
     syllabusId: number,
     fallbackName?: string
@@ -62,5 +76,16 @@ export const syllabusPdfApi = {
       response,
       fallbackName || `Syllabus_${syllabusId}.pdf`
     )
+  },
+}
+
+export const syllabusWordApi = {
+  downloadCurrent: async (syllabusId: number): Promise<void> => {
+    const response = await api.get<Blob>(`/api/syllabuses/${syllabusId}/word/current`, { responseType: "blob" })
+    downloadResponse(response, `Syllabus_${syllabusId}_Current.docx`)
+  },
+  downloadOriginal: async (syllabusId: number): Promise<void> => {
+    const response = await api.get<Blob>(`/api/syllabuses/${syllabusId}/word/original`, { responseType: "blob" })
+    downloadResponse(response, `Syllabus_${syllabusId}_Original.docx`)
   },
 }

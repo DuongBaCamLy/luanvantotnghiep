@@ -18,7 +18,7 @@ import java.nio.charset.StandardCharsets;
 
 @RestController
 @RequestMapping("/api/reports")
-@PreAuthorize("hasAnyRole('ADMIN', 'DEAN', 'DEPT_HEAD')")
+@PreAuthorize("@phaseRoleGuard.isAdmin(authentication)")
 public class ReportController {
 
     private final ReportService reportService;
@@ -34,11 +34,13 @@ public class ReportController {
     @GetMapping("/clo-plo-matrix/excel")
     public ResponseEntity<byte[]> exportCloPloMatrixExcel(
             @RequestParam long programId,
-            @RequestParam Integer cohortId,
-            @RequestParam String academicYear,
-            @RequestParam String semester,
-            @RequestParam(required = false) Integer courseTypeId) {
-        byte[] data = reportService.generateCloPloMatrixExcel(programId, cohortId, academicYear, semester, courseTypeId);
+            @RequestParam(required = false) Integer cohortId,
+            @RequestParam(required = false) String academicYear,
+            @RequestParam(required = false) String semester,
+            @RequestParam(required = false) Integer courseTypeId,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String status) {
+        byte[] data = reportService.generateCloPloMatrixExcel(programId, cohortId, semester, search, status);
         String filename = matrixFilename("xlsx", programId, cohortId, academicYear, semester, courseTypeId);
         ContentDisposition disposition = ContentDisposition.attachment()
                 .filename(filename, StandardCharsets.UTF_8)
@@ -54,11 +56,13 @@ public class ReportController {
     @GetMapping("/clo-plo-matrix/pdf")
     public ResponseEntity<byte[]> exportCloPloMatrixPdf(
             @RequestParam long programId,
-            @RequestParam Integer cohortId,
-            @RequestParam String academicYear,
-            @RequestParam String semester,
-            @RequestParam(required = false) Integer courseTypeId) {
-        byte[] data = reportService.generateCloPloMatrixPdf(programId, cohortId, academicYear, semester, courseTypeId);
+            @RequestParam(required = false) Integer cohortId,
+            @RequestParam(required = false) String academicYear,
+            @RequestParam(required = false) String semester,
+            @RequestParam(required = false) Integer courseTypeId,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String status) {
+        byte[] data = reportService.generateCloPloMatrixPdf(programId, cohortId, semester, search, status);
         String filename = matrixFilename("pdf", programId, cohortId, academicYear, semester, courseTypeId);
         ContentDisposition disposition = ContentDisposition.attachment()
                 .filename(filename, StandardCharsets.UTF_8)
@@ -173,14 +177,8 @@ public class ReportController {
             String academicYear,
             String semester,
             Integer courseTypeId) {
-        String safeYear = sanitizeFilenamePart(academicYear, "unknown-year");
-        String safeSemester = sanitizeFilenamePart(semester, "unknown-semester");
-        String group = courseTypeId == null ? "ALL" : "GROUP-" + courseTypeId;
         return "CLO_PLO_Matrix_P" + programId
                 + "_C" + (cohortId == null ? "unknown" : cohortId)
-                + "_" + safeYear
-                + "_HK" + safeSemester
-                + "_" + group
                 + "." + extension;
     }
 

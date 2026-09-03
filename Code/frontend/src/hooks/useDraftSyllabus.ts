@@ -12,7 +12,7 @@ export const useDraftSyllabus = () => {
   return useMutation({
     mutationFn: async (id: number) => {
       const syllabus = await syllabusApi.getById(id)
-      if (syllabus.status !== "DRAFT") {
+      if (!["DRAFT", "REVISION_REQUESTED"].includes(syllabus.status)) {
         throw new Error(
           "Không thể chuyển trực tiếp về DRAFT. Hãy dùng quy trình yêu cầu chỉnh sửa.",
         )

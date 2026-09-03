@@ -1484,7 +1484,7 @@ function getAssignmentAction(
           item.recommendedAction
         ],
       path:
-        `${base}/${item.syllabusId}/editor`,
+        `${base}/${item.syllabusId}/edit`,
     }
   }
 

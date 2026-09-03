@@ -147,7 +147,7 @@ CREATE TABLE cohort (
   id          INT          NOT NULL AUTO_INCREMENT COMMENT 'Mã khóa tuyển sinh',
   program_id  INT          NOT NULL                COMMENT 'Theo CTĐT nào',
   entry_year  YEAR         NOT NULL                COMMENT 'Năm nhập học, VD: 2021',
-  name        VARCHAR(100) NOT NULL                COMMENT 'Tên khóa, VD: CS2021, IT2022',
+  name        VARCHAR(100) NOT NULL                COMMENT 'Canonical cohort code, always CSYYYY (VD: CS2021)',
   description VARCHAR(500)                         COMMENT 'Ghi chú về khóa',
   is_active   BOOLEAN      NOT NULL DEFAULT TRUE,
 
@@ -276,6 +276,8 @@ CREATE TABLE course_relationship (
 CREATE TABLE syllabus (
   id             INT          NOT NULL AUTO_INCREMENT COMMENT 'Mã đề cương',
   course_id      INT          NOT NULL                COMMENT 'Học phần',
+  program_id     INT          NOT NULL                COMMENT 'Chương trình được chọn khi phân công',
+  cohort_id      INT          NOT NULL                COMMENT 'Khóa tuyển sinh được chọn khi phân công',
   version_number INT          NOT NULL DEFAULT 1      COMMENT 'Số phiên bản (tăng tự động)',
   version_label  VARCHAR(50)                          COMMENT 'Nhãn phiên bản, VD: v2023.1, v2024.2',
   academic_year  VARCHAR(20)                          COMMENT 'Năm học áp dụng, VD: 2023-2024',
@@ -384,7 +386,8 @@ CREATE TABLE topic (
                       'LAB',           -- Thực hành
                       'SEMINAR',       -- Seminar/Thảo luận
                       'EXAM',          -- Kiểm tra
-                      'PROJECT'        -- Dự án
+                      'PROJECT',       -- Dự án
+                      'SELF_STUDY'     -- Tự học
                     ) NOT NULL DEFAULT 'LECTURE'         COMMENT 'Loại hình dạy học',
   teaching_method   TEXT                                 COMMENT 'Phương pháp giảng dạy',
   learning_activity TEXT                                 COMMENT 'Hoạt động học tập của sinh viên',
@@ -463,16 +466,7 @@ CREATE TABLE assessment_component (
   syllabus_id    INT          NOT NULL                COMMENT 'Thuộc đề cương nào',
   name           VARCHAR(255) NOT NULL                COMMENT 'Tên hình thức đánh giá (VD: Midterm Exam)',
   name_vn        VARCHAR(255)                         COMMENT 'Tên tiếng Việt (VD: Kiểm tra giữa kỳ)',
-  assessment_type ENUM(
-                    'QUIZ',           -- Kiểm tra nhanh
-                    'ASSIGNMENT',     -- Bài tập/Đồ án
-                    'LAB_REPORT',     -- Báo cáo thực hành
-                    'MIDTERM_EXAM',   -- Thi giữa kỳ
-                    'FINAL_EXAM',     -- Thi cuối kỳ
-                    'PROJECT',        -- Dự án nhóm/cá nhân
-                    'PRESENTATION',   -- Thuyết trình
-                    'PARTICIPATION'   -- Tham gia lớp học
-                  ) NOT NULL          COMMENT 'Loại hình đánh giá',
+  assessment_type VARCHAR(100) NOT NULL COMMENT 'Loại hình đánh giá nhập theo syllabus nguồn',
   weight_percent  FLOAT        NOT NULL                COMMENT 'Trọng số phần trăm (tổng các thành phần = 100)',
   min_score       FLOAT        NOT NULL DEFAULT 0      COMMENT 'Điểm tối thiểu để qua môn thành phần này',
   max_score       FLOAT        NOT NULL DEFAULT 100    COMMENT 'Điểm tối đa',
@@ -579,10 +573,14 @@ CREATE TABLE class_section (
   PRIMARY KEY (id),
   UNIQUE KEY uq_class_section (course_id, semester, academic_year, group_number),
   KEY idx_cs_course (course_id),
+  KEY idx_cs_program (program_id),
+  KEY idx_cs_cohort (cohort_id),
   KEY idx_cs_syllabus (syllabus_id),
   KEY idx_cs_instructor (instructor_id),
   KEY idx_cs_year_sem (academic_year, semester),
   CONSTRAINT fk_cs_course FOREIGN KEY (course_id) REFERENCES course(id),
+  CONSTRAINT fk_cs_program FOREIGN KEY (program_id) REFERENCES program(id),
+  CONSTRAINT fk_cs_cohort FOREIGN KEY (cohort_id) REFERENCES cohort(id),
   CONSTRAINT fk_cs_syllabus FOREIGN KEY (syllabus_id) REFERENCES syllabus(id),
   CONSTRAINT fk_cs_instructor FOREIGN KEY (instructor_id) REFERENCES instructor(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci

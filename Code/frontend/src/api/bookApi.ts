@@ -15,7 +15,10 @@ export const bookApi = {
   },
 
   create: async (data: CreateBookRequest): Promise<Book> => {
-    const res = await api.post<Book>("/api/books", data)
+    const res = await api.post<Book>("/api/books", {
+      ...data,
+      bookType: data.bookType ?? "REFERENCE",
+    })
     return res.data
   },
 

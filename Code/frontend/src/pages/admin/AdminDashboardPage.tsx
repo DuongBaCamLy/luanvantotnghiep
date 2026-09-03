@@ -215,20 +215,14 @@ export default function AdminDashboardPage() {
       "clo-plo-summary",
       programId ?? null,
       cohortId ?? null,
-      dashboard?.academicYear ?? null,
-      dashboard?.semester ?? null,
     ],
     queryFn: () =>
       dashboardApi.getHeatmapCoverage(programId!, {
         cohortId: cohortId!,
-        academicYear: dashboard!.academicYear!,
-        semester: String(dashboard!.semester),
       }),
     enabled: Boolean(
       programId &&
-        cohortId &&
-        dashboard?.academicYear &&
-        dashboard.semester != null,
+        cohortId,
     ),
     staleTime: 60_000,
     refetchOnWindowFocus: false,
@@ -566,7 +560,7 @@ export default function AdminDashboardPage() {
                     ?.filter((cohort) => cohort.isActive !== false)
                     .map((cohort) => (
                       <SelectItem key={cohort.id} value={String(cohort.id)}>
-                        {cohort.name} · {cohort.entryYear}
+                        {cohort.name}
                       </SelectItem>
                     ))}
                 </SelectContent>

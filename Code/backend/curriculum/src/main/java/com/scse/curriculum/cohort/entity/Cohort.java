@@ -33,4 +33,23 @@ public class Cohort {
 
     @Column(name = "is_active")
     private Boolean isActive;
+
+    /** The canonical cohort code used by every API and screen. */
+    public static String canonicalName(String programCode, Integer entryYear) {
+        if (entryYear == null || entryYear < 2000 || entryYear > 2100) {
+            throw new IllegalArgumentException("Cohort entry year must be between 2000 and 2100");
+        }
+        String prefix = programCode == null ? "" : programCode.trim().toUpperCase();
+        prefix = prefix.replaceFirst("[-_]?\\d{4}$", "").replaceAll("[^A-Z0-9]", "");
+        if (prefix.isBlank()) {
+            throw new IllegalArgumentException("Program code is required to generate the cohort code");
+        }
+        return prefix + entryYear;
+    }
+
+    @PrePersist
+    @PreUpdate
+    private void normalizeName() {
+        name = canonicalName(program == null ? null : program.getCode(), entryYear);
+    }
 }

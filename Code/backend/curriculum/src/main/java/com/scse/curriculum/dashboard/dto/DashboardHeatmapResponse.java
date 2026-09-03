@@ -76,6 +76,16 @@ public class DashboardHeatmapResponse {
         private String level;
         private Integer mappingCount;
         private List<String> cloCodes;
+        private List<CloContribution> cloContributions;
+    }
+
+    @Data
+    public static class CloContribution {
+        private Integer cloId;
+        private String cloCode;
+        private String description;
+        private String descriptionVn;
+        private String level;
     }
 
     @Data

@@ -1,6 +1,9 @@
 package com.scse.curriculum.dashboard.service;
 
 import com.scse.curriculum.auth.security.CurrentUserService;
+import com.scse.curriculum.approval.entity.ApprovalStatus;
+import com.scse.curriculum.approval.entity.ApprovalStep;
+import com.scse.curriculum.approval.repository.ApprovalRequestRepository;
 import com.scse.curriculum.common.exception.ForbiddenOperationException;
 import com.scse.curriculum.common.exception.ResourceNotFoundException;
 import com.scse.curriculum.course.entity.Course;
@@ -26,6 +29,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -40,18 +44,21 @@ public class DashboardServiceImpl implements DashboardService {
     private final FacultyDashboardQueryService facultyDashboardQueryService;
     private final DeanDashboardQueryService deanDashboardQueryService;
     private final AdminDashboardQueryService adminDashboardQueryService;
+    private final ApprovalRequestRepository approvalRequestRepository;
 
     public DashboardServiceImpl(
             EntityManager entityManager,
             CurrentUserService currentUserService,
             FacultyDashboardQueryService facultyDashboardQueryService,
             DeanDashboardQueryService deanDashboardQueryService,
-            AdminDashboardQueryService adminDashboardQueryService) {
+            AdminDashboardQueryService adminDashboardQueryService,
+            ApprovalRequestRepository approvalRequestRepository) {
         this.entityManager = entityManager;
         this.currentUserService = currentUserService;
         this.facultyDashboardQueryService = facultyDashboardQueryService;
         this.deanDashboardQueryService = deanDashboardQueryService;
         this.adminDashboardQueryService = adminDashboardQueryService;
+        this.approvalRequestRepository = approvalRequestRepository;
     }
 
     @Override
@@ -69,28 +76,18 @@ public class DashboardServiceImpl implements DashboardService {
 
         UserAccount headUser = resolveRequestedUser(deptHeadUserId);
 
-        if (headUser.getInstructorId() == null) {
+        if (headUser.getManagedMajor() == null) {
             throw new ForbiddenOperationException(
-                    "Tài khoản Trưởng bộ môn chưa liên kết hồ sơ giảng viên.");
+                    "The Head of Department account is not assigned to a Managed Major.");
         }
-
-        Instructor headInstructor = entityManager.find(
-                Instructor.class,
-                headUser.getInstructorId());
-
-        if (headInstructor == null || headInstructor.getDepartment() == null) {
-            throw new ForbiddenOperationException(
-                    "Tài khoản Trưởng bộ môn chưa được gán bộ môn.");
-        }
-
-        int deptId = headInstructor.getDepartment().getId();
+        int majorId = headUser.getManagedMajor().getId();
 
         List<Course> courses = entityManager.createQuery(
-                        "SELECT c FROM Course c " +
-                        "WHERE c.department.id = :deptId " +
+                        "SELECT DISTINCT c FROM CourseProgram cp JOIN cp.course c " +
+                        "WHERE cp.program.major.id = :majorId " +
                         "ORDER BY c.courseCode",
                         Course.class)
-                .setParameter("deptId", deptId)
+                .setParameter("majorId", majorId)
                 .getResultList();
 
         response.setTotalCoursesInDept(courses.size());
@@ -99,12 +96,12 @@ public class DashboardServiceImpl implements DashboardService {
                         "SELECT s FROM Syllabus s " +
                         "JOIN FETCH s.course c " +
                         "LEFT JOIN FETCH s.createdBy u " +
-                        "WHERE c.department.id = :deptId " +
+                        "WHERE EXISTS (SELECT cp.id FROM CourseProgram cp WHERE cp.syllabus.id = s.id AND cp.program.major.id = :majorId) " +
                         "ORDER BY c.courseCode ASC, " +
                         "CASE WHEN s.isCurrent = true THEN 0 ELSE 1 END ASC, " +
                         "s.versionNumber DESC, s.id DESC",
                         Syllabus.class)
-                .setParameter("deptId", deptId)
+                .setParameter("majorId", majorId)
                 .getResultList();
 
         Map<Integer, Syllabus> latestSyllabusByCourse = new LinkedHashMap<>();
@@ -119,9 +116,12 @@ public class DashboardServiceImpl implements DashboardService {
                     syllabus);
         }
 
-        long toReview = latestSyllabusByCourse.values().stream()
-                .filter(syllabus -> syllabus.getStatus() == SyllabusStatus.SUBMITTED)
-                .count();
+        long toReview = approvalRequestRepository
+                .findPendingByManagedMajor(
+                        ApprovalStep.STEP1_DEPT_HEAD,
+                        ApprovalStatus.PENDING,
+                        majorId)
+                .size();
 
         response.setSyllabusesToReview(toReview);
 
@@ -223,9 +223,32 @@ public List<DashboardAdminResponse.TermOption> getAdminTermOptions() {
 
     @Override
     public DashboardHeatmapResponse getHeatmapCoverage(long programId, Integer cohortId, String academicYear, String semester, Integer courseTypeId) {
+        return getHeatmapCoverage(programId, cohortId, academicYear, semester,
+                courseTypeId, null, null);
+    }
+
+    @Override
+    public DashboardHeatmapResponse getHeatmapCoverage(long programId, Integer cohortId, String academicYear,
+                                                       String semester, Integer courseTypeId,
+                                                       String search, String status) {
+        UserAccount currentUser = currentUserService.getCurrentUser();
+        Integer managedMajorId = null;
+        if (currentUser.getRole() == UserRole.DEPT_HEAD) {
+            if (currentUser.getManagedMajor() == null) {
+                throw new ForbiddenOperationException(
+                        "The Head of Department account is not assigned to a managed Major.");
+            }
+            managedMajorId = currentUser.getManagedMajor().getId();
+        }
+
         Program program = entityManager.find(Program.class, (int) programId);
         if (program == null) {
             throw new ResourceNotFoundException("Program not found");
+        }
+        if (managedMajorId != null && (program.getMajor() == null
+                || !managedMajorId.equals(program.getMajor().getId()))) {
+            throw new ForbiddenOperationException(
+                    "You can only view curriculum analytics for your managed Major.");
         }
 
         DashboardHeatmapResponse response = new DashboardHeatmapResponse();
@@ -234,35 +257,21 @@ public List<DashboardAdminResponse.TermOption> getAdminTermOptions() {
         response.setProgramName(program.getName());
         response.setProgramNameVn(program.getNameVn());
 
-        if (cohortId == null) {
-            throw new IllegalArgumentException("cohortId is required");
+        if (cohortId != null) {
+            com.scse.curriculum.cohort.entity.Cohort cohort = entityManager.find(
+                    com.scse.curriculum.cohort.entity.Cohort.class, cohortId);
+            if (cohort == null || cohort.getProgram() == null
+                    || !program.getId().equals(cohort.getProgram().getId())) {
+                throw new ResourceNotFoundException("Cohort does not belong to the selected program");
+            }
+            response.setCohortId(cohort.getId());
+            response.setCohortName(cohort.getName());
+            response.setCohortEntryYear(cohort.getEntryYear());
+        } else {
+            response.setCohortName("All Cohorts");
         }
-        if (academicYear == null || academicYear.isBlank()) {
-            throw new IllegalArgumentException("academicYear is required");
-        }
-        if (semester == null || semester.isBlank()) {
-            throw new IllegalArgumentException("semester is required");
-        }
-
-        com.scse.curriculum.cohort.entity.Cohort cohort = entityManager.find(
-                com.scse.curriculum.cohort.entity.Cohort.class, cohortId);
-        if (cohort == null || cohort.getProgram() == null
-                || !program.getId().equals(cohort.getProgram().getId())) {
-            throw new ResourceNotFoundException("Cohort does not belong to the selected program");
-        }
-        String normalizedAcademicYear = academicYear.trim();
-        String normalizedSemester = semester.trim();
-
-        response.setCohortId(cohort.getId());
-        response.setCohortName(cohort.getName());
-        response.setCohortEntryYear(cohort.getEntryYear());
-        response.setAcademicYear(normalizedAcademicYear);
-        response.setSemester(normalizedSemester);
-        response.setCourseTypeId(courseTypeId);
-        response.setDataSource("APPROVED syllabus selected by program + cohort + academic year + semester"
-                + (courseTypeId == null ? "" : " + course type"));
-        response.setScopeKey(buildScopeKey(program.getId(), cohort.getId(),
-                normalizedAcademicYear, normalizedSemester, courseTypeId));
+        response.setDataSource("APPROVED syllabus linked to the selected curriculum scope");
+        response.setScopeKey(buildScopeKey(program.getId(), cohortId));
 
         List<Plo> plos = entityManager.createQuery(
                         "SELECT p FROM Plo p " +
@@ -280,32 +289,17 @@ public List<DashboardAdminResponse.TermOption> getAdminTermOptions() {
                 "JOIN FETCH cp.course c " +
                 "LEFT JOIN FETCH cp.courseType ct " +
                 "LEFT JOIN FETCH cp.syllabus linkedSyllabus " +
-                "LEFT JOIN FETCH cp.cohort cpCohort " +
+                "JOIN FETCH cp.cohort cpCohort " +
                 "WHERE cp.program.id = :pid " +
-                "AND (cpCohort.id = :cohortId OR cpCohort IS NULL) " +
-                (courseTypeId == null ? "" : "AND ct.id = :courseTypeId ") +
-                "ORDER BY c.courseCode, " +
-                "CASE WHEN cpCohort.id = :cohortId THEN 0 ELSE 1 END, cp.id";
+                "AND (:cohortId IS NULL OR cpCohort.id = :cohortId) " +
+                "ORDER BY c.courseCode, cp.id";
 
         var courseProgramQuery = entityManager.createQuery(courseProgramJpql, CourseProgram.class)
                 .setParameter("pid", (int) programId)
                 .setParameter("cohortId", cohortId);
-        if (courseTypeId != null) {
-            courseProgramQuery.setParameter("courseTypeId", courseTypeId);
-        }
-        List<CourseProgram> scopedCoursePrograms = courseProgramQuery.getResultList();
-
-        if (courseTypeId != null) {
-            var selectedType = entityManager.find(
-                    com.scse.curriculum.coursetype.entity.CourseType.class,
-                    courseTypeId);
-            if (selectedType == null) {
-                throw new ResourceNotFoundException("Course type not found");
-            }
-            response.setCourseTypeCode(selectedType.getCode());
-            response.setCourseTypeName(selectedType.getName());
-            response.setCourseTypeNameVn(selectedType.getNameVn());
-        }
+        List<CourseProgram> scopedCoursePrograms = courseProgramQuery.getResultList().stream()
+                .filter(cp -> matchesCatalogFilters(cp, search, semester, status))
+                .toList();
 
         Map<Integer, CourseProgram> courseProgramByCourse = new LinkedHashMap<>();
         for (CourseProgram cp : scopedCoursePrograms) {
@@ -347,34 +341,10 @@ public List<DashboardAdminResponse.TermOption> getAdminTermOptions() {
                 courseCoverage.setCourseTypeName(scopedCourseProgram.getCourseType().getName());
                 courseCoverage.setCourseTypeNameVn(scopedCourseProgram.getCourseType().getNameVn());
             }
-            List<Syllabus> approvedSyllabuses = new ArrayList<>();
-
             Syllabus explicitlyLinked = scopedCourseProgram != null
                     ? scopedCourseProgram.getSyllabus() : null;
-            if (explicitlyLinked != null
-                    && explicitlyLinked.getStatus() == SyllabusStatus.APPROVED
-                    && normalizedAcademicYear.equalsIgnoreCase(nullSafe(explicitlyLinked.getAcademicYear()))
-                    && normalizedSemester.equalsIgnoreCase(nullSafe(explicitlyLinked.getSemester()))) {
-                approvedSyllabuses.add(explicitlyLinked);
-            } else {
-                approvedSyllabuses = entityManager.createQuery(
-                                "SELECT s FROM Syllabus s " +
-                                "WHERE s.course.id = :courseId " +
-                                "AND s.status = :status " +
-                                "AND LOWER(TRIM(s.academicYear)) = LOWER(TRIM(:academicYear)) " +
-                                "AND LOWER(TRIM(s.semester)) = LOWER(TRIM(:semester)) " +
-                                "ORDER BY CASE WHEN s.isCurrent = true THEN 0 ELSE 1 END, " +
-                                "s.versionNumber DESC, s.approvedAt DESC, s.id DESC",
-                                Syllabus.class)
-                        .setParameter("courseId", course.getId())
-                        .setParameter("status", SyllabusStatus.APPROVED)
-                        .setParameter("academicYear", normalizedAcademicYear)
-                        .setParameter("semester", normalizedSemester)
-                        .setMaxResults(1)
-                        .getResultList();
-            }
-
-            if (approvedSyllabuses.isEmpty()) {
+            if (explicitlyLinked == null
+                    || explicitlyLinked.getStatus() != SyllabusStatus.APPROVED) {
                 courseCoverage.setHasApprovedSyllabus(false);
                 courseCoverage.setTotalClos(0);
                 courseCoverage.setMappedClos(0);
@@ -387,7 +357,7 @@ public List<DashboardAdminResponse.TermOption> getAdminTermOptions() {
             }
 
             coursesWithApprovedSyllabus++;
-            Syllabus syllabus = approvedSyllabuses.get(0);
+            Syllabus syllabus = explicitlyLinked;
             courseCoverage.setHasApprovedSyllabus(true);
             courseCoverage.setSyllabusId(syllabus.getId());
             courseCoverage.setSyllabusVersion(syllabus.getVersionNumber());
@@ -470,9 +440,21 @@ public List<DashboardAdminResponse.TermOption> getAdminTermOptions() {
                         new DashboardHeatmapResponse.CellCoverage();
                 cell.setPloId(plo.getId());
                 cell.setPloCode(plo.getCode());
-                cell.setLevel(highestLevel == null ? null : highestLevel.name());
+                cell.setLevel(toCoverageLevel(highestLevel));
                 cell.setMappingCount(cloCodes.size());
                 cell.setCloCodes(cloCodes);
+                cell.setCloContributions(ploMappings.stream()
+                        .map(mapping -> {
+                            DashboardHeatmapResponse.CloContribution contribution =
+                                    new DashboardHeatmapResponse.CloContribution();
+                            contribution.setCloId(mapping.getClo().getId());
+                            contribution.setCloCode(mapping.getClo().getCode());
+                            contribution.setDescription(mapping.getClo().getDescription());
+                            contribution.setDescriptionVn(mapping.getClo().getDescriptionVn());
+                            contribution.setLevel(toCoverageLevel(mapping.getLevel()));
+                            return contribution;
+                        })
+                        .toList());
                 cells.add(cell);
                 coverageLevels.add(cell.getLevel());
 
@@ -641,6 +623,7 @@ public List<DashboardAdminResponse.TermOption> getAdminTermOptions() {
             cell.setLevel(null);
             cell.setMappingCount(0);
             cell.setCloCodes(List.of());
+            cell.setCloContributions(List.of());
             cells.add(cell);
         }
         return cells;
@@ -689,20 +672,65 @@ public List<DashboardAdminResponse.TermOption> getAdminTermOptions() {
         return Math.round((numerator * 1000.0) / denominator) / 10.0;
     }
 
-    private String buildScopeKey(
-            Integer programId,
-            Integer cohortId,
-            String academicYear,
-            String semester,
-            Integer courseTypeId) {
+    private String buildScopeKey(Integer programId, Integer cohortId) {
         return "program=" + programId
-                + "|cohort=" + cohortId
-                + "|academicYear=" + academicYear
-                + "|semester=" + semester
-                + "|courseType=" + (courseTypeId == null ? "ALL" : courseTypeId);
+                + "|cohort=" + cohortId;
     }
 
-    private String nullSafe(String value) {
+    private String toCoverageLevel(ContributionLevel level) {
+        if (level == null) return null;
+        return switch (level) {
+            case I -> "X";
+            case D -> "XX";
+            case A -> "XXX";
+        };
+    }
+
+    private boolean matchesCatalogFilters(CourseProgram courseProgram, String search,
+                                           String semester, String status) {
+        Syllabus syllabus = courseProgram.getSyllabus();
+
+        if (status != null && !status.isBlank()
+                && (syllabus == null || syllabus.getStatus() == null
+                || !syllabus.getStatus().name().equalsIgnoreCase(status.trim()))) {
+            return false;
+        }
+
+        if (semester != null && !semester.isBlank()
+                && (syllabus == null
+                || !normalizeSemester(syllabus.getSemester()).equals(normalizeSemester(semester)))) {
+            return false;
+        }
+
+        if (search == null || search.isBlank()) {
+            return true;
+        }
+
+        String keyword = search.trim().toLowerCase(Locale.ROOT);
+        Course course = courseProgram.getCourse();
+        String searchable = String.join(" ",
+                safeText(course == null ? null : course.getCourseCode()),
+                safeText(course == null ? null : course.getName()),
+                safeText(course == null ? null : course.getNameVn()),
+                safeText(syllabus == null ? null : syllabus.getVersionLabel()),
+                syllabus == null || syllabus.getVersionNumber() == null
+                        ? "" : "v" + syllabus.getVersionNumber(),
+                syllabus == null || syllabus.getCreatedBy() == null
+                        ? "" : safeText(syllabus.getCreatedBy().getUsername()))
+                .toLowerCase(Locale.ROOT);
+        return searchable.contains(keyword);
+    }
+
+    private String normalizeSemester(String value) {
+        if (value == null) return "";
+        String normalized = value.trim().toLowerCase(Locale.ROOT);
+        java.util.regex.Matcher matcher = java.util.regex.Pattern
+                .compile("(?:semester|hk)?\\s*([1-8])", java.util.regex.Pattern.CASE_INSENSITIVE)
+                .matcher(normalized);
+        return matcher.matches() ? matcher.group(1) : normalized;
+    }
+
+    private String safeText(String value) {
         return value == null ? "" : value.trim();
     }
 

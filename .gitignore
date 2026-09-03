@@ -29,4 +29,18 @@ password_reset_token.sql
 
 # OS
 .DS_Store
-Thumbs.db
+Thumbs.dbCode/backend/curriculum/PdfProgramDocumentParser.java
+Code/backend/curriculum/SyllabusPdfParser.java
+Code/backend/curriculum/SyllabusSectionBoundaryDetector.java
+Code/backend/curriculum/README.txt
+Code/backend/curriculum/apply_multiformat_phase1*.ps1
+Code/backend/curriculum/backup_multiformat_parser_*/
+Code/backend/curriculum/fix_syllabus_delete*.ps1
+Code/backend/curriculum/parser_source_for_review.txt
+Code/backend/curriculum/src/main/java/com/scse/curriculum/syllabus/service/*.backup_*
+Code/frontend/repomixfrontend.txt
+repomix-output.xml
+tmp/
+batch4.ps1
+tatus
+Code/backend/curriculum/src/main/java/com/scse/curriculum/syllabus/importer/parser/apply_multiformat_phase1.ps1

@@ -32,26 +32,13 @@ type Props = {
   onCloned: (syllabus: Syllabus) => void
 }
 
-const cohortLabel = (cohort: { name?: string | null; entryYear?: number | null }) => {
-  const explicit = cohort.name?.match(/\bK\s*\d{2}\b/i)?.[0]
-  if (explicit) return explicit.replace(/\s+/g, "").toUpperCase()
-
-  return cohort.entryYear
-    ? `K${String(cohort.entryYear).slice(-2)}`
-    : cohort.name || "Unknown cohort"
-}
-
 export default function CloneSyllabusDialog({
   source,
   open,
   onOpenChange,
   onCloned,
 }: Props) {
-  const user = useAuthStore((state) => state.user)
-  const role = String(user?.role ?? "")
-    .replace(/^ROLE_/i, "")
-    .toUpperCase()
-  const isInstructor = role === "INSTRUCTOR"
+  const isInstructor = useAuthStore((state) => state.user?.role === "INSTRUCTOR")
 
   const cloneMutation = useCloneSyllabus()
   const [assignmentId, setAssignmentId] = useState<number | null>(null)
@@ -211,7 +198,7 @@ export default function CloneSyllabusDialog({
                   <SelectContent>
                     {cohorts.map((cohort) => (
                       <SelectItem key={cohort.id} value={String(cohort.id)}>
-                        {cohortLabel(cohort)} · {cohort.name} — Entry {cohort.entryYear}
+                        {cohort.name}
                       </SelectItem>
                     ))}
                   </SelectContent>

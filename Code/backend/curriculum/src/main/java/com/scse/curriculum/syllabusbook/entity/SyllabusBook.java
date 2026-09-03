@@ -29,8 +29,16 @@ public class SyllabusBook {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "usage_type")
-    private UsageType usageType;
+    @Builder.Default
+    private UsageType usageType = UsageType.RECOMMENDED;
 
     @Column(name = "order_index")
-    private Integer orderIndex;
+    @Builder.Default
+    private Integer orderIndex = 1;
+
+    @PrePersist
+    private void initializeRequiredValues() {
+        if (usageType == null) usageType = UsageType.RECOMMENDED;
+        if (orderIndex == null) orderIndex = 1;
+    }
 }

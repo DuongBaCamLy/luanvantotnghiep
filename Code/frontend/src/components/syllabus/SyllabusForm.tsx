@@ -6,10 +6,11 @@ import {
 } from "react"
 import { useMutation, useQuery } from "@tanstack/react-query"
 import {
-  BookOpen,
+  FileJson,
   Info,
   LoaderCircle,
   Plus,
+  RotateCcw,
   Save,
   ShieldCheck,
 } from "lucide-react"
@@ -38,6 +39,12 @@ import type { Course } from "@/types/course"
 import type {
   CreateSyllabusRequest,
 } from "@/types/syllabus"
+import StandardSyllabusFormSections, {
+  parseStandardSyllabusNotes,
+  serializeStandardSyllabusNotes,
+} from "@/components/syllabus/StandardSyllabusFormSections"
+import { CoursePrerequisitePicker } from "@/components/curriculum/CoursePrerequisitePicker"
+import type { TopicImportData } from "@/types/syllabusImport"
 
 interface Props {
   initialData?:
@@ -54,6 +61,15 @@ interface Props {
   formId?: string
   submitLabel?: string
   allowCreateCourse?: boolean
+  /** Render the same canonical form as a non-interactive syllabus snapshot. */
+  readOnly?: boolean
+  /** Identity extracted from an unmatched template while using a temporary DB course context. */
+  previewCourseIdentity?: { code?: string; name?: string }
+  /** Curriculum scope selected before this form was opened. Program remains internal. */
+  curriculumContext?: { program: string; major: string; cohort: string }
+  allowedCourseIds?: number[]
+  /** Raw content rows from the active file preview, used to hydrate Weight/Level directly. */
+  importedContentTopics?: TopicImportData[]
 }
 
 const COURSE_TYPES = [
@@ -73,35 +89,35 @@ const defaultAcademicYear = () => {
 
 const SEMESTERS = [
   {
-    value: "HK1",
+    value: "Semester 1",
     label: "Semester 1",
   },
   {
-    value: "HK2",
+    value: "Semester 2",
     label: "Semester 2",
   },
   {
-    value: "HK3",
+    value: "Semester 3",
     label: "Semester 3",
   },
   {
-    value: "HK4",
+    value: "Semester 4",
     label: "Semester 4",
   },
   {
-    value: "HK5",
+    value: "Semester 5",
     label: "Semester 5",
   },
   {
-    value: "HK6",
+    value: "Semester 6",
     label: "Semester 6",
   },
   {
-    value: "HK7",
+    value: "Semester 7",
     label: "Semester 7",
   },
   {
-    value: "HK8",
+    value: "Semester 8",
     label: "Semester 8",
   },
   {
@@ -170,12 +186,12 @@ const normalizeSemester = (
 
   const matched =
     text.match(
-      /(?:HK|SEMESTER)?\s*([1-8])/,
+      /^(?:HK|SEMESTER)?\s*([1-8])$/,
     )
 
   return matched
-    ? `HK${matched[1]}`
-    : text
+    ? `Semester ${matched[1]}`
+    : ""
 }
 
 const courseLabel = (
@@ -191,26 +207,33 @@ export default function SyllabusForm({
   lockAssignmentContext = false,
   autoPrefillExisting = true,
   formId,
-  submitLabel = "Save Draft Metadata",
+  submitLabel = "Lưu syllabus",
   allowCreateCourse = false,
+  readOnly = false,
+  previewCourseIdentity,
+  curriculumContext,
+  allowedCourseIds,
+  importedContentTopics,
 }: Props) {
-  const [
-    courses,
-    setCourses,
-  ] =
-    useState<Course[]>([])
+  const coursesQuery = useQuery({
+    queryKey: ["courses", "syllabus-form"],
+    queryFn: courseApi.getAll,
+  })
 
-  const [
-    coursesLoading,
-    setCoursesLoading,
-  ] =
-    useState(true)
+  const [createdCourses, setCreatedCourses] = useState<Course[]>([])
 
-  const [
-    coursesError,
-    setCoursesError,
-  ] =
-    useState(false)
+  const courses = useMemo(() => {
+    const byId = new Map<number, Course>()
+    const allowed = allowedCourseIds ? new Set(allowedCourseIds) : null
+    for (const course of coursesQuery.data ?? []) {
+      if (!allowed || allowed.has(course.id)) byId.set(course.id, course)
+    }
+    for (const course of createdCourses) byId.set(course.id, course)
+    return Array.from(byId.values())
+  }, [coursesQuery.data, createdCourses, allowedCourseIds])
+
+  const coursesLoading = coursesQuery.isLoading
+  const coursesError = coursesQuery.isError
 
   const [newCourseOpen, setNewCourseOpen] = useState(false)
   const [newCourseCode, setNewCourseCode] = useState("")
@@ -230,7 +253,7 @@ export default function SyllabusForm({
   const createCourseMutation = useMutation({
     mutationFn: courseApi.create,
     onSuccess: (created) => {
-      setCourses((current) => [...current, created])
+      setCreatedCourses((current) => [...current, created])
       setCourseId(String(created.id))
       setNewCourseOpen(false)
     },
@@ -275,7 +298,7 @@ export default function SyllabusForm({
   ] =
     useState(
       normalizeSemester(initialData?.semester)
-      || "HK1",
+      || "Semester 1",
     )
 
   const [
@@ -425,49 +448,97 @@ export default function SyllabusForm({
     )
 
   const [prefilledContent, setPrefilledContent] = useState({
-    clos: initialData?.clos,
-    topics: initialData?.topics,
-    assessments: initialData?.assessments,
+    clos: initialData?.clos ?? [],
+    topics: initialData?.topics ?? [],
+    assessments: initialData?.assessments ?? [],
   })
 
+  const [supplemental, setSupplemental] = useState(
+    parseStandardSyllabusNotes(initialData?.notes),
+  )
+
   useEffect(() => {
+    if (!importedContentTopics?.length) return
+    setPrefilledContent((current) => ({
+      ...current,
+      topics: current.topics.map((topic, index) => {
+        const imported = importedContentTopics[index]
+        if (!imported) return topic
+        return {
+          ...topic,
+          contentWeight: imported.contentWeight ?? imported.teachingHours,
+          contentLevel: imported.contentLevel ?? imported.teachingLevel,
+          teachingLevel: imported.teachingLevel ?? imported.contentLevel,
+        }
+      }),
+    }))
+    setSupplemental((current) => ({
+      ...current,
+      topicDetails: {
+        ...current.topicDetails,
+        ...Object.fromEntries(importedContentTopics.map((topic, index) => {
+          const existing = current.topicDetails[String(index)]
+          return [String(index), {
+            clo: existing?.clo ?? "",
+            assessments: existing?.assessments ?? "",
+            resources: existing?.resources ?? "",
+            weight: existing?.weight || String(topic.contentWeight ?? topic.teachingHours ?? ""),
+            level: existing?.level || String(topic.teachingLevel ?? topic.contentLevel ?? ""),
+          }]
+        })),
+      },
+    }))
+  }, [importedContentTopics])
+
+  const [creditFieldsEdited, setCreditFieldsEdited] = useState({
+    creditPoints: false,
+    lectureCredits: false,
+    laboratoryCredits: false,
+  })
+
+  // The create context and an import preview can finish loading in different
+  // renders. React state initializers only run on the first render, so hydrate
+  // every imported field once whenever the actual initial payload changes.
+  // The serialized signature prevents ordinary parent re-renders from
+  // overwriting edits the user has already made in the form.
+  const initialDataSignature = JSON.stringify(initialData ?? null)
+  const hydratedInitialDataSignature = useRef(initialDataSignature)
+
+  useEffect(() => {
+    if (hydratedInitialDataSignature.current === initialDataSignature) return
+    hydratedInitialDataSignature.current = initialDataSignature
+
+    setCourseId(initialData?.courseId ? String(initialData.courseId) : "")
+    setVersionLabel(initialData?.versionLabel || "v1.0")
+    setAcademicYear(initialData?.academicYear || defaultAcademicYear())
+    setSemester(normalizeSemester(initialData?.semester) || "Semester 1")
+    setMajor(initialData?.major || "")
+    setCourseDesignation(initialData?.courseDesignation || "")
+    setCourseTypes(parseStringArray(initialData?.courseTypes))
+    setLanguage(initialData?.language || "")
+    setRelation(initialData?.relation || "")
+    setTeachingMethods(initialData?.teachingMethods || "")
+    setWorkloadTotal(initialData?.workloadTotal || "")
+    setWorkloadContact(initialData?.workloadContact || "")
+    setWorkloadPrivate(initialData?.workloadPrivate || "")
+    setPrerequisites(initialData?.prerequisites || "")
+    setObjectives(initialData?.objectives || "")
+    setExamForms(initialData?.examForms || "")
+    setExamRequirements(initialData?.examRequirements || "")
+    setChangeSummary(initialData?.changeSummary || "")
     setPrefilledContent({
-      clos: initialData?.clos,
-      topics: initialData?.topics,
-      assessments: initialData?.assessments,
+      clos: initialData?.clos ?? [],
+      topics: initialData?.topics ?? [],
+      assessments: initialData?.assessments ?? [],
     })
-  }, [initialData])
-
-  useEffect(() => {
-    let cancelled = false
-
-    setCoursesLoading(true)
-    setCoursesError(false)
-
-    courseApi
-      .getAll()
-      .then((data) => {
-        if (!cancelled) {
-          setCourses(data)
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setCoursesError(true)
-        }
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setCoursesLoading(
-            false,
-          )
-        }
-      })
-
-    return () => {
-      cancelled = true
-    }
-  }, [])
+    setSupplemental(parseStandardSyllabusNotes(initialData?.notes))
+    setCreditFieldsEdited({
+      creditPoints: false,
+      lectureCredits: false,
+      laboratoryCredits: false,
+    })
+    setFormError(null)
+  }, [initialDataSignature])
 
   const selectedCourse =
     useMemo(
@@ -484,6 +555,18 @@ export default function SyllabusForm({
         courses,
       ],
     )
+
+  const defaultCreditPoints = selectedCourse
+    ? String((selectedCourse.creditTheory ?? 0) + (selectedCourse.creditLab ?? 0))
+    : ""
+  const defaultLectureCredits = selectedCourse ? String(selectedCourse.creditTheory ?? 0) : ""
+  const defaultLaboratoryCredits = selectedCourse ? String(selectedCourse.creditLab ?? 0) : ""
+  const effectiveCreditPoints = supplemental.creditPoints
+    || (!creditFieldsEdited.creditPoints ? defaultCreditPoints : "")
+  const effectiveLectureCredits = supplemental.lectureCredits
+    || (!creditFieldsEdited.lectureCredits ? defaultLectureCredits : "")
+  const effectiveLaboratoryCredits = supplemental.laboratoryCredits
+    || (!creditFieldsEdited.laboratoryCredits ? defaultLaboratoryCredits : "")
 
   const prefetchedCourseIds = useRef<Set<number>>(new Set())
 
@@ -538,6 +621,7 @@ export default function SyllabusForm({
           topics: template.topics ?? [],
           assessments: template.assessments ?? [],
         })
+        setSupplemental(parseStandardSyllabusNotes(template.notes))
         setChangeSummary(`Created from ${template.versionLabel || `v${template.versionNumber}`} template`)
       })
       .catch(() => {
@@ -575,116 +659,115 @@ export default function SyllabusForm({
       )
     }
 
-  const handleSubmit =
-    (
-      event:
-        React.FormEvent,
-    ) => {
-      event.preventDefault()
-
-      if (!courseId) {
-        setFormError(
-          "Select a course before saving the Draft metadata.",
-        )
-        return
+  const buildPayload = (): CreateSyllabusRequest => ({
+    ...initialData,
+    courseId: Number(courseId),
+    versionNumber: Number(initialData?.versionNumber || 1),
+    versionLabel: versionLabel.trim() || "v1.0",
+    academicYear: academicYear.trim(),
+    semester: semester.trim(),
+    major: major.trim(),
+    courseDesignation: courseDesignation.trim(),
+    courseTypes: JSON.stringify(courseTypes),
+    language: language.trim(),
+    relation: relation.trim(),
+    teachingMethods: teachingMethods.trim(),
+    workloadTotal: workloadTotal.trim(),
+    workloadContact: workloadContact.trim(),
+    workloadPrivate: workloadPrivate.trim(),
+    prerequisites: prerequisites.trim(),
+    objectives: objectives.trim(),
+    examForms: examForms.trim(),
+    examRequirements: examRequirements.trim(),
+    changeSummary: changeSummary.trim(),
+    notes: serializeStandardSyllabusNotes({
+      ...supplemental,
+      creditPoints: effectiveCreditPoints,
+      lectureCredits: effectiveLectureCredits,
+      laboratoryCredits: effectiveLaboratoryCredits,
+    }),
+    clos: prefilledContent.clos,
+    topics: prefilledContent.topics.map((topic) => {
+      // orderInWeek is internal ordering metadata, not a user-authored field.
+      // Normalize legacy/imported zero-based rows when the Draft is saved.
+      const persisted = {
+        ...topic,
+        orderInWeek: Math.max(1, Number(topic.orderInWeek) || 1),
       }
+      delete persisted.contentWeight
+      delete persisted.contentLevel
+      delete persisted.teachingLevel
+      return persisted
+    }),
+    assessments: prefilledContent.assessments,
+  })
 
-      if (
-        !academicYear.trim()
-      ) {
-        setFormError(
-          "Academic Year is required. Do not enter Curriculum Cohort in this field.",
-        )
-        return
-      }
+  const handleSubmit = (event: React.FormEvent) => {
+    event.preventDefault()
 
-      if (
-        !semester.trim()
-      ) {
-        setFormError(
-          "Semester is required.",
-        )
-        return
-      }
+    if (readOnly) return
 
-      setFormError(null)
-
-      const payload:
-        CreateSyllabusRequest = {
-          ...initialData,
-          courseId:
-            Number(courseId),
-          versionNumber:
-            Number(
-              initialData
-                ?.versionNumber
-              || 1,
-            ),
-          versionLabel:
-            versionLabel.trim()
-            || "v1.0",
-          academicYear:
-            academicYear.trim(),
-          semester:
-            semester.trim(),
-          major:
-            major.trim(),
-          courseDesignation:
-            courseDesignation
-              .trim(),
-          courseTypes:
-            JSON.stringify(
-              courseTypes,
-            ),
-          language:
-            language.trim(),
-          relation:
-            relation.trim(),
-          teachingMethods:
-            teachingMethods
-              .trim(),
-          workloadTotal:
-            workloadTotal
-              .trim(),
-          workloadContact:
-            workloadContact
-              .trim(),
-          workloadPrivate:
-            workloadPrivate
-              .trim(),
-          prerequisites:
-            prerequisites
-              .trim(),
-          objectives:
-            objectives.trim(),
-          examForms:
-            examForms.trim(),
-          examRequirements:
-            examRequirements
-              .trim(),
-          changeSummary:
-            changeSummary
-              .trim(),
-          notes:
-            initialData?.notes
-            ?? "",
-
-          // Structured academic content is edited in SyllabusEditorPage.
-          // Preserve existing collections instead of replacing them with
-          // legacy SLO / CLO1-CLO3 matrices.
-          clos:
-            prefilledContent.clos,
-          topics:
-            prefilledContent.topics,
-          assessments:
-            prefilledContent.assessments,
-          rubrics:
-            initialData?.rubrics
-            ?? "",
-        }
-
-      onSubmit(payload)
+    if (!courseId) {
+      setFormError("Select a course before saving the syllabus.")
+      return
     }
+
+    if (!academicYear.trim()) {
+      setFormError("Academic Year is required. Do not enter Curriculum Cohort in this field.")
+      return
+    }
+
+    if (!semester.trim()) {
+      setFormError("Semester is required.")
+      return
+    }
+
+    setFormError(null)
+    onSubmit(buildPayload())
+  }
+
+  const handleReset = () => {
+    setCourseId(initialData?.courseId ? String(initialData.courseId) : "")
+    setVersionLabel(initialData?.versionLabel || "v1.0")
+    setAcademicYear(initialData?.academicYear || defaultAcademicYear())
+    setSemester(normalizeSemester(initialData?.semester) || "Semester 1")
+    setMajor(initialData?.major || "")
+    setCourseDesignation(initialData?.courseDesignation || "")
+    setCourseTypes(parseStringArray(initialData?.courseTypes))
+    setLanguage(initialData?.language || "")
+    setRelation(initialData?.relation || "")
+    setTeachingMethods(initialData?.teachingMethods || "")
+    setWorkloadTotal(initialData?.workloadTotal || "")
+    setWorkloadContact(initialData?.workloadContact || "")
+    setWorkloadPrivate(initialData?.workloadPrivate || "")
+    setPrerequisites(initialData?.prerequisites || "")
+    setObjectives(initialData?.objectives || "")
+    setExamForms(initialData?.examForms || "")
+    setExamRequirements(initialData?.examRequirements || "")
+    setChangeSummary(initialData?.changeSummary || "")
+    setPrefilledContent({
+      clos: initialData?.clos ?? [],
+      topics: initialData?.topics ?? [],
+      assessments: initialData?.assessments ?? [],
+    })
+    setSupplemental(parseStandardSyllabusNotes(initialData?.notes))
+    setCreditFieldsEdited({
+      creditPoints: false,
+      lectureCredits: false,
+      laboratoryCredits: false,
+    })
+    setFormError(null)
+  }
+
+  const handleExportJson = () => {
+    const json = JSON.stringify(buildPayload(), null, 2)
+    const url = URL.createObjectURL(new Blob([json], { type: "application/json" }))
+    const anchor = document.createElement("a")
+    anchor.href = url
+    anchor.download = `${selectedCourse?.courseCode || "syllabus"}-${versionLabel || "draft"}.json`
+    anchor.click()
+    URL.revokeObjectURL(url)
+  }
 
   const handleCreateCourse = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -712,20 +795,63 @@ export default function SyllabusForm({
       }
       className="space-y-6"
     >
+      <fieldset disabled={readOnly} className="min-w-0 space-y-6 border-0 p-0">
+      <section className="overflow-hidden rounded-xl border border-[#cfdee1] border-t-4 border-t-[#007d84] bg-white shadow-sm">
+        <div className="flex flex-col gap-5 px-5 py-5 lg:flex-row lg:items-center lg:justify-between">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#56727b]">
+                SCSE / Syllabus Administration
+              </p>
+              <span className="rounded border border-[#7eb8bc] bg-[#f2fbfb] px-2 py-0.5 text-[10px] font-semibold text-[#006f75]">
+                {readOnly ? "Read-only" : "Draft"}
+              </span>
+            </div>
+            <h1 className="mt-2 truncate text-2xl font-bold tracking-[-0.02em] text-[#006f75]">
+              {previewCourseIdentity?.code || previewCourseIdentity?.name
+                ? [previewCourseIdentity.code, previewCourseIdentity.name].filter(Boolean).join(" — ")
+                : selectedCourse ? `${selectedCourse.courseCode} — ${selectedCourse.name}` : "New Course Syllabus"}
+            </h1>
+            <p className="mt-1 text-xs text-slate-500">
+              {previewCourseIdentity ? "Imported template preview" : selectedCourse?.departmentName || "School of Computer Science and Engineering"}
+              {semester ? ` · ${semester}` : ""}
+              {!previewCourseIdentity && selectedCourse ? ` · ${(selectedCourse.creditTheory ?? 0) + (selectedCourse.creditLab ?? 0)} credits` : ""}
+            </p>
+          </div>
+
+          {!readOnly && <div className="flex flex-wrap gap-2">
+            <Button type="button" variant="outline" size="sm" onClick={handleReset} disabled={loading}>
+              <RotateCcw className="size-4" />
+              Làm mới
+            </Button>
+            <Button type="button" variant="outline" size="sm" onClick={handleExportJson} disabled={!courseId}>
+              <FileJson className="size-4" />
+              Xuất JSON
+            </Button>
+            <Button type="submit" size="sm" disabled={loading || coursesLoading} className="bg-[#007d84] text-white hover:bg-[#006d73]">
+              {loading ? <LoaderCircle className="size-4 animate-spin" /> : <Save className="size-4" />}
+              {loading ? "Đang lưu..." : submitLabel}
+            </Button>
+          </div>}
+        </div>
+      </section>
+
       <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">
         <div className="border-b border-slate-100 px-6 py-5">
           <div className="flex items-start gap-3">
-            <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[#eaf7f7] text-[#007d84]">
-              <BookOpen className="size-5" />
+            <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-[#dcf3f2] text-sm font-semibold text-[#006f75]">
+              1
             </span>
 
             <div>
               <h2 className="font-bold text-[#17343d]">
-                Draft Metadata
+                General information
               </h2>
 
               <p className="mt-1 text-xs leading-5 text-slate-500">
-                Save the syllabus shell and general metadata here. CLOs, CLO–PLO mapping, teaching topics, assessments, and reading list belong to the structured Syllabus Editor.
+                {readOnly
+                  ? "Thông tin syllabus được hiển thị theo đúng cấu trúc form chuẩn và không thể chỉnh sửa trong chế độ View."
+                  : "Thông tin chung của môn học. Tất cả dữ liệu syllabus có thể kiểm tra và chỉnh sửa trước khi lưu."}
               </p>
             </div>
           </div>
@@ -738,10 +864,20 @@ export default function SyllabusForm({
 
               <p className="text-xs leading-5 text-blue-800">
                 <strong>Academic Year and Curriculum Cohort are different concepts.</strong>{" "}
-                Enter the teaching academic year here, for example 2024-2025. Program/Cohort and PLO scope are handled by curriculum data and the structured editor.
+                Enter the teaching academic year here, for example 2024-2025. Cohort and PLO scope come from the curriculum context selected in the Add New Syllabus flow.
               </p>
             </div>
           </div>
+
+          {curriculumContext && (
+            <div className="rounded-xl border border-teal-200 bg-teal-50/60 px-4 py-3">
+              <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-teal-700">Curriculum context (locked)</p>
+              <div className="mt-2 grid gap-3 text-sm sm:grid-cols-2">
+                <div><span className="text-xs text-slate-500">Major</span><p className="font-medium text-slate-800">{curriculumContext.major}</p></div>
+                <div><span className="text-xs text-slate-500">Cohort</span><p className="font-medium text-slate-800">{curriculumContext.cohort}</p></div>
+              </div>
+            </div>
+          )}
 
           {formError && (
             <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
@@ -754,7 +890,12 @@ export default function SyllabusForm({
               label="Course"
               required
             >
-              {coursesLoading ? (
+              {previewCourseIdentity ? (
+                <ReadOnlyValue
+                  label="Imported Course"
+                  value={[previewCourseIdentity.code, previewCourseIdentity.name].filter(Boolean).join(" — ")}
+                />
+              ) : coursesLoading ? (
                 <div className="flex h-10 items-center rounded-md border border-slate-200 bg-slate-50 px-3 text-sm text-slate-500">
                   <LoaderCircle className="mr-2 size-4 animate-spin" />
                   Loading courses...
@@ -769,9 +910,14 @@ export default function SyllabusForm({
                   value={
                     courseId
                   }
-                  onValueChange={
-                    setCourseId
-                  }
+                  onValueChange={(value) => {
+                    setCourseId(value)
+                    setCreditFieldsEdited({
+                      creditPoints: false,
+                      lectureCredits: false,
+                      laboratoryCredits: false,
+                    })
+                  }}
                   disabled={
                     courseLocked
                   }
@@ -831,6 +977,7 @@ export default function SyllabusForm({
                 }
                 disabled={
                   assignmentLocked
+                  || lockProgramContext
                 }
                 placeholder="v1.0"
               />
@@ -859,80 +1006,63 @@ export default function SyllabusForm({
               />
             </FieldGroup>
 
-            <FieldGroup
-              label="Semester"
-              required
-            >
-              <Select
-                value={
-                  semester
-                }
-                onValueChange={
-                  setSemester
-                }
-                disabled={
-                  contextLocked
-                }
-              >
-                <SelectTrigger className="bg-white">
-                  <SelectValue placeholder="Select semester" />
-                </SelectTrigger>
-
-                <SelectContent>
-                  {SEMESTERS.map(
-                    (option) => (
-                      <SelectItem
-                        key={option.value}
-                        value={option.value}
-                      >
-                        {option.label}
-                      </SelectItem>
-                    ),
-                  )}
-                </SelectContent>
-              </Select>
-            </FieldGroup>
           </div>
 
-          {selectedCourse && (
-            <div className="grid gap-3 rounded-xl border border-slate-100 bg-slate-50/70 p-4 sm:grid-cols-2 xl:grid-cols-4">
+          {(selectedCourse || previewCourseIdentity) && (
+            <div className="grid gap-4 md:grid-cols-2">
+              <ReadOnlyValue
+                label="Course Name"
+                value={
+                  previewCourseIdentity?.name || selectedCourse?.name || ""
+                }
+              />
+
               <ReadOnlyValue
                 label="Course Code"
-                value={
-                  selectedCourse
-                    .courseCode
-                }
-              />
-
-              <ReadOnlyValue
-                label="English Name"
-                value={
-                  selectedCourse
-                    .name
-                }
-              />
-
-              <ReadOnlyValue
-                label="Theory Credits"
-                value={String(
-                  selectedCourse
-                    .creditTheory
-                  ?? 0,
-                )}
-              />
-
-              <ReadOnlyValue
-                label="Lab / Practice Credits"
-                value={String(
-                  selectedCourse
-                    .creditLab
-                  ?? 0,
-                )}
+                value={previewCourseIdentity?.code || selectedCourse?.courseCode || ""}
               />
             </div>
           )}
 
+          <FieldGroup label="Course Designation">
+            <Input
+              value={courseDesignation}
+              onChange={(event) => setCourseDesignation(event.target.value)}
+              placeholder="Course designation or brief classification."
+            />
+          </FieldGroup>
+
+          <FieldGroup label="Semester(s) in which the course is taught" required>
+            <Select value={semester} onValueChange={setSemester} disabled={contextLocked}>
+              <SelectTrigger className="bg-white">
+                <SelectValue placeholder="Select semester" />
+              </SelectTrigger>
+              <SelectContent>
+                {SEMESTERS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </FieldGroup>
+
           <div className="grid gap-5 md:grid-cols-2">
+            <FieldGroup
+              label="Person Responsible for the Course"
+            >
+              <Input
+                value={supplemental.personResponsible}
+                onChange={(event) =>
+                  setSupplemental((current) => ({
+                    ...current,
+                    personResponsible: event.target.value,
+                  }))
+                }
+                placeholder="Instructor or course coordinator"
+              />
+            </FieldGroup>
+
             <FieldGroup
               label="Major / Academic Area"
             >
@@ -967,20 +1097,6 @@ export default function SyllabusForm({
               />
             </FieldGroup>
           </div>
-
-          <FieldGroup
-            label="Course Designation"
-          >
-            <TextArea
-              value={
-                courseDesignation
-              }
-              onChange={
-                setCourseDesignation
-              }
-              placeholder="Course designation or brief classification."
-            />
-          </FieldGroup>
 
           <FieldGroup
             label="Course Type"
@@ -1022,11 +1138,9 @@ export default function SyllabusForm({
             <FieldGroup
               label="Relation to Curriculum"
             >
-              <TextArea
+              <Input
                 value={relation}
-                onChange={
-                  setRelation
-                }
+                onChange={(event) => setRelation(event.target.value)}
                 placeholder="How the course contributes to the curriculum."
               />
             </FieldGroup>
@@ -1034,13 +1148,9 @@ export default function SyllabusForm({
             <FieldGroup
               label="Teaching Methods"
             >
-              <TextArea
-                value={
-                  teachingMethods
-                }
-                onChange={
-                  setTeachingMethods
-                }
+              <Input
+                value={teachingMethods}
+                onChange={(event) => setTeachingMethods(event.target.value)}
                 placeholder="Lecture, laboratory, project, discussion..."
               />
             </FieldGroup>
@@ -1053,7 +1163,7 @@ export default function SyllabusForm({
 
             <div className="mt-4 grid gap-4 md:grid-cols-3">
               <FieldGroup
-                label="Total Workload"
+                label="(Estimated) Total Workload"
               >
                 <Input
                   value={
@@ -1071,7 +1181,7 @@ export default function SyllabusForm({
               </FieldGroup>
 
               <FieldGroup
-                label="Contact Hours"
+                label="Contact Hours (lecture, exercise, laboratory session, etc.)"
               >
                 <Input
                   value={
@@ -1089,7 +1199,7 @@ export default function SyllabusForm({
               </FieldGroup>
 
               <FieldGroup
-                label="Private Study"
+                label="Private Study Including Examination Preparation"
               >
                 <Input
                   value={
@@ -1106,20 +1216,72 @@ export default function SyllabusForm({
                 />
               </FieldGroup>
             </div>
+
+            <div className="mt-4">
+              <FieldGroup label="Student Responsibility">
+                <TextArea
+                  value={supplemental.workloadStudentResponsibility}
+                  onChange={(value) => setSupplemental((current) => ({
+                    ...current,
+                    workloadStudentResponsibility: value,
+                  }))}
+                  placeholder="Student self-study responsibility stated in the source syllabus."
+                />
+              </FieldGroup>
+            </div>
+
+            <div className="mt-4 grid gap-4 md:grid-cols-3">
+              <FieldGroup label="Credit Points — Total">
+                <Input
+                  value={effectiveCreditPoints}
+                  onChange={(event) => {
+                    setCreditFieldsEdited((current) => ({ ...current, creditPoints: true }))
+                    setSupplemental((current) => ({ ...current, creditPoints: event.target.value }))
+                  }}
+                />
+              </FieldGroup>
+              <FieldGroup label="Credits — Lecture">
+                <Input
+                  value={effectiveLectureCredits}
+                  onChange={(event) => {
+                    setCreditFieldsEdited((current) => ({ ...current, lectureCredits: true }))
+                    setSupplemental((current) => ({ ...current, lectureCredits: event.target.value }))
+                  }}
+                />
+              </FieldGroup>
+              <FieldGroup label="Credits — Laboratory">
+                <Input
+                  value={effectiveLaboratoryCredits}
+                  onChange={(event) => {
+                    setCreditFieldsEdited((current) => ({ ...current, laboratoryCredits: true }))
+                    setSupplemental((current) => ({ ...current, laboratoryCredits: event.target.value }))
+                  }}
+                />
+              </FieldGroup>
+            </div>
           </section>
 
           <FieldGroup
-            label="Prerequisites / Related Courses"
+            label="Required and Recommended Prerequisites for Joining the Course"
           >
-            <TextArea
-              value={
-                prerequisites
-              }
-              onChange={
-                setPrerequisites
-              }
-              placeholder="Describe prerequisite, corequisite, or recommended course requirements."
-            />
+            <div className="space-y-3">
+              <Input
+                value={prerequisites}
+                onChange={(event) => setPrerequisites(event.target.value)}
+                placeholder="Text shown in the syllabus document, e.g. IT116IU or None."
+              />
+              {courseId && (
+                <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
+                  <div className="mb-3">
+                    <p className="text-xs font-semibold text-slate-700">Structured course relationships</p>
+                    <p className="mt-1 text-[11px] leading-5 text-slate-500">
+                      These relationships draw the arrows on the Curriculum Map. Prerequisite cycles are rejected automatically.
+                    </p>
+                  </div>
+                  <CoursePrerequisitePicker courseId={Number(courseId)} disabled={readOnly} />
+                </div>
+              )}
+            </div>
           </FieldGroup>
 
           <FieldGroup
@@ -1127,40 +1289,10 @@ export default function SyllabusForm({
           >
             <TextArea
               value={objectives}
-              onChange={
-                setObjectives
-              }
+              onChange={setObjectives}
               placeholder="High-level course objectives. Detailed measurable outcomes belong in the CLO section of the editor."
             />
           </FieldGroup>
-
-          <div className="grid gap-5 md:grid-cols-2">
-            <FieldGroup
-              label="Examination Forms"
-            >
-              <TextArea
-                value={examForms}
-                onChange={
-                  setExamForms
-                }
-                placeholder="Written exam, project, oral presentation..."
-              />
-            </FieldGroup>
-
-            <FieldGroup
-              label="Study & Examination Requirements"
-            >
-              <TextArea
-                value={
-                  examRequirements
-                }
-                onChange={
-                  setExamRequirements
-                }
-                placeholder="Attendance, eligibility, minimum requirements..."
-              />
-            </FieldGroup>
-          </div>
 
           <FieldGroup
             label="Change Summary"
@@ -1183,23 +1315,46 @@ export default function SyllabusForm({
         </div>
       </section>
 
+      <StandardSyllabusFormSections
+        readOnly={readOnly}
+        importedContentTopics={importedContentTopics}
+        clos={prefilledContent.clos}
+        onClosChange={(clos) => setPrefilledContent((current) => ({ ...current, clos }))}
+        topics={prefilledContent.topics}
+        onTopicsChange={(topics) => setPrefilledContent((current) => ({ ...current, topics }))}
+        assessments={prefilledContent.assessments}
+        onAssessmentsChange={(assessments) => setPrefilledContent((current) => ({ ...current, assessments }))}
+        examForms={examForms}
+        onExamFormsChange={setExamForms}
+        examRequirements={examRequirements}
+        onExamRequirementsChange={setExamRequirements}
+        supplemental={supplemental}
+        onSupplementalChange={setSupplemental}
+      />
+
       <section className="rounded-xl border border-[#cfe1e4] bg-[#f6fbfb] px-5 py-4">
         <div className="flex items-start gap-3">
           <ShieldCheck className="mt-0.5 size-5 shrink-0 text-[#007d84]" />
 
           <div>
             <p className="font-semibold text-[#17343d]">
-              Submission validation happens later
+              {readOnly ? "Complete syllabus form" : "Full form is saved as one syllabus Draft"}
             </p>
 
             <p className="mt-1 text-xs leading-5 text-slate-500">
-              Draft metadata may be saved while incomplete. Before submission, the Syllabus Editor and backend validation must check required General Information, CLOs, CLO–PLO mapping, teaching topics, assessment plan, and reading list.
+              {readOnly
+                ? "General Information, CLOs, matrices, content, weekly activities, assessments, readings, and revision information are shown from this saved syllabus version."
+                : "General Information, CLOs, Content, weekly activities, assessments, readings, and revision notes are submitted in one Draft. After the Draft receives its database ID, CLO–PLO, Topic–CLO, Assessment–CLO, and reading links are saved through their existing backend APIs."}
             </p>
           </div>
         </div>
       </section>
 
-      <div className="flex justify-end">
+      {!readOnly && <div className="flex flex-wrap justify-end gap-2">
+        <Button type="button" variant="outline" size="lg" onClick={handleExportJson} disabled={!courseId}>
+          <FileJson className="size-4" />
+          Xuất JSON
+        </Button>
         <Button
           type="submit"
           size="lg"
@@ -1212,7 +1367,7 @@ export default function SyllabusForm({
           {loading ? (
             <>
               <LoaderCircle className="size-4 animate-spin" />
-              Saving Draft...
+              Đang lưu...
             </>
           ) : (
             <>
@@ -1221,7 +1376,8 @@ export default function SyllabusForm({
             </>
           )}
         </Button>
-      </div>
+      </div>}
+      </fieldset>
     </form>
 
     <Dialog open={newCourseOpen} onOpenChange={setNewCourseOpen}>
@@ -1313,11 +1469,11 @@ function ReadOnlyValue({
 }) {
   return (
     <div>
-      <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-slate-400">
+      <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-slate-500">
         {label}
       </p>
 
-      <p className="mt-1 text-sm font-semibold text-slate-800">
+      <p className="mt-1 flex h-10 items-center rounded-md border border-[#cedde1] bg-white px-3 text-sm font-medium text-slate-800 shadow-sm">
         {value || "Not recorded"}
       </p>
     </div>

@@ -68,6 +68,8 @@ const newTopicDraft = (
   topicType: "LECTURE",
   teachingMethod: "",
   learningActivity: "",
+  assessments: "",
+  resources: "",
   notes: "",
 })
 
@@ -434,6 +436,14 @@ export default function Section5Topics({
           form.learningActivity
             ?.trim()
           || undefined,
+        assessments:
+          form.assessments
+            ?.trim()
+          || undefined,
+        resources:
+          form.resources
+            ?.trim()
+          || undefined,
         notes:
           form.notes
             ?.trim()
@@ -496,6 +506,10 @@ export default function Section5Topics({
             editForm.teachingMethod,
           learningActivity:
             editForm.learningActivity,
+          assessments:
+            editForm.assessments,
+          resources:
+            editForm.resources,
           notes:
             editForm.notes,
         }
@@ -555,6 +569,14 @@ export default function Section5Topics({
               || undefined,
             learningActivity:
               editForm.learningActivity
+                ?.trim()
+              || undefined,
+            assessments:
+              editForm.assessments
+                ?.trim()
+              || undefined,
+            resources:
+              editForm.resources
                 ?.trim()
               || undefined,
             notes:
@@ -796,8 +818,10 @@ export default function Section5Topics({
 
                                 {(topic.teachingMethod
                                   || topic.learningActivity
+                                  || topic.assessments
+                                  || topic.resources
                                   || topic.notes) && (
-                                  <div className="mt-3 grid gap-2 md:grid-cols-3">
+                                  <div className="mt-3 grid gap-2 md:grid-cols-5">
                                     <InfoValue
                                       label="Teaching Method"
                                       value={topic.teachingMethod}
@@ -805,6 +829,14 @@ export default function Section5Topics({
                                     <InfoValue
                                       label="Learning Activity"
                                       value={topic.learningActivity}
+                                    />
+                                    <InfoValue
+                                      label="Assessments"
+                                      value={topic.assessments}
+                                    />
+                                    <InfoValue
+                                      label="Resources"
+                                      value={topic.resources}
                                     />
                                     <InfoValue
                                       label="Notes"
@@ -984,6 +1016,30 @@ function TopicEditor({
               )}
             </SelectContent>
           </Select>
+        </div>
+
+        <div className="space-y-1 md:col-span-2">
+          <Label className="text-xs font-semibold text-slate-600">
+            Assessments
+          </Label>
+          <Input
+            className="h-9 bg-white text-sm"
+            value={value.assessments ?? ""}
+            onChange={(event) => onChange({ ...value, assessments: event.target.value })}
+            placeholder="Quiz, Lab, Midterm, Final..."
+          />
+        </div>
+
+        <div className="space-y-1 md:col-span-2">
+          <Label className="text-xs font-semibold text-slate-600">
+            Resources
+          </Label>
+          <Input
+            className="h-9 bg-white text-sm"
+            value={value.resources ?? ""}
+            onChange={(event) => onChange({ ...value, resources: event.target.value })}
+            placeholder="Textbook 1, Reference 2..."
+          />
         </div>
 
         <div className="space-y-1 md:col-span-2">

@@ -22,6 +22,8 @@ import com.scse.curriculum.syllabus.entity.Syllabus;
 import com.scse.curriculum.user.entity.UserAccount;
 import com.scse.curriculum.user.entity.UserRole;
 import com.scse.curriculum.user.repository.UserAccountRepository;
+import com.scse.curriculum.courseprogram.repository.CourseProgramRepository;
+import com.scse.curriculum.major.entity.Major;
 
 import lombok.RequiredArgsConstructor;
 
@@ -36,6 +38,7 @@ public class SyllabusAccessService {
     private final InstructorRepository instructorRepository;
     private final ClassSectionRepository classSectionRepository;
     private final UserAccountRepository userAccountRepository;
+    private final CourseProgramRepository courseProgramRepository;
 
     public record CreationAuthorization(
         UserAccount creator,
@@ -66,19 +69,19 @@ public class SyllabusAccessService {
             return false;
         }
 
-       return switch (user.getRole()) {
-    case ADMIN, DEAN -> true;
-
-    case INSTRUCTOR -> hasFacultyAssignment(
-            user,
-            syllabus.getCourse().getId(),
-            syllabus.getAcademicYear(),
-            syllabus.getSemester());
-
-    case DEPT_HEAD -> Objects.equals(
-            currentDepartmentId(user),
-            courseDepartmentId(syllabus.getCourse()));
-};
+        if (user.getRole() == UserRole.INSTRUCTOR) {
+            return hasFacultyAssignment(user, syllabus);
+        }
+        if (user.getRole() == UserRole.DEPT_HEAD) {
+            try {
+                return Objects.equals(
+                        currentManagedMajorId(user),
+                        resolveSyllabusMajor(syllabus).getId());
+            } catch (ForbiddenOperationException exception) {
+                return false;
+            }
+        }
+        return true;
     }
 
     public void assertCanView(Syllabus syllabus) {
@@ -86,45 +89,65 @@ public class SyllabusAccessService {
             throw new ForbiddenOperationException(
                     "You are not authorized to view this syllabus. "
                             + "Instructors may only view assigned courses; "
-                            + "Heads of Department may only view courses in their own department.");
+                            + "Heads of Department may only view syllabuses in their managed Major.");
         }
     }
 
-    /** Approval/version history is readable by every authenticated syllabus role. */
+    /**
+     * Approval/version history follows the same data scope as the syllabus.
+     * Authentication alone is not sufficient: Faculty ownership and
+     * department ownership must still be enforced.
+     */
     public void assertCanViewHistory(Syllabus syllabus) {
-        if (currentUser() == null || syllabus == null) {
-            throw new ForbiddenOperationException(
-                    "You are not authorized to view syllabus history.");
-        }
+        assertCanView(syllabus);
     }
 
     /** Allows the syllabus creation screen to read course/template context. */
     public void assertCanCreateContext(Course course) {
         UserAccount user = currentUser();
-        if (user.getRole() == UserRole.ADMIN || user.getRole() == UserRole.INSTRUCTOR) {
-            return;
+        if (user.getRole() == UserRole.INSTRUCTOR
+                && !hasFacultyAssignment(user, course.getId())) {
+            throw new ForbiddenOperationException(
+                    "You may only create a syllabus for an assigned course.");
         }
-        throw new ForbiddenOperationException(
-                "Only an Instructor or Admin may create a syllabus.");
     }
 
     public void assertCanModify(Syllabus syllabus) {
         UserAccount user = currentUser();
-
-        if (user.getRole() == UserRole.ADMIN) {
-            return;
-        }
-
-        if (user.getRole() != UserRole.INSTRUCTOR
-                || !hasFacultyAssignment(
-                        user,
-                        syllabus.getCourse().getId(),
-                        syllabus.getAcademicYear(),
-                        syllabus.getSemester())) {
+        if (user.getRole() == UserRole.DEPT_HEAD || user.getRole() == UserRole.DEAN) {
             throw new ForbiddenOperationException(
-                    "Only the instructor assigned to this course or an Admin "
-                            + "may edit this syllabus.");
+                    "Reviewers may view, approve, or reject a syllabus but cannot edit its content.");
         }
+        if (user.getRole() == UserRole.INSTRUCTOR
+                && !hasFacultyAssignment(user, syllabus)) {
+            throw new ForbiddenOperationException(
+                    "You may only modify a syllabus for an assigned course covered by your active teaching assignment.");
+        }
+    }
+
+    private boolean hasFacultyAssignment(
+            UserAccount user,
+            Syllabus syllabus) {
+
+        if (user.getInstructorId() == null
+                || syllabus == null
+                || syllabus.getCourse() == null) {
+            return false;
+        }
+
+        if (syllabus.getId() != null
+                && classSectionRepository
+                        .existsByInstructor_IdAndSyllabus_IdAndIsActiveTrue(
+                                user.getInstructorId(),
+                                syllabus.getId())) {
+            return true;
+        }
+
+        return hasFacultyAssignment(
+                user,
+                syllabus.getCourse().getId(),
+                syllabus.getAcademicYear(),
+                syllabus.getSemester());
     }
 
     /**
@@ -139,14 +162,24 @@ public class SyllabusAccessService {
         Course requestedCourse,
         String requestedAcademicYear,
         String requestedSemesterText) {
+        return authorizeCreate(classSectionId, requestedCourse, requestedAcademicYear,
+                requestedSemesterText, null, null);
+    }
+
+    public CreationAuthorization authorizeCreate(
+        Integer classSectionId,
+        Course requestedCourse,
+        String requestedAcademicYear,
+        String requestedSemesterText,
+        Integer requestedProgramId,
+        Integer requestedCohortId) {
 
     UserAccount user = currentUser();
 
     /*
      * Admin được phép tạo dữ liệu không qua ClassSection.
      */
-    if (user.getRole() == UserRole.ADMIN
-            && classSectionId == null) {
+    if (classSectionId == null && user.getRole() != UserRole.INSTRUCTOR) {
 
         return new CreationAuthorization(
                 user,
@@ -159,14 +192,6 @@ public class SyllabusAccessService {
     /*
      * Faculty bắt buộc phải chọn một assignment cụ thể.
      */
-    if (user.getRole() != UserRole.ADMIN
-            && user.getRole() != UserRole.INSTRUCTOR) {
-
-        throw new ForbiddenOperationException(
-                "Only an assigned instructor or Admin "
-                        + "may create a syllabus.");
-    }
-
     if (classSectionId == null) {
         throw new IllegalArgumentException(
                 "Please select a teaching assignment "
@@ -212,14 +237,83 @@ public class SyllabusAccessService {
             requestedCourse,
             requestedAcademicYear,
             requestedSemesterText);
+    assertCurriculumScopeMatchesAssignment(
+            assignment, requestedProgramId, requestedCohortId);
 
     return new CreationAuthorization(
             user,
             assignment.getCourse(),
-            assignment.getAcademicYear().trim(),
-            canonicalSemester(assignment.getSemester()),
+            requireAcademicYear(requestedAcademicYear),
+            requireSemesterText(requestedSemesterText),
             List.of(assignment));
 }
+
+    /**
+     * Authorizes the direct import pipeline. Instructor context is derived from
+     * the selected active assignment, never from client-supplied user data.
+     */
+    public CreationAuthorization authorizeImport(
+            Integer classSectionId,
+            Course requestedCourse) {
+        return authorizeImport(classSectionId, requestedCourse, null, null);
+    }
+
+    public CreationAuthorization authorizeImport(
+            Integer classSectionId,
+            Course requestedCourse,
+            Integer requestedProgramId,
+            Integer requestedCohortId) {
+
+        UserAccount user = currentUser();
+        if (user.getRole() != UserRole.INSTRUCTOR) {
+            return new CreationAuthorization(user, requestedCourse, null, null, List.of());
+        }
+
+        if (classSectionId == null) {
+            throw new ForbiddenOperationException(
+                    "You are not assigned to this course and cannot create or import its syllabus.");
+        }
+
+        ClassSection assignment = classSectionRepository.findById(classSectionId)
+                .orElseThrow(() -> new ForbiddenOperationException(
+                        "You are not assigned to this course and cannot create or import its syllabus."));
+
+        if (user.getInstructorId() == null
+                || assignment.getInstructor() == null
+                || !Objects.equals(user.getInstructorId(), assignment.getInstructor().getId())
+                || requestedCourse == null
+                || assignment.getCourse() == null
+                || !Objects.equals(requestedCourse.getId(), assignment.getCourse().getId())) {
+            throw new ForbiddenOperationException(
+                    "You are not assigned to this course and cannot create or import its syllabus.");
+        }
+        assertAssignmentReadyForSyllabus(assignment);
+        assertCurriculumScopeMatchesAssignment(
+                assignment, requestedProgramId, requestedCohortId);
+
+        return new CreationAuthorization(
+                user,
+                assignment.getCourse(),
+                requireAcademicYear(assignment.getAcademicYear()),
+                canonicalSemester(assignment.getSemester()),
+                List.of(assignment));
+    }
+
+    private void assertCurriculumScopeMatchesAssignment(
+            ClassSection assignment,
+            Integer requestedProgramId,
+            Integer requestedCohortId) {
+        if (requestedProgramId != null
+                && (assignment.getProgram() == null
+                || !Objects.equals(requestedProgramId, assignment.getProgram().getId()))) {
+            throw new ForbiddenOperationException("The selected program does not match this teaching assignment.");
+        }
+        if (requestedCohortId != null
+                && (assignment.getCohort() == null
+                || !Objects.equals(requestedCohortId, assignment.getCohort().getId()))) {
+            throw new ForbiddenOperationException("The selected cohort does not match this teaching assignment.");
+        }
+    }
 
     /** Kiểm tra lại assignment khi update thay đổi course/năm học/học kỳ. */
     public void assertCanUseAssignmentFor(
@@ -228,18 +322,10 @@ public class SyllabusAccessService {
             String semesterText) {
 
         UserAccount user = currentUser();
-        if (user.getRole() == UserRole.ADMIN) {
-            return;
-        }
-
-        if (user.getRole() != UserRole.INSTRUCTOR
-                || !hasFacultyAssignment(
-                        user,
-                        course.getId(),
-                        academicYear,
-                        semesterText)) {
+        if (user.getRole() == UserRole.INSTRUCTOR
+                && !hasFacultyAssignment(user, course.getId(), academicYear, semesterText)) {
             throw new ForbiddenOperationException(
-                    "You do not have an ACTIVE assignment matching the selected course, academic year, and semester.");
+                    "The course, academic year, and semester are not covered by your active teaching assignment.");
         }
     }
 
@@ -267,8 +353,7 @@ public class SyllabusAccessService {
          * Admin có thể clone dữ liệu migration không cần ClassSection,
          * nhưng phải chỉ rõ năm học và học kỳ đích.
          */
-        if (user.getRole() == UserRole.ADMIN
-                && classSectionId == null) {
+        if (classSectionId == null && user.getRole() != UserRole.INSTRUCTOR) {
 
             return new CloneAuthorization(
                     user,
@@ -276,13 +361,6 @@ public class SyllabusAccessService {
                     requireAcademicYear(requestedAcademicYear),
                     requireSemesterText(requestedSemesterText),
                     List.of());
-        }
-
-        if (user.getRole() != UserRole.ADMIN
-                && user.getRole() != UserRole.INSTRUCTOR) {
-            throw new ForbiddenOperationException(
-                    "Only an assigned instructor or Admin "
-                            + "may clone a syllabus.");
         }
 
         if (classSectionId == null) {
@@ -334,16 +412,11 @@ public class SyllabusAccessService {
             }
         }
 
-        assertOptionalTargetMatchesAssignment(
-                assignment,
-                requestedAcademicYear,
-                requestedSemesterText);
-
         return new CloneAuthorization(
                 user,
                 assignment.getCourse(),
-                assignment.getAcademicYear().trim(),
-                canonicalSemester(assignment.getSemester()),
+                requireAcademicYear(requestedAcademicYear),
+                requireSemesterText(requestedSemesterText),
                 List.of(assignment));
     }
 
@@ -352,78 +425,62 @@ public class SyllabusAccessService {
     }
 
     public void assertCanReview(ApprovalRequest approval) {
-        UserAccount reviewer = currentUser();
-
-        if (reviewer.getRole() == UserRole.ADMIN) {
-            return;
+        UserAccount user = currentUser();
+        rejectInstructorReviewerAction();
+        if (approval == null || approval.getSyllabus() == null) {
+            throw new ForbiddenOperationException("The approval request is invalid.");
         }
-
-        if (approval.getStep() == ApprovalStep.STEP1_DEPT_HEAD) {
-            if (reviewer.getRole() != UserRole.DEPT_HEAD
-                    || !Objects.equals(
-                            currentDepartmentId(reviewer),
-                            courseDepartmentId(approval.getSyllabus().getCourse()))) {
+        if (approval.getStep() == ApprovalStep.STEP3_DEAN
+                && user.getRole() != UserRole.DEAN) {
+            throw new ForbiddenOperationException(
+                    "Only the Dean may perform final syllabus approval.");
+        }
+        if (user.getRole() == UserRole.DEPT_HEAD) {
+            if (approval.getStep() != ApprovalStep.STEP1_DEPT_HEAD) {
                 throw new ForbiddenOperationException(
-                        "You may only review syllabi from the department you manage.");
+                        "Heads of Department cannot perform final Dean approval.");
             }
-            return;
+            assertCanView(approval.getSyllabus());
+        } else if (user.getRole() == UserRole.DEAN
+                && approval.getStep() != ApprovalStep.STEP3_DEAN) {
+            throw new ForbiddenOperationException(
+                    "The selected request is not awaiting Dean review.");
         }
-
-        if (approval.getStep() == ApprovalStep.STEP3_DEAN) {
-            if (reviewer.getRole() != UserRole.DEAN) {
-                throw new ForbiddenOperationException(
-                        "Only the Dean may process this approval step.");
-            }
-            return;
-        }
-
-        throw new ForbiddenOperationException(
-                "You are not authorized to process this approval step.");
     }
 
     public void assertCanAccessApproval(ApprovalRequest approval) {
         UserAccount user = currentUser();
-
-        if (user.getRole() == UserRole.ADMIN
-                || user.getRole() == UserRole.DEAN) {
-            return;
+        if (user.getRole() == UserRole.INSTRUCTOR || user.getRole() == UserRole.DEPT_HEAD) {
+            if (approval == null || approval.getSyllabus() == null) {
+                throw new ForbiddenOperationException("The approval request is invalid.");
+            }
+            assertCanView(approval.getSyllabus());
         }
-
-        if (user.getRole() == UserRole.DEPT_HEAD
-                && Objects.equals(
-                        currentDepartmentId(user),
-                        courseDepartmentId(approval.getSyllabus().getCourse()))) {
-            return;
-        }
-
-        if (user.getRole() == UserRole.INSTRUCTOR
-                && canView(approval.getSyllabus(), user)) {
-            return;
-        }
-
-        throw new ForbiddenOperationException(
-                "You are not authorized to view this approval request.");
     }
 
     public void assertCanOpenPendingStep(ApprovalStep step) {
         UserAccount user = currentUser();
-
-        if (user.getRole() == UserRole.ADMIN) {
-            return;
-        }
-
-        if (step == ApprovalStep.STEP1_DEPT_HEAD
-                && user.getRole() == UserRole.DEPT_HEAD) {
-            return;
-        }
-
+        rejectInstructorReviewerAction();
         if (step == ApprovalStep.STEP3_DEAN
-                && user.getRole() == UserRole.DEAN) {
-            return;
+                && user.getRole() != UserRole.DEAN) {
+            throw new ForbiddenOperationException(
+                    "Only the Dean may open the final approval queue.");
         }
+        if (user.getRole() == UserRole.DEPT_HEAD && step != ApprovalStep.STEP1_DEPT_HEAD) {
+            throw new ForbiddenOperationException(
+                    "Heads of Department may open only the Department review queue.");
+        }
+        if (user.getRole() == UserRole.DEAN && step != ApprovalStep.STEP3_DEAN) {
+            throw new ForbiddenOperationException(
+                    "The Dean may open only the Dean review queue.");
+        }
+    }
 
-        throw new ForbiddenOperationException(
-                "Your role is not authorized to view the queue for this step.");
+    private void rejectInstructorReviewerAction() {
+        if (currentUser().getRole() == UserRole.INSTRUCTOR) {
+            throw new ForbiddenOperationException(
+                    "Instructors cannot approve or reject syllabus review steps.");
+        }
     }
 
     public Integer currentDepartmentId(UserAccount user) {
@@ -445,20 +502,44 @@ public class SyllabusAccessService {
         return instructor.getDepartment().getId();
     }
 
-    public List<UserAccount> findActiveDeptHeadsFor(Course course) {
-        Integer departmentId = courseDepartmentId(course);
+    public Integer currentManagedMajorId(UserAccount user) {
+        if (user == null || user.getRole() != UserRole.DEPT_HEAD
+                || user.getManagedMajor() == null) {
+            throw new ForbiddenOperationException(
+                    "The Head of Department account is not assigned to a Managed Major.");
+        }
+        return user.getManagedMajor().getId();
+    }
+
+    public List<UserAccount> findActiveDeptHeadsFor(Syllabus syllabus) {
+        Major major = resolveSyllabusMajor(syllabus);
 
         List<UserAccount> deptHeads = userAccountRepository
-                .findActiveByRoleAndInstructorDepartmentId(
-                        UserRole.DEPT_HEAD,
-                        departmentId);
+                .findByRoleAndManagedMajor_IdAndIsActiveTrue(
+                        UserRole.DEPT_HEAD, major.getId());
 
         if (deptHeads.isEmpty()) {
             throw new IllegalStateException(
-                    "The course department does not have an active Head of Department account.");
+                    "No active Head of Department is assigned to the "
+                            + major.getCode() + " program. Please contact the administrator.");
         }
 
         return deptHeads;
+    }
+
+    public Major resolveSyllabusMajor(Syllabus syllabus) {
+        if (syllabus == null || syllabus.getId() == null) {
+            throw new ForbiddenOperationException("The syllabus has no Program/Major context.");
+        }
+        Major fromProgram = courseProgramRepository.findBySyllabus_Id(syllabus.getId()).stream()
+                .filter(cp -> cp.getProgram() != null && cp.getProgram().getMajor() != null)
+                .map(cp -> cp.getProgram().getMajor()).findFirst().orElse(null);
+        if (fromProgram != null) return fromProgram;
+        return classSectionRepository.findBySyllabusId(syllabus.getId()).stream()
+                .filter(cs -> cs.getProgram() != null && cs.getProgram().getMajor() != null)
+                .map(cs -> cs.getProgram().getMajor()).findFirst()
+                .orElseThrow(() -> new ForbiddenOperationException(
+                        "The syllabus is not linked to a Teaching Assignment Program/Major."));
     }
 
     public boolean hasFacultyAssignment(
@@ -467,22 +548,30 @@ public class SyllabusAccessService {
             String academicYear,
             String semesterText) {
 
-        if (user.getInstructorId() == null
-                || academicYear == null
-                || academicYear.isBlank()) {
+        if (user == null || user.getInstructorId() == null || courseId == null) {
             return false;
         }
-
         Integer semester = parseSemester(semesterText);
-        if (semester == null) {
+        if (academicYear == null || academicYear.isBlank() || semester == null) {
+            return false;
+        }
+        return !classSectionRepository.findActiveAssignmentsExact(
+                user.getInstructorId(), courseId, academicYear.trim(), semester).isEmpty();
+    }
+
+    private boolean hasFacultyAssignment(
+            UserAccount user,
+            Integer courseId) {
+
+        if (user.getInstructorId() == null || courseId == null) {
             return false;
         }
 
-        return !classSectionRepository.findActiveAssignmentsExact(
-                user.getInstructorId(),
-                courseId,
-                academicYear.trim(),
-                semester).isEmpty();
+        return classSectionRepository.findActiveByInstructorId(
+                        user.getInstructorId())
+                .stream()
+                .anyMatch(section -> section.getCourse() != null
+                        && Objects.equals(section.getCourse().getId(), courseId));
     }
 private void assertAssignmentReadyForSyllabus(
         ClassSection assignment) {
@@ -501,18 +590,6 @@ private void assertAssignmentReadyForSyllabus(
     if (assignment.getInstructor() == null) {
         throw new IllegalStateException(
                 "The teaching assignment is not linked to an instructor.");
-    }
-
-    if (assignment.getAcademicYear() == null
-            || assignment.getAcademicYear().isBlank()) {
-
-        throw new IllegalStateException(
-                "The teaching assignment does not have a valid academic year.");
-    }
-
-    if (assignment.getSemester() == null) {
-        throw new IllegalStateException(
-                "The teaching assignment does not have a valid semester.");
     }
 
     if (assignment.getSyllabus() != null) {
@@ -565,29 +642,8 @@ private void assertRequestMatchesAssignment(
                         + "the selected teaching assignment.");
     }
 
-    String normalizedAcademicYear =
-            requireAcademicYear(requestedAcademicYear);
-
-    if (!assignment.getAcademicYear()
-            .trim()
-            .equalsIgnoreCase(normalizedAcademicYear)) {
-
-        throw new IllegalArgumentException(
-                "The academic year in the form does not match "
-                        + "the selected teaching assignment.");
-    }
-
-    Integer requestedSemester =
-            requireSemester(requestedSemesterText);
-
-    if (!Objects.equals(
-            assignment.getSemester(),
-            requestedSemester)) {
-
-        throw new IllegalArgumentException(
-                "The semester in the form does not match "
-                        + "the selected teaching assignment.");
-    }
+    requireAcademicYear(requestedAcademicYear);
+    requireSemester(requestedSemesterText);
 }
 
 private String canonicalSemester(Integer semester) {

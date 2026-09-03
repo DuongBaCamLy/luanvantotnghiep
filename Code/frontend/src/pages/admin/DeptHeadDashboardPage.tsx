@@ -18,6 +18,7 @@ import {
 } from "lucide-react"
 
 import { dashboardApi } from "@/api/dashboardApi"
+import { approvalRequestApi } from "@/api/approvalRequestApi"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -213,6 +214,18 @@ export default function DeptHeadCoursesPage() {
     refetchInterval: 60_000,
   })
 
+  const {
+    data: pendingReviews = [],
+    isLoading: pendingReviewsLoading,
+    refetch: refetchPendingReviews,
+  } = useQuery({
+    queryKey: ["approval-requests", "pending", "STEP1_DEPT_HEAD"],
+    queryFn: () => approvalRequestApi.getPendingByStep("STEP1_DEPT_HEAD"),
+    enabled: Boolean(user?.userId),
+    staleTime: 15_000,
+    refetchInterval: 30_000,
+  })
+
   const summary =
     useMemo(() => {
       if (!dashboard) {
@@ -221,6 +234,8 @@ export default function DeptHeadCoursesPage() {
           assigned: 0,
           created: 0,
           pending: 0,
+          forwarded: 0,
+          rejected: 0,
           approved: 0,
           attention: 0,
         }
@@ -269,14 +284,15 @@ export default function DeptHeadCoursesPage() {
             .totalCoursesInDept,
         assigned,
         created,
-        pending:
-          dashboard
-            .syllabusesToReview,
+        pending: pendingReviews.length,
+        forwarded: courses.filter((course) => normalizeStatus(course.status) === "UNDER_REVIEW").length,
+        rejected: courses.filter((course) => ["REJECTED", "REVISION_REQUESTED"].includes(normalizeStatus(course.status))).length,
         approved,
         attention,
       }
     }, [
       dashboard,
+      pendingReviews,
     ])
 
   const statusOptions =
@@ -474,7 +490,7 @@ export default function DeptHeadCoursesPage() {
 
               <div className="min-w-0 flex-1">
                 <p className="font-semibold text-slate-900">
-                  Unable to load Department Courses
+                  Unable to load Managed Major Courses
                 </p>
 
                 <p className="mt-1 text-sm leading-6 text-slate-600">
@@ -516,12 +532,12 @@ export default function DeptHeadCoursesPage() {
               <BookOpen className="size-5" />
 
               <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#708894]">
-                Department Course Oversight
+                Managed Major Course Oversight
               </span>
             </div>
 
             <h1 className="mt-2 text-[28px] font-bold tracking-[-0.5px] text-[#17343d]">
-              Department Courses
+              Managed Major Courses
             </h1>
 
             <p className="mt-1 max-w-3xl text-sm leading-6 text-[#687f89]">
@@ -556,7 +572,7 @@ export default function DeptHeadCoursesPage() {
               variant="outline"
               className="gap-2"
               onClick={() =>
-                void refetch()
+                void Promise.all([refetch(), refetchPendingReviews()])
               }
               disabled={
                 isFetching
@@ -577,56 +593,9 @@ export default function DeptHeadCoursesPage() {
 
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <MetricCard
-          label="Department Courses"
-          value={summary.total}
-          description="Unique courses in your department scope"
-          icon={
-            <BookOpen className="size-5" />
-          }
-        />
-
-        <MetricCard
-          label="Instructor Assigned"
-          value={summary.assigned}
-          description={`${Math.max(
-            summary.total
-              - summary.assigned,
-            0,
-          )} course(s) currently unassigned`}
-          icon={
-            <UserCheck className="size-5" />
-          }
-          tone={
-            summary.assigned
-              < summary.total
-              ? "warning"
-              : "default"
-          }
-        />
-
-        <MetricCard
-          label="Syllabi Created"
-          value={summary.created}
-          description={`${Math.max(
-            summary.total
-              - summary.created,
-            0,
-          )} course(s) have no syllabus yet`}
-          icon={
-            <FileText className="size-5" />
-          }
-          tone={
-            summary.created
-              < summary.total
-              ? "warning"
-              : "default"
-          }
-        />
-
-        <MetricCard
-          label="Pending Review"
+          label="Pending Reviews"
           value={summary.pending}
-          description={`${summary.approved} course syllabus/syllabi fully approved`}
+          description="Department decisions currently required"
           icon={
             <Clock3 className="size-5" />
           }
@@ -636,7 +605,43 @@ export default function DeptHeadCoursesPage() {
               : "success"
           }
         />
+        <MetricCard label="Forwarded to Dean" value={summary.forwarded} description="Department review completed" icon={<ArrowRight className="size-5" />} />
+        <MetricCard label="Rejected / Revision" value={summary.rejected} description="Returned to the instructor" icon={<AlertTriangle className="size-5" />} tone={summary.rejected > 0 ? "warning" : "default"} />
+        <MetricCard label="Approved" value={summary.approved} description="Final workflow completed" icon={<CheckCircle2 className="size-5" />} tone="success" />
       </section>
+
+      <Card className="overflow-hidden border border-slate-200 bg-white shadow-sm">
+        <CardHeader className="border-b border-slate-100 pb-4">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <CardTitle className="text-base font-bold text-[#17343d]">Needs Your Review</CardTitle>
+              <p className="mt-1 text-xs text-slate-500">Live pending requests assigned to your managed Major scope.</p>
+            </div>
+            <Button asChild variant="outline" size="sm"><Link to="/dept-head/approvals">Open Review Queue</Link></Button>
+          </div>
+        </CardHeader>
+        <CardContent className="p-0">
+          {pendingReviewsLoading ? (
+            <p className="p-5 text-sm text-slate-500">Loading pending reviews...</p>
+          ) : pendingReviews.length === 0 ? (
+            <p className="p-5 text-sm text-slate-500">No syllabus currently requires your department review.</p>
+          ) : (
+            <div className="divide-y divide-slate-100">
+              {pendingReviews.map((review) => (
+                <div key={review.id} className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="font-semibold text-slate-800"><span className="font-mono text-[#007d84]">{review.courseCode}</span> — {review.courseName}</p>
+                    <p className="mt-1 text-xs text-slate-500">Instructor: {review.requestedByUsername || "—"} · {review.versionLabel || `v${review.versionNumber}`} · Pending Department Review</p>
+                  </div>
+                  <Button asChild size="sm" className="bg-[#007d84] text-white hover:bg-[#006d73]">
+                    <Link to={`/dept-head/syllabus/${review.syllabusId}`}>Review <ArrowRight className="size-4" /></Link>
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <Card className="border border-slate-200 bg-white shadow-sm">
         <CardHeader className="border-b border-slate-100 pb-4">
@@ -653,7 +658,7 @@ export default function DeptHeadCoursesPage() {
 
             <div className="flex items-center gap-2 text-xs text-slate-500">
               <ShieldCheck className="size-4 text-[#007d84]" />
-              Department-scoped read-only view
+              Managed-Major read-only view
             </div>
           </div>
         </CardHeader>
@@ -872,7 +877,7 @@ export default function DeptHeadCoursesPage() {
                             .coursesStatus
                             .length
                             === 0
-                            ? "Confirm that this Department Head account is mapped to the correct department and that courses are assigned to that department."
+                            ? "Confirm that this Head account has the correct Managed Major in User Management and that Teaching Assignments use a Program in that Major."
                             : "Clear the current filters or search for another course or instructor."}
                         </p>
 

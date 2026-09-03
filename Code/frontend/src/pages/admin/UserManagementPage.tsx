@@ -259,6 +259,8 @@ export default function UserManagementPage() {
         linkedInstructor
           ? getInstructorLabel(linkedInstructor)
           : "",
+        user.managedMajorCode,
+        user.managedMajorName,
       ]
         .join(" ")
         .toLowerCase()
@@ -493,12 +495,13 @@ export default function UserManagementPage() {
         )}
 
         <div className="overflow-x-auto">
-          <Table className="min-w-[1100px]">
+          <Table className="min-w-[1280px]">
             <TableHeader className="bg-slate-50">
               <TableRow>
                 <TableHead>Username</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Role</TableHead>
+                <TableHead>Managed Major / Scope</TableHead>
                 <TableHead>Linked Instructor</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Last Login</TableHead>
@@ -510,7 +513,7 @@ export default function UserManagementPage() {
               {isLoading ? (
                 <TableRow>
                   <TableCell
-                    colSpan={7}
+                    colSpan={8}
                     className="h-32 text-center text-slate-500"
                   >
                     Loading users...
@@ -519,7 +522,7 @@ export default function UserManagementPage() {
               ) : filteredUsers.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={7}
+                    colSpan={8}
                     className="h-40 text-center"
                   >
                     <p className="font-semibold text-slate-700">
@@ -572,6 +575,18 @@ export default function UserManagementPage() {
                         >
                           {getRoleLabel(user.role)}
                         </Badge>
+                      </TableCell>
+
+                      <TableCell>
+                        {user.role === "ADMIN" ? (
+                          <span className="font-medium text-violet-700">System-wide</span>
+                        ) : user.role === "DEAN" ? (
+                          <span className="font-medium text-blue-700">SCSE / All Majors</span>
+                        ) : user.role === "DEPT_HEAD" ? (
+                          user.managedMajorId ? (
+                            <div><p className="font-semibold text-slate-800">{user.managedMajorCode} — {user.managedMajorName}</p></div>
+                          ) : <span className="font-medium text-rose-700">Managed Major required</span>
+                        ) : <span className="text-slate-400">—</span>}
                       </TableCell>
 
                       <TableCell>

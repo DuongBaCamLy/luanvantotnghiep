@@ -1,5 +1,6 @@
 // src/components/syllabus/SyllabusToolbar.tsx
 import { useSearchParams } from "react-router-dom"
+import { useQuery } from "@tanstack/react-query"
 import { Search } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import {
@@ -10,9 +11,14 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { MAJORS } from "@/lib/syllabusHelper"
+import { cohortApi } from "@/api/cohortApi"
 
 export default function SyllabusToolbar() {
   const [searchParams, setSearchParams] = useSearchParams()
+  const { data: cohorts = [] } = useQuery({
+    queryKey: ["cohorts"],
+    queryFn: cohortApi.getAll,
+  })
 
   // Hàm cập nhật URL Params giúp đồng bộ 3 giao diện
   const updateFilter = (key: string, value: string) => {
@@ -24,6 +30,23 @@ export default function SyllabusToolbar() {
     }
     // Ghi đè URL hiện tại mà không làm mất các params khác
     setSearchParams(newParams)
+  }
+
+  const updateCohort = (value: string) => {
+    const next = new URLSearchParams(searchParams)
+    if (value === "all") {
+      next.delete("cohortId")
+    } else {
+      const cohort = cohorts.find((item) => String(item.id) === value)
+      next.set("cohortId", value)
+      if (cohort) {
+        next.set("programId", String(cohort.programId))
+        next.set("programCode", cohort.programCode)
+      }
+    }
+    next.delete("year")
+    next.delete("cohort")
+    setSearchParams(next)
   }
 
   return (
@@ -56,19 +79,20 @@ export default function SyllabusToolbar() {
       </Select>
 
       {/* Lọc theo Khóa */}
-      <Select 
-        value={searchParams.get("year") || "all"} 
-        onValueChange={(v) => updateFilter("year", v)}
+      <Select
+        value={searchParams.get("cohortId") || "all"} 
+        onValueChange={updateCohort}
       >
         <SelectTrigger className="w-full md:w-[150px]">
           <SelectValue placeholder="Cohort" />
         </SelectTrigger>
         <SelectContent className="bg-white">
           <SelectItem value="all">All Cohorts</SelectItem>
-          <SelectItem value="K22">K22</SelectItem>
-          <SelectItem value="K23">K23</SelectItem>
-          <SelectItem value="K24">K24</SelectItem>
-          <SelectItem value="K25">K25</SelectItem>
+          {cohorts.map((cohort) => (
+            <SelectItem key={cohort.id} value={String(cohort.id)}>
+              {cohort.name}
+            </SelectItem>
+          ))}
         </SelectContent>
       </Select>
 

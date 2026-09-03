@@ -44,7 +44,7 @@ public class CohortServiceImpl
         Cohort cohort = Cohort.builder()
                 .program(program)
                 .entryYear(request.getEntryYear())
-                .name(request.getName())
+                .name(Cohort.canonicalName(program.getCode(), request.getEntryYear()))
                 .description(request.getDescription())
                 .isActive(true)
                 .build();
@@ -83,7 +83,7 @@ public class CohortServiceImpl
             String name) {
 
         Cohort cohort
-                = repository.findByName(name)
+                = repository.findByName(normalizeLookupName(name))
                         .orElseThrow(()
                                 -> new ResourceNotFoundException(
                                 "Cohort not found"));
@@ -104,8 +104,7 @@ public class CohortServiceImpl
                         cohort.getProgram().getName())
                 .entryYear(
                         cohort.getEntryYear())
-                .name(
-                        cohort.getName())
+                .name(Cohort.canonicalName(cohort.getProgram().getCode(), cohort.getEntryYear()))
                 .description(
                         cohort.getDescription())
                 .isActive(
@@ -123,5 +122,28 @@ public class CohortServiceImpl
                 .stream()
                 .map(this::map)
                 .toList();
+    }
+
+    @Override
+    @Transactional
+    public CohortResponse archive(Integer id) {
+        Cohort cohort = repository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Cohort not found"));
+        cohort.setIsActive(false);
+        return map(repository.save(cohort));
+    }
+
+    @Override
+    @Transactional
+    public CohortResponse reactivate(Integer id) {
+        Cohort cohort = repository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Cohort not found"));
+        cohort.setIsActive(true);
+        return map(repository.save(cohort));
+    }
+
+    private String normalizeLookupName(String name) {
+        String normalized = name == null ? "" : name.trim().toUpperCase().replaceAll("\\s+", "");
+        return normalized;
     }
 }

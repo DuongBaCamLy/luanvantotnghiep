@@ -2,12 +2,13 @@ import { useQuery } from "@tanstack/react-query";
 import { syllabusApi } from "@/api/syllabusApi";
 
 export const useSyllabus = (
-  id: number | null
+  id: number | null,
+  forEdit = false,
 ) => {
   return useQuery({
-    queryKey: ["syllabus", id],
+    queryKey: ["syllabus", id, forEdit ? "edit" : "view"],
     queryFn: () =>
-      syllabusApi.getById(id!),
+      forEdit ? syllabusApi.getForEdit(id!) : syllabusApi.getById(id!),
     enabled: !!id,
   });
 };

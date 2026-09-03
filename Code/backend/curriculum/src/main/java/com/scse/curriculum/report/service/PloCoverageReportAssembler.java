@@ -101,9 +101,9 @@ final class PloCoverageReportAssembler {
             row.setContributingCloCount(row.getCourses().stream()
                     .mapToInt(PloCoverageReportData.CourseContribution::getMappingCount)
                     .sum());
-            row.setIntroductionCount(countLevel(row.getCourses(), "I"));
-            row.setDevelopmentCount(countLevel(row.getCourses(), "D"));
-            row.setAchievementCount(countLevel(row.getCourses(), "A"));
+            row.setIntroductionCount(countLevel(row.getCourses(), "X"));
+            row.setDevelopmentCount(countLevel(row.getCourses(), "XX"));
+            row.setAchievementCount(countLevel(row.getCourses(), "XXX"));
             row.setCovered(!row.getCourses().isEmpty());
         }
 
@@ -149,12 +149,6 @@ final class PloCoverageReportAssembler {
         }
         if (matrix.getProgramId() == null || matrix.getCohortId() == null) {
             throw new IllegalArgumentException("Program và cohort là bắt buộc.");
-        }
-        if (matrix.getAcademicYear() == null || matrix.getAcademicYear().isBlank()) {
-            throw new IllegalArgumentException("Năm học là bắt buộc.");
-        }
-        if (matrix.getSemester() == null || matrix.getSemester().isBlank()) {
-            throw new IllegalArgumentException("Học kỳ là bắt buộc.");
         }
     }
 
@@ -222,7 +216,7 @@ final class PloCoverageReportAssembler {
     private static String normalizeLevel(String value) {
         String normalized = normalize(value);
         return switch (normalized) {
-            case "I", "D", "A" -> normalized;
+            case "X", "XX", "XXX" -> normalized;
             default -> "";
         };
     }

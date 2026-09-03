@@ -1,6 +1,5 @@
 package com.scse.curriculum.assessment.dto;
 
-import com.scse.curriculum.assessment.entity.AssessmentType;
 import lombok.Builder;
 import lombok.Data;
 
@@ -18,7 +17,7 @@ public class AssessmentComponentResponse {
 
     private String nameVn;
 
-    private AssessmentType assessmentType;
+    private String assessmentType;
 
     private Float weightPercent;
 

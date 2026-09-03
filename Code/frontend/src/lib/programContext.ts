@@ -1,4 +1,4 @@
-import type { Major, Program } from "@/types/admin"
+import type { Cohort, Major, Program } from "@/types/admin"
 
 export const clearProgramContext = (
   params: URLSearchParams
@@ -34,7 +34,8 @@ export const setMajorContext = (
 
 export const setProgramContext = (
   params: URLSearchParams,
-  program: Program
+  program: Program,
+  cohort?: Cohort,
 ) => {
   params.set("programId", String(program.id))
   params.set("programCode", program.code)
@@ -42,11 +43,11 @@ export const setProgramContext = (
   params.set("majorId", String(program.majorId))
   params.set("majorCode", program.majorCode)
 
-  /*
-   * Flow hiện tại đang chọn CTĐT,
-   * không chọn riêng cohort sinh viên.
-   */
-  params.delete("cohortId")
+  if (cohort) {
+    params.set("cohortId", String(cohort.id))
+  } else {
+    params.delete("cohortId")
+  }
 
   // Xóa tham số cũ để tránh lọc lẫn
   params.delete("cohort")

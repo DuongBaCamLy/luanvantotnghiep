@@ -31,8 +31,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { useAuthStore } from "@/store/authStore"
 
 export default function CourseManagementPage() {
+  const canManage = useAuthStore((state) => Boolean(state.user))
   const queryClient = useQueryClient()
   const [open, setOpen] = useState(false)
 
@@ -121,10 +123,12 @@ export default function CourseManagementPage() {
             Xem và cấu hình thông tin các môn học, số tín chỉ lý thuyết/thực hành trong hệ thống
           </p>
         </div>
-        <Button className="bg-primary text-white hover:bg-primary/90 flex items-center gap-1.5" onClick={() => setOpen(true)}>
-          <Plus className="size-4" />
-          Thêm môn học mới
-        </Button>
+        {canManage && (
+          <Button className="bg-primary text-white hover:bg-primary/90 flex items-center gap-1.5" onClick={() => setOpen(true)}>
+            <Plus className="size-4" />
+            Thêm môn học mới
+          </Button>
+        )}
       </div>
 
       {/* Main Table */}
@@ -203,7 +207,7 @@ export default function CourseManagementPage() {
       </div>
 
       {/* Dialog creation */}
-      <Dialog open={open} onOpenChange={setOpen}>
+      {canManage && <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-lg bg-white">
           <DialogHeader>
             <DialogTitle className="text-primary font-heading">Thêm môn học mới</DialogTitle>
@@ -325,7 +329,7 @@ export default function CourseManagementPage() {
             </DialogFooter>
           </form>
         </DialogContent>
-      </Dialog>
+      </Dialog>}
     </div>
   )
 }

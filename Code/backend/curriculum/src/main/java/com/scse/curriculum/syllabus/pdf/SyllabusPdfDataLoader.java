@@ -267,7 +267,7 @@ public class SyllabusPdfDataLoader {
                         item.getId(),
                         item.getName(),
                         item.getNameVn(),
-                        item.getAssessmentType() == null ? null : item.getAssessmentType().name(),
+                        item.getAssessmentType(),
                         item.getWeightPercent(),
                         item.getMinScore(),
                         item.getMaxScore(),

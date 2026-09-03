@@ -18,7 +18,7 @@ import java.nio.charset.StandardCharsets;
 
 @RestController
 @RequestMapping("/api/reports/curriculum-change")
-@PreAuthorize("hasAnyRole('ADMIN', 'DEAN', 'DEPT_HEAD')")
+@PreAuthorize("@phaseRoleGuard.isAdmin(authentication)")
 public class CurriculumChangeReportController {
     private final CurriculumChangeReportService service;
     private final SyllabusPdfFontProvider fonts;

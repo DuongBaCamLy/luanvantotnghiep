@@ -52,11 +52,11 @@ class ReportServiceImplTest {
     void excelUsesExactScopeAndRemovesDuplicateCourses() throws Exception {
         DashboardHeatmapResponse matrix = sampleMatrix();
         matrix.setCourseCoverages(List.of(course(10, "IT001IU", "Nhập môn Tin học"), course(10, "IT001IU", "Nhập môn Tin học")));
-        when(dashboardService.getHeatmapCoverage(1L, 2, "2026-2027", "1", 3)).thenReturn(matrix);
+        when(dashboardService.getHeatmapCoverage(1L, 2, null, null, null)).thenReturn(matrix);
 
         byte[] bytes = service.generateCloPloMatrixExcel(1L, 2, "2026-2027", "1", 3);
 
-        verify(dashboardService).getHeatmapCoverage(1L, 2, "2026-2027", "1", 3);
+        verify(dashboardService).getHeatmapCoverage(1L, 2, null, null, null);
         try (Workbook workbook =
              new XSSFWorkbook(new ByteArrayInputStream(bytes))) {
 
@@ -79,31 +79,17 @@ class ReportServiceImplTest {
     assertThat(sheet.getRow(2).getCell(1).getStringCellValue())
             .isEqualTo("CS-2021");
 
-    // Row 3: Năm học
+    // Row 3: toàn bộ curriculum của cohort
     assertThat(sheet.getRow(3).getCell(0).getStringCellValue())
-            .isEqualTo("Năm học");
+            .isEqualTo("Phạm vi");
 
     assertThat(sheet.getRow(3).getCell(1).getStringCellValue())
-            .isEqualTo("2026-2027");
-
-    // Row 4: Học kỳ
-    assertThat(sheet.getRow(4).getCell(0).getStringCellValue())
-            .isEqualTo("Học kỳ");
-
-    assertThat(sheet.getRow(4).getCell(1).getStringCellValue())
-            .isEqualTo("1");
-
-    // Row 5: Nhóm môn
-    assertThat(sheet.getRow(5).getCell(0).getStringCellValue())
-            .isEqualTo("Nhóm môn");
-
-    assertThat(sheet.getRow(5).getCell(1).getStringCellValue())
-            .isEqualTo("Bắt buộc");
+            .isEqualTo("Toàn bộ chương trình của cohort");
 
     // Row 6: Scope key
     assertThat(sheet.getRow(6).getCell(1).getStringCellValue())
             .isEqualTo(
-                    "program=1|cohort=2|academicYear=2026-2027|semester=1|courseType=3");
+                    "program=1|cohort=2");
 
     // Row 8: unique course count
     assertThat(sheet.getRow(8).getCell(1).getNumericCellValue())
@@ -142,7 +128,7 @@ class ReportServiceImplTest {
             .isEqualTo("Nhập môn Tin học");
 
     assertThat(courseRow.getCell(11).getStringCellValue())
-            .isEqualTo("D");
+            .isEqualTo("XX");
 
     // Chỉ có đúng 1 dòng course sau khi loại trùng
     assertThat(
@@ -156,7 +142,7 @@ class ReportServiceImplTest {
     void pdfIsGeneratedWithVietnameseScopedContent() {
         DashboardHeatmapResponse matrix = sampleMatrix();
         matrix.setCourseCoverages(List.of(course(10, "IT001IU", "Nhập môn Tin học")));
-        when(dashboardService.getHeatmapCoverage(1L, 2, "2026-2027", "1", 3)).thenReturn(matrix);
+        when(dashboardService.getHeatmapCoverage(1L, 2, null, null, null)).thenReturn(matrix);
 
         byte[] bytes = service.generateCloPloMatrixPdf(1L, 2, "2026-2027", "1", 3);
 
@@ -179,7 +165,7 @@ class ReportServiceImplTest {
         response.setCourseTypeName("Required");
         response.setCourseTypeNameVn("Bắt buộc");
         response.setDataSource("APPROVED syllabus theo chương trình, khóa, năm học và học kỳ");
-        response.setScopeKey("program=1|cohort=2|academicYear=2026-2027|semester=1|courseType=3");
+        response.setScopeKey("program=1|cohort=2");
         DashboardHeatmapResponse.HeatmapSummary summary = new DashboardHeatmapResponse.HeatmapSummary();
         summary.setPloCoveragePercentage(75.0);
         summary.setCloMappingPercentage(80.0);
@@ -223,7 +209,7 @@ class ReportServiceImplTest {
 
     cell.setPloId(100);
     cell.setPloCode("PLO1");
-    cell.setLevel("D");
+    cell.setLevel("XX");
 
     course.setCells(List.of(cell));
 

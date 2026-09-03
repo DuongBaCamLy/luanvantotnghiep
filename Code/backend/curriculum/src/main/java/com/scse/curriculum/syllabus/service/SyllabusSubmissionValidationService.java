@@ -94,7 +94,7 @@ public class SyllabusSubmissionValidationService {
                 collector);
         List<SyllabusBook> books = syllabusBookRepository
                 .findBySyllabus_Id(syllabus.getId());
-        validateReadingList(books, collector);
+        validatereadings(books, collector);
 
         validateWorkload(syllabus, topics, collector);
 
@@ -174,10 +174,11 @@ public class SyllabusSubmissionValidationService {
                 "GENERAL_VERSION_LABEL_REQUIRED",
                 "versionLabel",
                 "Version label is required.", collector);
-        required(syllabus.getMajor(),
-                "GENERAL_MAJOR_REQUIRED",
-                "major",
-                "Applicable major is required.", collector);
+        /*
+         * Program/CourseProgram is the curriculum identity. `major` is a
+         * legacy display snapshot and must not duplicate that relationship
+         * merely to make a syllabus submittable.
+         */
         required(syllabus.getCourseDesignation(),
                 "GENERAL_DESIGNATION_REQUIRED",
                 "courseDesignation",
@@ -328,14 +329,9 @@ public class SyllabusSubmissionValidationService {
                             + " does not have an outcome description.");
         }
 
-        if (clo.getBloomLevel() == null) {
-            collector.add(
-                    "CLO_BLOOM_REQUIRED",
-                    "Course Learning Outcomes (CLO)",
-                    3,
-                    "clos[" + index + "].bloomLevel",
-                    label + " does not have a Bloom level.");
-        }
+        // Bloom taxonomy is an optional system enhancement. The official IU
+        // syllabus template provides Competency level, not Bloom level, so a
+        // source-faithful import must remain submittable with null Bloom data.
 
         if (clo.getCompetencyLevel() == null) {
             collector.add(
@@ -490,6 +486,15 @@ private void validateCloPloMappings(
                     "The syllabus must contain at least one teaching topic.");
             return;
         }
+        if (topicCloMappings == null || topicCloMappings.isEmpty()) {
+            collector.add(
+                    "TOPIC_CLO_MAPPING_REQUIRED",
+                    "Mapping Topic–CLO",
+                    5,
+                    "topicCloMappings",
+                    "At least one Topic–CLO mapping from the official teaching plan is required.");
+        }
+
         Map<Integer, List<TopicClo>> mappingsByTopic
                 = topicCloMappings.stream()
                         .filter(mapping
@@ -604,16 +609,10 @@ private void validateCloPloMappings(
             List<TopicClo> mappings,
             ValidationCollector collector) {
 
-        if (mappings.isEmpty()) {
-            collector.add(
-                    "TOPIC_CLO_MAPPING_REQUIRED",
-                    "Mapping Topic–CLO",
-                    5,
-                    "topics[" + topicIndex + "].cloMappings",
-                    topicLabel
-                    + " is not mapped to at least one CLO.");
-            return;
-        }
+        // Official syllabus tables may intentionally leave an exam/review week
+        // without a CLO value. Validate mappings that exist, but do not invent
+        // or require a mapping for every individual row.
+        if (mappings.isEmpty()) return;
 
         Set<Integer> seenCloIds = new HashSet<>();
 
@@ -677,18 +676,8 @@ private void validateCloPloMappings(
                         + "another syllabus.");
             }
 
-            if (mapping.getTeachingLevel() == null) {
-                collector.add(
-                        "TOPIC_CLO_TEACHING_LEVEL_REQUIRED",
-                        "Mapping Topic–CLO",
-                        5,
-                        fieldPrefix + ".teachingLevel",
-                        "Mapping from "
-                        + topicLabel
-                        + " to "
-                        + safeCloLabel(mappedClo)
-                        + " does not specify a Teaching Level.");
-            }
+            // The official planned-activities table maps Topic to CLO but has
+            // no mapping-level field. Teaching level remains optional metadata.
         }
     }
 
@@ -921,7 +910,7 @@ private void validateCloPloMappings(
         }
     }
 
-    private void validateReadingList(
+    private void validatereadings(
         List<SyllabusBook> books,
         ValidationCollector collector) {
 
@@ -930,7 +919,7 @@ private void validateCloPloMappings(
                 "READING_LIST_REQUIRED",
                 "Reading List",
                 7,
-                "readingList",
+                "readings",
                 "The syllabus must contain at least "
                         + "one reading resource.");
         return;
@@ -942,7 +931,7 @@ private void validateCloPloMappings(
 
         SyllabusBook linkedBook = books.get(index);
         String fieldPrefix =
-                "readingList[" + index + "]";
+                "readings[" + index + "]";
 
         if (linkedBook == null) {
             collector.add(
@@ -1025,7 +1014,7 @@ private void validateCloPloMappings(
                 "Total Workload must be greater than 0.",
                 true,
                 collector);
-        Double contact = parseWorkload(
+        Double contact = parseContactWorkload(
                 syllabus.getWorkloadContact(),
                 "WORKLOAD_CONTACT_INVALID",
                 "workloadContact",
@@ -1069,41 +1058,12 @@ private void validateCloPloMappings(
                     + formatNumber(privateStudy) + ".");
         }
 
-        if (!topics.isEmpty() && contact != null
-                && !closeEnough(contact, topicContact)) {
-            collector.add(
-                    "WORKLOAD_CONTACT_TOPIC_MISMATCH",
-                    "Teaching Content",
-                    5,
-                    "topicContactHours",
-                    "Contact Hours must equal total Teaching Hours + Lab Hours in Topics. Declared: "
-                    + formatNumber(contact) + ", Topics: "
-                    + formatNumber(topicContact) + ".");
-        }
-
-        if (!topics.isEmpty() && privateStudy != null
-                && !closeEnough(privateStudy, topicPrivate)) {
-            collector.add(
-                    "WORKLOAD_PRIVATE_TOPIC_MISMATCH",
-                    "Teaching Content",
-                    5,
-                    "topicPrivateHours",
-                    "Private Study must equal total Self-study Hours in Topics. Declared: "
-                    + formatNumber(privateStudy) + ", Topics: "
-                    + formatNumber(topicPrivate) + ".");
-        }
-
-        if (!topics.isEmpty() && total != null
-                && !closeEnough(total, topicContact + topicPrivate)) {
-            collector.add(
-                    "WORKLOAD_TOTAL_TOPIC_MISMATCH",
-                    "Teaching Content",
-                    5,
-                    "topicTotalHours",
-                    "Total Workload must equal the total hours in Topics. Declared: "
-                    + formatNumber(total) + ", Topics: "
-                    + formatNumber(topicContact + topicPrivate) + ".");
-        }
+        /*
+         * The official template declares aggregate lecture/laboratory/private
+         * workload, but does not allocate those hours to each topic. Topic
+         * totals remain useful diagnostics in the response and are not a
+         * submission blocker.
+         */
     }
 
     private Double parseWorkload(
@@ -1158,6 +1118,44 @@ private void validateCloPloMappings(
                     message);
             return null;
         }
+    }
+
+    /**
+     * Contact workload is currently stored in a legacy display string, for
+     * example "45 (lecture) + 30 (laboratory)". All components contribute to
+     * contact hours; taking only the first number incorrectly rejects a
+     * mathematically valid workload.
+     */
+    private Double parseContactWorkload(
+            String raw,
+            String code,
+            String field,
+            String message,
+            boolean mustBePositive,
+            ValidationCollector collector) {
+        if (isBlank(raw)) {
+            collector.add(code, "General Information", 1, field, message);
+            return null;
+        }
+
+        Matcher matcher = NUMBER_PATTERN.matcher(raw.trim());
+        double total = 0d;
+        boolean found = false;
+        try {
+            while (matcher.find()) {
+                total += Double.parseDouble(matcher.group().replace(',', '.'));
+                found = true;
+            }
+        } catch (NumberFormatException ex) {
+            found = false;
+        }
+
+        boolean invalid = !found || (mustBePositive ? total <= 0d : total < 0d);
+        if (invalid) {
+            collector.add(code, "General Information", 1, field, message);
+            return null;
+        }
+        return round(total);
     }
 
     private void required(

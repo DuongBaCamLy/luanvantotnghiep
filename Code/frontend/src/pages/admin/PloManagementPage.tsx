@@ -220,6 +220,48 @@ export default function PloManagementPage() {
       })
   }, [categoryFilter, plos, programFilter, searchQuery])
 
+  const groupedPlos = useMemo(() => {
+    const totalByProgram = new Map<number, number>()
+    plos.forEach((plo) => {
+      totalByProgram.set(
+        plo.programId,
+        (totalByProgram.get(plo.programId) || 0) + 1,
+      )
+    })
+
+    const groups = new Map<number, {
+      programId: number
+      programCode: string
+      programName: string
+      totalCount: number
+      plos: Plo[]
+    }>()
+
+    filteredPlos.forEach((plo) => {
+      const program = programs.find((item) => item.id === plo.programId)
+      const existing = groups.get(plo.programId)
+
+      if (existing) {
+        existing.plos.push(plo)
+        return
+      }
+
+      groups.set(plo.programId, {
+        programId: plo.programId,
+        programCode: getBaseProgramCode(plo.programCode || program?.code),
+        programName:
+          plo.programName
+          || program?.name
+          || program?.nameVn
+          || "Unnamed program",
+        totalCount: totalByProgram.get(plo.programId) || 0,
+        plos: [plo],
+      })
+    })
+
+    return Array.from(groups.values())
+  }, [filteredPlos, plos, programs])
+
   const stats = useMemo(() => {
     const activePlos = plos.filter((plo) => plo.isActive !== false)
     return {
@@ -445,28 +487,28 @@ export default function PloManagementPage() {
           <Table>
             <TableHeader>
               <TableRow className="bg-slate-50/80">
-                <TableHead className="w-[105px] font-semibold text-slate-700">
-                  PLO Code
-                </TableHead>
-                <TableHead className="min-w-[180px] font-semibold text-slate-700">
+                <TableHead className="min-w-[190px] text-[10px] font-bold uppercase tracking-[0.12em] text-slate-600">
                   Program
                 </TableHead>
-                <TableHead className="w-[130px] font-semibold text-slate-700">
+                <TableHead className="w-[105px] text-[10px] font-bold uppercase tracking-[0.12em] text-slate-600">
+                  PLO Code
+                </TableHead>
+                <TableHead className="w-[130px] text-[10px] font-bold uppercase tracking-[0.12em] text-slate-600">
                   Category
                 </TableHead>
-                <TableHead className="min-w-[300px] font-semibold text-slate-700">
+                <TableHead className="min-w-[300px] text-[10px] font-bold uppercase tracking-[0.12em] text-slate-600">
                   English Description
                 </TableHead>
-                <TableHead className="min-w-[280px] font-semibold text-slate-700">
+                <TableHead className="min-w-[280px] text-[10px] font-bold uppercase tracking-[0.12em] text-slate-600">
                   Vietnamese Description
                 </TableHead>
-                <TableHead className="w-[90px] text-center font-semibold text-slate-700">
+                <TableHead className="w-[90px] text-center text-[10px] font-bold uppercase tracking-[0.12em] text-slate-600">
                   Version
                 </TableHead>
-                <TableHead className="w-[120px] font-semibold text-slate-700">
+                <TableHead className="w-[120px] text-[10px] font-bold uppercase tracking-[0.12em] text-slate-600">
                   Status
                 </TableHead>
-                <TableHead className="w-[105px] text-right font-semibold text-slate-700">
+                <TableHead className="w-[105px] text-right text-[10px] font-bold uppercase tracking-[0.12em] text-slate-600">
                   Actions
                 </TableHead>
               </TableRow>
@@ -493,20 +535,34 @@ export default function PloManagementPage() {
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredPlos.map((plo) => (
-                  <TableRow key={plo.id} className="align-top hover:bg-slate-50/50">
+                groupedPlos.flatMap((group) =>
+                  group.plos.map((plo, index) => (
+                  <TableRow
+                    key={plo.id}
+                    className={`align-top hover:bg-slate-50/50 ${index === 0 ? "border-t border-[#9fc8cb]" : ""}`}
+                  >
+                    {index === 0 && (
+                      <TableCell
+                        rowSpan={group.plos.length}
+                        className="border-r border-[#c9dfe1] bg-[#f1f8f8] px-5 py-5 align-top"
+                      >
+                        <p className="text-base font-extrabold text-[#006f76]">
+                          {group.programCode || `#${group.programId}`}
+                        </p>
+                        <p className="mt-1 max-w-[170px] whitespace-normal text-xs leading-5 text-slate-600">
+                          {group.programName}
+                        </p>
+                        <Badge className="mt-3 border border-[#cce7e8] bg-[#e5f4f4] text-[10px] font-bold text-[#006f76]">
+                          {group.plos.length === group.totalCount
+                            ? `${group.totalCount} PLO${group.totalCount === 1 ? "" : "s"}`
+                            : `${group.plos.length} of ${group.totalCount} PLOs`}
+                        </Badge>
+                      </TableCell>
+                    )}
                     <TableCell>
-                      <span className="font-mono text-sm font-bold text-primary">
+                      <span className="font-mono text-sm font-bold text-[#007d84]">
                         {plo.code}
                       </span>
-                    </TableCell>
-                    <TableCell>
-                      <p className="font-semibold text-slate-900">
-                        {getBaseProgramCode(plo.programCode) || `#${plo.programId}`}
-                      </p>
-                      <p className="mt-0.5 text-xs text-slate-500">
-                        {plo.programName || "Unnamed program"}
-                      </p>
                     </TableCell>
                     <TableCell>
                       <Badge
@@ -573,7 +629,8 @@ export default function PloManagementPage() {
                       </div>
                     </TableCell>
                   </TableRow>
-                ))
+                  )),
+                )
               )}
             </TableBody>
           </Table>

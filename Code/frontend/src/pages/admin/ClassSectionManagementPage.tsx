@@ -83,20 +83,6 @@ const getErrorMessage = (error: unknown) => {
   return "Unable to update the teaching assignment."
 }
 
-const formatSectionType = (
-  value: ClassSectionResponse["sectionType"],
-) => {
-  if (value === "LAB") {
-    return "Lab"
-  }
-
-  if (value === "COMBINED") {
-    return "Combined"
-  }
-
-  return "Theory"
-}
-
 const formatSyllabusStatus = (
   value: string | null,
 ) => {
@@ -118,8 +104,6 @@ export default function ClassSectionManagementPage() {
     useState<ClassSectionResponse | null>(null)
 
   const [searchTerm, setSearchTerm] = useState("")
-  const [academicYearFilter, setAcademicYearFilter] = useState(ALL)
-  const [semesterFilter, setSemesterFilter] = useState(ALL)
   const [statusFilter, setStatusFilter] = useState(ALL)
   const [syllabusFilter, setSyllabusFilter] = useState(ALL)
 
@@ -197,40 +181,10 @@ export default function ClassSectionManagementPage() {
     },
   })
 
-  const academicYears = useMemo(
-    () =>
-      Array.from(
-        new Set(
-          sections
-            .map((section) => section.academicYear)
-            .filter(Boolean),
-        ),
-      ).sort((left, right) =>
-        right.localeCompare(left, "en", {
-          numeric: true,
-        }),
-      ),
-    [sections],
-  )
-
   const filteredSections = useMemo(() => {
     const keyword = searchTerm.trim().toLowerCase()
 
     return sections.filter((section) => {
-      if (
-        academicYearFilter !== ALL
-        && section.academicYear !== academicYearFilter
-      ) {
-        return false
-      }
-
-      if (
-        semesterFilter !== ALL
-        && String(section.semester) !== semesterFilter
-      ) {
-        return false
-      }
-
       if (
         statusFilter === "ACTIVE"
         && !section.isActive
@@ -267,9 +221,6 @@ export default function ClassSectionManagementPage() {
         section.courseCode,
         section.courseName,
         section.instructorName,
-        section.academicYear,
-        `semester ${section.semester}`,
-        `group ${section.groupNumber}`,
       ]
         .join(" ")
         .toLowerCase()
@@ -277,10 +228,8 @@ export default function ClassSectionManagementPage() {
       return searchable.includes(keyword)
     })
   }, [
-    academicYearFilter,
     searchTerm,
     sections,
-    semesterFilter,
     statusFilter,
     syllabusFilter,
   ])
@@ -345,10 +294,20 @@ export default function ClassSectionManagementPage() {
 
     setNotice(null)
 
+    if (!section.programId || !section.cohortId) {
+      setNotice({
+        type: "error",
+        message: "This legacy assignment has no Program/Cohort context. Edit it and select the curriculum before changing its status.",
+      })
+      return
+    }
+
     updateMutation.mutate({
       id: section.id,
       req: {
         courseId: section.courseId,
+        programId: section.programId,
+        cohortId: section.cohortId,
         syllabusId: section.syllabusId,
         instructorId: section.instructorId,
         semester: section.semester,
@@ -366,8 +325,6 @@ export default function ClassSectionManagementPage() {
 
   const clearFilters = () => {
     setSearchTerm("")
-    setAcademicYearFilter(ALL)
-    setSemesterFilter(ALL)
     setStatusFilter(ALL)
     setSyllabusFilter(ALL)
   }
@@ -391,7 +348,7 @@ export default function ClassSectionManagementPage() {
             </h1>
 
             <p className="mt-1 max-w-3xl text-sm leading-6 text-[#687f89]">
-              Assign active instructors to courses by academic year and semester. New assignments start without a syllabus so the assigned Faculty can create the Draft.
+              Assign active instructors to courses. Curriculum scope and semester are resolved from the curriculum when Faculty creates a syllabus.
             </p>
           </div>
 
@@ -446,7 +403,7 @@ export default function ClassSectionManagementPage() {
       )}
 
       <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(280px,1fr)_190px_170px_180px_190px_auto]">
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(280px,1fr)_180px_190px_auto]">
           <div className="relative">
             <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
             <Input
@@ -456,38 +413,6 @@ export default function ClassSectionManagementPage() {
               className="pl-9"
             />
           </div>
-
-          <Select
-            value={academicYearFilter}
-            onValueChange={setAcademicYearFilter}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="All Academic Years" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ALL}>All Academic Years</SelectItem>
-              {academicYears.map((year) => (
-                <SelectItem key={year} value={year}>
-                  {year}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Select
-            value={semesterFilter}
-            onValueChange={setSemesterFilter}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="All Semesters" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ALL}>All Semesters</SelectItem>
-              <SelectItem value="1">Semester 1</SelectItem>
-              <SelectItem value="2">Semester 2</SelectItem>
-              <SelectItem value="3">Semester 3</SelectItem>
-            </SelectContent>
-          </Select>
 
           <Select
             value={syllabusFilter}
@@ -539,14 +464,11 @@ export default function ClassSectionManagementPage() {
         )}
 
         <div className="overflow-x-auto">
-          <Table className="min-w-[1200px]">
+          <Table className="min-w-[850px]">
             <TableHeader className="bg-slate-50">
               <TableRow>
                 <TableHead>Course</TableHead>
                 <TableHead>Instructor</TableHead>
-                <TableHead>Academic Scope</TableHead>
-                <TableHead>Group</TableHead>
-                <TableHead>Type</TableHead>
                 <TableHead>Syllabus</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
@@ -557,7 +479,7 @@ export default function ClassSectionManagementPage() {
               {isLoading ? (
                 <TableRow>
                   <TableCell
-                    colSpan={8}
+                    colSpan={5}
                     className="h-32 text-center text-slate-500"
                   >
                     Loading teaching assignments...
@@ -566,7 +488,7 @@ export default function ClassSectionManagementPage() {
               ) : filteredSections.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={8}
+                    colSpan={5}
                     className="h-40 text-center"
                   >
                     <p className="font-semibold text-slate-700">
@@ -594,25 +516,6 @@ export default function ClassSectionManagementPage() {
 
                     <TableCell className="font-medium text-slate-700">
                       {section.instructorName}
-                    </TableCell>
-
-                    <TableCell>
-                      <p className="font-semibold text-slate-800">
-                        {section.academicYear}
-                      </p>
-                      <p className="mt-0.5 text-xs text-slate-500">
-                        Semester {section.semester}
-                      </p>
-                    </TableCell>
-
-                    <TableCell className="font-semibold text-slate-700">
-                      Group {section.groupNumber}
-                    </TableCell>
-
-                    <TableCell>
-                      <Badge variant="outline">
-                        {formatSectionType(section.sectionType)}
-                      </Badge>
                     </TableCell>
 
                     <TableCell>

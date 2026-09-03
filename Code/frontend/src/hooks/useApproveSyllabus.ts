@@ -26,6 +26,7 @@ export const useApproveSyllabus = () => {
       void queryClient.invalidateQueries({ queryKey: ["syllabuses"] })
       void queryClient.invalidateQueries({ queryKey: ["approval-requests"] })
       void queryClient.invalidateQueries({ queryKey: ["curriculum-map"] })
+      void queryClient.invalidateQueries({ queryKey: ["clo-plo-heatmap"] })
     },
   })
 }

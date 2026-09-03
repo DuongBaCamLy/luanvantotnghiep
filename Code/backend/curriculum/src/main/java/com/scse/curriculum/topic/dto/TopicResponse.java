@@ -32,5 +32,9 @@ public class TopicResponse {
 
     private String learningActivity;
 
+    private String assessments;
+
+    private String resources;
+
     private String notes;
 }

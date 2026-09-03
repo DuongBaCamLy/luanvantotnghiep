@@ -34,17 +34,21 @@ public class Topic {
     private String nameVn;
 
     @Column(name = "teaching_hours")
-    private Integer teachingHours;
+    @Builder.Default
+    private Integer teachingHours = 3;
 
     @Column(name = "lab_hours")
-    private Integer labHours;
+    @Builder.Default
+    private Integer labHours = 0;
 
     @Column(name = "self_study_hours")
-    private Integer selfStudyHours;
+    @Builder.Default
+    private Integer selfStudyHours = 0;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "topic_type")
-    private TopicType topicType;
+    @Builder.Default
+    private TopicType topicType = TopicType.LECTURE;
 
     @Column(name = "teaching_method",
             columnDefinition = "TEXT")
@@ -56,4 +60,23 @@ public class Topic {
 
     @Column(columnDefinition = "TEXT")
     private String notes;
+
+    @Column(name = "assessments",
+        columnDefinition = "TEXT")
+private String assessments;
+
+
+@Column(name = "resources",
+        columnDefinition = "TEXT")
+private String resources;
+
+@PrePersist
+private void initializeRequiredValues() {
+    if (weekNumber == null) weekNumber = 1;
+    if (orderInWeek == null) orderInWeek = 1;
+    if (teachingHours == null) teachingHours = 3;
+    if (labHours == null) labHours = 0;
+    if (selfStudyHours == null) selfStudyHours = 0;
+    if (topicType == null) topicType = TopicType.LECTURE;
+}
 }

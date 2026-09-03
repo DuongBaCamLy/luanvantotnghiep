@@ -31,11 +31,11 @@ public class SyllabusContentGuard {
 
         syllabusAccessService.assertCanModify(syllabus);
 
-        if (syllabus.getStatus() != SyllabusStatus.DRAFT) {
+        if (syllabus.getStatus() != SyllabusStatus.DRAFT
+                && syllabus.getStatus() != SyllabusStatus.REVISION_REQUESTED) {
             throw new IllegalStateException(
                     "Version " + syllabus.getVersionLabel()
-                            + " has already been submitted and is immutable. "
-                            + "Clone it to create a new DRAFT.");
+                            + " is not editable in its current workflow status.");
         }
     }
 

@@ -67,7 +67,7 @@ export default function ApprovalReviewDialog({
           : "Approve and Forward to Dean",
 
         description: isDean
-          ? "Confirm this syllabus as the official approved version."
+          ? "Approve this syllabus as the final official version?"
           : "Confirm the Department Head review and forward this syllabus to the Dean for the final decision.",
 
         button: isDean
@@ -77,13 +77,12 @@ export default function ApprovalReviewDialog({
     }
 
     return {
-      title: "Return Syllabus for Revision",
+      title: isDean ? "Reject Syllabus" : "Return Syllabus for Revision",
 
       description:
         "Return this syllabus to the instructor with a clear review comment explaining the required changes.",
 
-      button:
-        "Return to Instructor",
+      button: isDean ? "Reject & Return" : "Return to Instructor",
     }
   }, [isApproval, isDean])
 

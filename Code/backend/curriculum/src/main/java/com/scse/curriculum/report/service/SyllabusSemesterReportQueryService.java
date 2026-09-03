@@ -1,12 +1,15 @@
 package com.scse.curriculum.report.service;
 
 import com.scse.curriculum.approval.entity.ApprovalRequest;
+import com.scse.curriculum.auth.security.CurrentUserService;
+import com.scse.curriculum.common.exception.ForbiddenOperationException;
 import com.scse.curriculum.instructor.entity.Instructor;
 import com.scse.curriculum.instructor.repository.InstructorRepository;
 import com.scse.curriculum.report.dto.SyllabusSemesterReportData;
 import com.scse.curriculum.syllabus.entity.Syllabus;
 import com.scse.curriculum.syllabus.entity.SyllabusStatus;
 import com.scse.curriculum.user.entity.UserAccount;
+import com.scse.curriculum.user.entity.UserRole;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.TypedQuery;
 import lombok.RequiredArgsConstructor;
@@ -29,6 +32,7 @@ import java.util.stream.Collectors;
 public class SyllabusSemesterReportQueryService {
     private final EntityManager entityManager;
     private final InstructorRepository instructorRepository;
+    private final CurrentUserService currentUserService;
 
     @Transactional(readOnly = true)
     public SyllabusSemesterReportData load(String academicYear, String semester,
@@ -38,6 +42,7 @@ public class SyllabusSemesterReportQueryService {
         String term = required(semester, "semester");
         SyllabusStatus parsedStatus = parseStatus(status);
         validateProgramCohort(programId, cohortId);
+        Integer departmentId = currentDepartmentScope();
 
         StringBuilder jpql = new StringBuilder("""
             SELECT DISTINCT s FROM Syllabus s
@@ -47,6 +52,7 @@ public class SyllabusSemesterReportQueryService {
             WHERE s.academicYear = :academicYear AND s.semester = :semester
             """);
         if (parsedStatus != null) jpql.append(" AND s.status = :status ");
+        if (departmentId != null) jpql.append(" AND c.department.id = :departmentId ");
         if (programId != null) jpql.append(" AND EXISTS (SELECT cp.id FROM CourseProgram cp WHERE cp.course = c AND cp.program.id = :programId ");
         if (programId != null && cohortId != null) jpql.append(" AND (cp.cohort.id = :cohortId OR cp.cohort IS NULL) ");
         if (programId != null) jpql.append(") ");
@@ -55,6 +61,7 @@ public class SyllabusSemesterReportQueryService {
         TypedQuery<Syllabus> query = entityManager.createQuery(jpql.toString(), Syllabus.class)
                 .setParameter("academicYear", year).setParameter("semester", term);
         if (parsedStatus != null) query.setParameter("status", parsedStatus);
+        if (departmentId != null) query.setParameter("departmentId", departmentId);
         if (programId != null) query.setParameter("programId", programId);
         if (programId != null && cohortId != null) query.setParameter("cohortId", cohortId);
 
@@ -76,6 +83,23 @@ public class SyllabusSemesterReportQueryService {
                 .programCode(scope[0] == null ? null : String.valueOf(scope[0]))
                 .cohortId(cohortId).cohortName(scope[1] == null ? null : String.valueOf(scope[1]))
                 .status(parsedStatus == null ? "ALL" : parsedStatus.name()).rows(rows).build();
+    }
+
+    private Integer currentDepartmentScope() {
+        UserAccount user = currentUserService.getCurrentUser();
+        if (user.getRole() != UserRole.DEPT_HEAD) return null;
+        if (user.getInstructorId() == null) {
+            throw new ForbiddenOperationException(
+                    "The Department Head account is not linked to an instructor profile.");
+        }
+        Instructor instructor = instructorRepository.findById(user.getInstructorId())
+                .orElseThrow(() -> new ForbiddenOperationException(
+                        "The Department Head instructor profile was not found."));
+        if (instructor.getDepartment() == null) {
+            throw new ForbiddenOperationException(
+                    "The Department Head account is not assigned to a department.");
+        }
+        return instructor.getDepartment().getId();
     }
 
     static List<Syllabus> selectRepresentatives(List<Syllabus> candidates) {

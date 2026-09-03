@@ -6,5 +6,6 @@ public enum TopicType {
     LAB,
     SEMINAR,
     EXAM,
-    PROJECT
+    PROJECT,
+    SELF_STUDY
 }

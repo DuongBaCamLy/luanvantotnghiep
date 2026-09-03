@@ -18,6 +18,8 @@ import com.scse.curriculum.studentscore.repository.StudentScoreRepository;
 import com.scse.curriculum.syllabus.dto.CreateSyllabusRequest;
 import com.scse.curriculum.syllabus.dto.SyllabusResponse;
 import com.scse.curriculum.syllabus.entity.Syllabus;
+import com.scse.curriculum.syllabus.entity.SyllabusImportStatus;
+import com.scse.curriculum.syllabus.entity.SyllabusSourceType;
 import com.scse.curriculum.syllabus.entity.SyllabusStatus;
 import com.scse.curriculum.syllabus.repository.SyllabusRepository;
 import com.scse.curriculum.syllabusbook.repository.SyllabusBookRepository;
@@ -42,7 +44,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -360,7 +361,10 @@ class SyllabusServiceImplCreateTest {
 
         SyllabusResponse response = service.create(request);
 
-        verifyNoInteractions(classSectionRepository);
+        // No teaching assignment was authorized, so nothing should be linked
+        // to the new syllabus. (Reading class sections to resolve the
+        // "person responsible" display field for the response is expected.)
+        verify(classSectionRepository, never()).saveAll(any());
 
         assertThat(response.getId()).isEqualTo(102);
         assertThat(response.getCreatedById()).isEqualTo(1);
@@ -368,6 +372,131 @@ class SyllabusServiceImplCreateTest {
         assertThat(response.getAcademicYear())
                 .isEqualTo("2026-2027");
         assertThat(response.getSemester()).isEqualTo("HK2");
+    }
+
+    @Test
+    void reviewedPdfImportCreatesANewVersionAndKeepsFileProvenance() {
+        CreateSyllabusRequest request =
+                createRequest(
+                        null,
+                        20,
+                        "2026-2027",
+                        "HK2");
+
+        request.setVersionNumber(999);
+        request.setVersionLabel("v999.0");
+        request.setSourceType("IMPORT_PDF");
+        request.setOriginalFileName("CS Program Specification CS - Full.pdf");
+        request.setOriginalFileType("application/pdf");
+
+        CreateSyllabusRequest.TopicDTO importedTopic =
+                new CreateSyllabusRequest.TopicDTO();
+        importedTopic.setWeekNumber(1);
+        importedTopic.setOrderInWeek(1);
+        importedTopic.setName("Imported topic without hour fields");
+        importedTopic.setTopicType("LECTURE");
+        request.setTopics(List.of(importedTopic));
+
+        SyllabusAccessService.CreationAuthorization authorization =
+                new SyllabusAccessService.CreationAuthorization(
+                        admin,
+                        course,
+                        "2026-2027",
+                        "HK2",
+                        List.of());
+
+        when(courseRepository.findById(20))
+                .thenReturn(Optional.of(course));
+        when(syllabusAccessService.authorizeCreate(
+                null,
+                course,
+                "2026-2027",
+                "HK2"))
+                .thenReturn(authorization);
+        when(repository.findMaxVersionNumberByCourseId(20))
+                .thenReturn(4);
+
+        stubSyllabusSave(103);
+
+        SyllabusResponse response = service.create(request);
+
+        ArgumentCaptor<Syllabus> captor =
+                ArgumentCaptor.forClass(Syllabus.class);
+        verify(repository).save(captor.capture());
+
+        Syllabus saved = captor.getValue();
+
+        assertThat(saved.getId()).isEqualTo(103);
+        assertThat(saved.getVersionNumber()).isEqualTo(5);
+        assertThat(saved.getVersionNumber()).isNotEqualTo(request.getVersionNumber());
+        assertThat(saved.getVersionLabel()).isEqualTo("v5.0");
+        assertThat(saved.getVersionLabel()).isNotEqualTo(request.getVersionLabel());
+        assertThat(saved.getStatus()).isEqualTo(SyllabusStatus.DRAFT);
+        assertThat(saved.getSourceType()).isEqualTo(SyllabusSourceType.IMPORT_PDF);
+        assertThat(saved.getImportStatus()).isEqualTo(SyllabusImportStatus.CONFIRMED);
+        assertThat(saved.getOriginalFileName())
+                .isEqualTo("CS Program Specification CS - Full.pdf");
+        assertThat(saved.getOriginalFileType()).isEqualTo("application/pdf");
+        assertThat(saved.getTopics()).hasSize(1);
+        assertThat(saved.getTopics().get(0).getTeachingHours()).isEqualTo(3);
+        assertThat(saved.getTopics().get(0).getLabHours()).isZero();
+        assertThat(saved.getTopics().get(0).getSelfStudyHours()).isEqualTo(6);
+
+        assertThat(response.getVersionNumber()).isEqualTo(5);
+        assertThat(response.getVersionLabel()).isEqualTo("v5.0");
+        assertThat(response.getSourceType()).isEqualTo("IMPORT_PDF");
+        assertThat(response.getImportStatus()).isEqualTo("CONFIRMED");
+        assertThat(response.getOriginalFileName())
+                .isEqualTo("CS Program Specification CS - Full.pdf");
+        assertThat(response.getOriginalFileType()).isEqualTo("application/pdf");
+    }
+
+    @Test
+    void manualCreateDoesNotAcceptForgedImportFileMetadata() {
+        CreateSyllabusRequest request =
+                createRequest(
+                        null,
+                        20,
+                        "2026-2027",
+                        "HK1");
+
+        request.setSourceType("MANUAL");
+        request.setOriginalFileName("forged.pdf");
+        request.setOriginalFileType("application/pdf");
+
+        SyllabusAccessService.CreationAuthorization authorization =
+                new SyllabusAccessService.CreationAuthorization(
+                        admin,
+                        course,
+                        "2026-2027",
+                        "HK1",
+                        List.of());
+
+        when(courseRepository.findById(20))
+                .thenReturn(Optional.of(course));
+        when(syllabusAccessService.authorizeCreate(
+                null,
+                course,
+                "2026-2027",
+                "HK1"))
+                .thenReturn(authorization);
+        when(repository.findMaxVersionNumberByCourseId(20))
+                .thenReturn(5);
+
+        stubSyllabusSave(104);
+
+        service.create(request);
+
+        ArgumentCaptor<Syllabus> captor =
+                ArgumentCaptor.forClass(Syllabus.class);
+        verify(repository).save(captor.capture());
+
+        Syllabus saved = captor.getValue();
+        assertThat(saved.getVersionNumber()).isEqualTo(6);
+        assertThat(saved.getSourceType()).isEqualTo(SyllabusSourceType.MANUAL);
+        assertThat(saved.getImportStatus()).isEqualTo(SyllabusImportStatus.NONE);
+        assertThat(saved.getOriginalFileName()).isNull();
+        assertThat(saved.getOriginalFileType()).isNull();
     }
 
     private CreateSyllabusRequest createRequest(

@@ -12,6 +12,11 @@ public class ClassSectionResponse {
     private Integer courseId;
     private String courseCode;
     private String courseName;
+    private Integer programId;
+    private String programCode;
+    private String programName;
+    private Integer cohortId;
+    private String cohortName;
     private Integer syllabusId;
     private Integer syllabusVersionNumber;
     private String syllabusStatus;

@@ -1,4 +1,5 @@
 export interface CloDTO {
+  id?: number
   code: string
   description: string
   descriptionVn?: string
@@ -8,6 +9,7 @@ export interface CloDTO {
 }
 
 export interface TopicDTO {
+  id?: number
   weekNumber: number
   orderInWeek: number
   name: string
@@ -18,10 +20,19 @@ export interface TopicDTO {
   topicType?: string
   teachingMethod?: string
   learningActivity?: string
+  assessments?: string
+  resources?: string
   notes?: string
+  /** Import-only content-table value; removed before the syllabus is persisted. */
+  contentWeight?: string | number
+  /** Import-only I/T/U value; removed before the syllabus is persisted. */
+  contentLevel?: string
+  /** Backward-compatible import alias for contentLevel. */
+  teachingLevel?: string
 }
 
 export interface AssessmentDTO {
+  id?: number
   name: string
   nameVn?: string
   assessmentType?: string
@@ -82,7 +93,15 @@ export interface Syllabus {
   versionLabel: string
   cohortId?: number | null
   cohortName?: string | null
+  courseProgramId?: number | null
+  programId?: number | null
+  programCode?: string | null
+  programName?: string | null
   academicYear: string
+  creditTheory?: number | null
+  creditLab?: number | null
+  /** Instructor(s) linked via teaching assignment; distinct from createdByUsername. */
+  responsibleInstructors?: string | null
 
   courseDesignation?: string | null
   courseTypes?: string | null
@@ -97,8 +116,12 @@ export interface Syllabus {
   objectives?: string | null
   examForms?: string | null
   examRequirements?: string | null
-  rubrics?: string | null
   major?: string | null
+  sourceType?: "MANUAL" | "IMPORT_PDF" | "IMPORT_DOCX" | "CLONE" | null
+  originalFileName?: string | null
+  originalFileType?: string | null
+  importStatus?: "NONE" | "PENDING" | "PARSED" | "CONFIRMED" | "FAILED" | null
+  finalApprovalDate?: string | null
 
   status: string
   isCurrent: boolean
@@ -124,7 +147,7 @@ export interface Syllabus {
 }
 
 export interface CreateSyllabusRequest {
-  classSectionId?: number
+  assignmentId?: number
   programId?: number
 cohortId?: number | null
 courseTypeId?: number
@@ -148,13 +171,16 @@ prerequisites?: string | null
 objectives?: string | null
 examForms?: string | null
 examRequirements?: string | null
-rubrics?: string | null
 major?: string | null
 
   createdBy?: number
 
   changeSummary?: string
   notes?: string
+
+  sourceType?: "MANUAL" | "IMPORT_PDF" | "IMPORT_DOCX" | "CLONE"
+  originalFileName?: string
+  originalFileType?: string
 
   sourceSyllabusId?: number
 
@@ -208,4 +234,29 @@ export interface SyllabusCreateContextResponse {
   }
   latestSyllabus?: Syllabus | null
   latestApprovedSyllabus?: Syllabus | null
+  coursePrograms?: {
+    id: number
+    programId?: number | null
+    programCode?: string | null
+    programName?: string | null
+    cohortId?: number | null
+    cohortName?: string | null
+    courseTypeId?: number | null
+    courseTypeName?: string | null
+    semesterSuggest?: number | null
+    required?: boolean | null
+  }[]
+  plos?: {
+    id: number
+    programId?: number | null
+    programCode?: string | null
+    code: string
+    description?: string | null
+  }[]
+  defaults?: {
+    language?: string | null
+    teachingMethods?: string | null
+    semester?: string | null
+    courseTypes?: string | null
+  }
 }

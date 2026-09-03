@@ -14,9 +14,9 @@ class PloCoverageReportAssemblerTest {
     void buildsIndependentCoverageSummaryAndContributionDetailsWithoutDuplicateCourses() {
         DashboardHeatmapResponse matrix = matrix();
         matrix.setCourseCoverages(List.of(
-                course(10, "IT001", "I", 2, List.of("CLO1", "CLO2")),
-                course(10, "IT001", "I", 2, List.of("CLO1", "CLO2")),
-                course(11, "IT002", "D", 1, List.of("CLO3"))
+                course(10, "IT001", "X", 2, List.of("CLO1", "CLO2")),
+                course(10, "IT001", "X", 2, List.of("CLO1", "CLO2")),
+                course(11, "IT002", "XX", 1, List.of("CLO3"))
         ));
 
         PloCoverageReportData report = PloCoverageReportAssembler.from(matrix);
@@ -45,9 +45,7 @@ class PloCoverageReportAssemblerTest {
         matrix.setProgramCode("CS-2021");
         matrix.setCohortId(2);
         matrix.setCohortName("CS2021");
-        matrix.setAcademicYear("2026-2027");
-        matrix.setSemester("1");
-        matrix.setScopeKey("program=1|cohort=2|academicYear=2026-2027|semester=1|courseType=ALL");
+        matrix.setScopeKey("program=1|cohort=2");
 
         DashboardHeatmapResponse.PloColumn plo1 = new DashboardHeatmapResponse.PloColumn();
         plo1.setId(100);

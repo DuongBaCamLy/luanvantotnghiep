@@ -3,6 +3,7 @@ package com.scse.curriculum.book.service;
 import com.scse.curriculum.book.dto.BookRequest;
 import com.scse.curriculum.book.dto.BookResponse;
 import com.scse.curriculum.book.entity.Book;
+import com.scse.curriculum.book.entity.BookType;
 import com.scse.curriculum.book.repository.BookRepository;
 import com.scse.curriculum.book.service.BookService;
 import com.scse.curriculum.common.exception.ResourceNotFoundException;
@@ -31,7 +32,9 @@ public class BookServiceImpl implements BookService {
                 .edition(request.getEdition())
                 .isbn(request.getIsbn())
                 .url(request.getUrl())
-                .bookType(request.getBookType())
+                .bookType(request.getBookType() == null
+                        ? BookType.REFERENCE
+                        : request.getBookType())
                 .build();
 
         return mapToResponse(

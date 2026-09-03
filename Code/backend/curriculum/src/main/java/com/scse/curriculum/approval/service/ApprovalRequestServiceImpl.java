@@ -18,8 +18,10 @@ import com.scse.curriculum.syllabus.entity.Syllabus;
 import com.scse.curriculum.syllabus.entity.SyllabusStatus;
 import com.scse.curriculum.syllabus.repository.SyllabusRepository;
 import com.scse.curriculum.syllabus.service.SyllabusAccessService;
-import com.scse.curriculum.syllabus.service.SyllabusService;
-import com.scse.curriculum.syllabus.dto.SyllabusResponse;
+import com.scse.curriculum.courseprogram.entity.CourseProgram;
+import com.scse.curriculum.courseprogram.repository.CourseProgramRepository;
+import com.scse.curriculum.classsection.entity.ClassSection;
+import com.scse.curriculum.classsection.repository.ClassSectionRepository;
 import com.scse.curriculum.user.entity.UserAccount;
 import com.scse.curriculum.user.entity.UserRole;
 import com.scse.curriculum.user.repository.UserAccountRepository;
@@ -41,7 +43,9 @@ public class ApprovalRequestServiceImpl
 
     private final SyllabusAccessService syllabusAccessService;
 
-    private final SyllabusService syllabusService;
+    private final CourseProgramRepository courseProgramRepository;
+
+    private final ClassSectionRepository classSectionRepository;
 
     @Override
     @Transactional
@@ -145,19 +149,11 @@ public class ApprovalRequestServiceImpl
          */
        if (isRejected) {
 
-    // FR-03.4:
-    // Snapshot đã submit kết thúc chính thức ở trạng thái REJECTED.
-    // UC-08:
-    // Sau đó hệ thống tự tạo một DRAFT mới để Faculty chỉnh sửa.
-    syllabus.setStatus(
-            SyllabusStatus.REJECTED);
+    // Reject is also a workflow transition on the same syllabus/version.
+    syllabus.setStatus(SyllabusStatus.REVISION_REQUESTED);
     syllabus.setUpdatedAt(LocalDateTime.now());
 
     syllabusRepository.saveAndFlush(syllabus);
-
-    SyllabusResponse revisionDraft = syllabusService.createRevisionDraft(
-            syllabus.getId(),
-            request.getComment());
 
             List<UserAccount> departmentHeads =
                     currentStep == ApprovalStep.STEP3_DEAN
@@ -171,7 +167,7 @@ public class ApprovalRequestServiceImpl
                     currentStep,
                     departmentHeads);
 
-            return map(savedApproval, revisionDraft);
+            return map(savedApproval);
         }
 
         /*
@@ -284,10 +280,14 @@ public class ApprovalRequestServiceImpl
         syllabusAccessService.assertCanOpenPendingStep(step);
         UserAccount currentUser = syllabusAccessService.currentUser();
 
-        return repository
-                .findByStepAndStatusOrderByCreatedAtAsc(
-                        step,
-                        ApprovalStatus.PENDING)
+        List<ApprovalRequest> pending = currentUser.getRole() == UserRole.DEPT_HEAD
+                ? repository.findPendingByManagedMajor(
+                        step, ApprovalStatus.PENDING,
+                        syllabusAccessService.currentManagedMajorId(currentUser))
+                : repository.findByStepAndStatusOrderByCreatedAtAsc(
+                        step, ApprovalStatus.PENDING);
+
+        return pending
                 .stream()
                 .filter(approval ->
                         syllabusAccessService.canView(
@@ -404,13 +404,11 @@ public List<ApprovalHistoryResponse> getApprovalHistory(
     
    private ApprovalResponse map(
         ApprovalRequest approval) {
-        return map(approval, null);
-   }
-
-   private ApprovalResponse map(
-        ApprovalRequest approval,
-        SyllabusResponse revisionDraft) {
-
+    Syllabus syllabus = approval.getSyllabus();
+    CourseProgram courseProgram = courseProgramRepository
+            .findBySyllabus_Id(syllabus.getId()).stream().findFirst().orElse(null);
+    ClassSection classSection = classSectionRepository
+            .findBySyllabusId(syllabus.getId()).stream().findFirst().orElse(null);
     return ApprovalResponse.builder()
             .id(approval.getId())
 
@@ -426,6 +424,26 @@ public List<ApprovalHistoryResponse> getApprovalHistory(
                     approval.getSyllabus()
                             .getCourse()
                             .getName())
+
+            .programCode(courseProgram != null && courseProgram.getProgram() != null
+                    ? courseProgram.getProgram().getCode()
+                    : classSection != null && classSection.getProgram() != null
+                            ? classSection.getProgram().getCode() : null)
+            .programName(courseProgram != null && courseProgram.getProgram() != null
+                    ? courseProgram.getProgram().getName()
+                    : classSection != null && classSection.getProgram() != null
+                            ? classSection.getProgram().getName() : null)
+            .cohortName(courseProgram != null && courseProgram.getCohort() != null
+                    ? courseProgram.getCohort().getName()
+                    : classSection != null && classSection.getCohort() != null
+                            ? classSection.getCohort().getName() : null)
+            .semester(syllabus.getSemester())
+            .instructorUsername(syllabus.getCreatedBy() == null
+                    ? null : syllabus.getCreatedBy().getUsername())
+            .departmentCode(syllabus.getCourse().getDepartment() == null
+                    ? null : syllabus.getCourse().getDepartment().getCode())
+            .departmentName(syllabus.getCourse().getDepartment() == null
+                    ? null : syllabus.getCourse().getDepartment().getName())
 
             .versionNumber(
                     approval.getSyllabus()
@@ -471,8 +489,8 @@ public List<ApprovalHistoryResponse> getApprovalHistory(
 
             .resolvedAt(approval.getResolvedAt())
 
-            .revisionDraftId(revisionDraft == null ? null : revisionDraft.getId())
-            .revisionDraftVersionLabel(revisionDraft == null ? null : revisionDraft.getVersionLabel())
+            .revisionDraftId(null)
+            .revisionDraftVersionLabel(null)
 
             .build();
 }

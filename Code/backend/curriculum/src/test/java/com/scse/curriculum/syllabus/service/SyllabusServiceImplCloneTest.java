@@ -4,7 +4,6 @@ import com.scse.curriculum.approval.repository.ApprovalRequestRepository;
 import com.scse.curriculum.assessment.entity.AssessmentClo;
 import com.scse.curriculum.assessment.entity.AssessmentCloId;
 import com.scse.curriculum.assessment.entity.AssessmentComponent;
-import com.scse.curriculum.assessment.entity.AssessmentType;
 import com.scse.curriculum.assessment.repository.AssessmentCloRepository;
 import com.scse.curriculum.assessment.repository.AssessmentComponentRepository;
 import com.scse.curriculum.book.entity.Book;
@@ -245,7 +244,7 @@ class SyllabusServiceImplCloneTest {
                 .syllabus(source)
                 .name("Final Exam")
                 .nameVn("Thi cuối kỳ")
-                .assessmentType(AssessmentType.FINAL_EXAM)
+            .assessmentType("FINAL_EXAM")
                 .weightPercent(50f)
                 .minScore(0f)
                 .maxScore(100f)

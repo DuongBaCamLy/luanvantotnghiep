@@ -90,7 +90,7 @@ public class ProgramController {
  * Timeline lịch sử cập nhật CTĐT qua từng cohort.
  */
 @GetMapping("/{id}/curriculum-timeline")
-@PreAuthorize("hasAnyRole('ADMIN', 'DEAN', 'DEPT_HEAD')")
+@PreAuthorize("hasAnyRole('ADMIN', 'DEAN', 'DEPT_HEAD', 'INSTRUCTOR')")
 public List<CurriculumTimelineResponse>
         getCurriculumTimeline(
                 @PathVariable Integer id) {

@@ -14,6 +14,9 @@ import com.scse.curriculum.user.dto.UpdateUserRequest;
 import com.scse.curriculum.user.dto.UserAccountResponse;
 import com.scse.curriculum.user.entity.UserAccount;
 import com.scse.curriculum.user.repository.UserAccountRepository;
+import com.scse.curriculum.major.entity.Major;
+import com.scse.curriculum.major.repository.MajorRepository;
+import com.scse.curriculum.user.entity.UserRole;
 
 import lombok.RequiredArgsConstructor;
 
@@ -24,7 +27,9 @@ public class UserAccountService {
     private final UserAccountRepository repository;
 
     private final PasswordEncoder passwordEncoder;
+    private final MajorRepository majorRepository;
 
+    @Transactional(readOnly = true)
     public List<UserAccountResponse> getAll() {
 
         return repository
@@ -34,6 +39,7 @@ public class UserAccountService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
     public UserAccountResponse getById(
             Integer id) {
 
@@ -47,6 +53,7 @@ public class UserAccountService {
     @Transactional
     public UserAccountResponse create(
             CreateUserRequest request) {
+        Major managedMajor = resolveManagedMajor(request.getRole(), request.getManagedMajorId(), null, true);
 
         if (repository
                 .findByUsername(
@@ -80,6 +87,7 @@ public class UserAccountService {
                                 request.getRole())
                         .instructorId(
                                 request.getInstructorId())
+                        .managedMajor(managedMajor)
                         .isActive(true)
                         .createdAt(
                                 LocalDateTime.now())
@@ -99,6 +107,11 @@ public class UserAccountService {
 
         UserAccount user =
                 findEntityOrThrow(id);
+        boolean active = request.getIsActive() == null
+                ? Boolean.TRUE.equals(user.getIsActive())
+                : Boolean.TRUE.equals(request.getIsActive());
+        Major managedMajor = resolveManagedMajor(
+                request.getRole(), request.getManagedMajorId(), id, active);
 
         user.setUsername(
                 request.getUsername());
@@ -111,6 +124,7 @@ public class UserAccountService {
 
         user.setInstructorId(
                 request.getInstructorId());
+        user.setManagedMajor(managedMajor);
 
         if (request.getIsActive() != null) {
             user.setIsActive(
@@ -151,9 +165,13 @@ public class UserAccountService {
         UserAccount user =
                 findEntityOrThrow(id);
 
-        user.setIsActive(
-                !Boolean.TRUE.equals(
-                        user.getIsActive()));
+        boolean activating = !Boolean.TRUE.equals(user.getIsActive());
+        if (activating && user.getRole() == UserRole.DEPT_HEAD) {
+            resolveManagedMajor(UserRole.DEPT_HEAD,
+                    user.getManagedMajor() == null ? null : user.getManagedMajor().getId(),
+                    user.getId(), true);
+        }
+        user.setIsActive(activating);
 
         UserAccount saved =
                 repository.save(user);
@@ -171,5 +189,24 @@ public class UserAccountService {
                         new ResourceNotFoundException(
                                 "User not found with id = "
                                         + id));
+    }
+
+    private Major resolveManagedMajor(
+            UserRole role, Integer majorId, Integer excludedUserId, boolean active) {
+        if (role != UserRole.DEPT_HEAD) {
+            return null;
+        }
+        if (majorId == null) {
+            throw new IllegalArgumentException("Managed Major is required for a Head of Department account.");
+        }
+        Major major = majorRepository.findById(majorId)
+                .orElseThrow(() -> new ResourceNotFoundException("Managed Major not found."));
+        int excludedId = excludedUserId == null ? -1 : excludedUserId;
+        if (active && repository.existsByRoleAndManagedMajor_IdAndIsActiveTrueAndIdNot(
+                UserRole.DEPT_HEAD, majorId, excludedId)) {
+            throw new IllegalStateException(
+                    major.getName() + " already has an active Head of Department.");
+        }
+        return major;
     }
 }
