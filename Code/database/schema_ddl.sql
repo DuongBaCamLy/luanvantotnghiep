@@ -571,7 +571,7 @@ CREATE TABLE class_section (
   is_active      BOOLEAN      NOT NULL DEFAULT TRUE,
 
   PRIMARY KEY (id),
-  UNIQUE KEY uq_class_section (course_id, semester, academic_year, group_number),
+  UNIQUE KEY uq_class_section_context (course_id, program_id, cohort_id, instructor_id, semester, academic_year, group_number),
   KEY idx_cs_course (course_id),
   KEY idx_cs_program (program_id),
   KEY idx_cs_cohort (cohort_id),

@@ -58,3 +58,6 @@ repomix-output.txt
 # Local source backup copies
 /Code/frontend/src/components/syllabus/SyllabusForm.tsx.before-courselevel-fix
 /Code/backend/curriculum/src/main/java/com/scse/curriculum/syllabus/importer/parser/SyllabusPdfParser.java.bak_before_contet_fix
+
+# Faculty server secret
+Code/.env
