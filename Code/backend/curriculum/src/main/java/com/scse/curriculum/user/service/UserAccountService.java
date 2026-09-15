@@ -72,7 +72,12 @@ public class UserAccountService {
             throw new DataIntegrityViolationException(
                     "Email already exists");
         }
+if (request.getRole() == UserRole.ADMIN
+        && hasAnotherAdmin(null)) {
 
+    throw new IllegalStateException(
+            "Only one Administrator account is allowed.");
+}
         UserAccount user =
                 UserAccount
                         .builder()
@@ -107,6 +112,21 @@ public class UserAccountService {
 
         UserAccount user =
                 findEntityOrThrow(id);
+                
+
+if (user.getRole() == UserRole.ADMIN
+        && request.getRole() != UserRole.ADMIN) {
+
+    throw new IllegalStateException(
+            "The Administrator account role cannot be changed.");
+}
+
+if (request.getRole() == UserRole.ADMIN
+        && hasAnotherAdmin(id)) {
+
+    throw new IllegalStateException(
+            "Only one Administrator account is allowed.");
+}
         boolean active = request.getIsActive() == null
                 ? Boolean.TRUE.equals(user.getIsActive())
                 : Boolean.TRUE.equals(request.getIsActive());
@@ -153,9 +173,19 @@ public class UserAccountService {
             Integer id) {
 
         UserAccount user =
-                findEntityOrThrow(id);
+        findEntityOrThrow(id);
 
-        repository.delete(user);
+if (user.getRole() == UserRole.ADMIN) {
+    throw new IllegalStateException(
+            "The Administrator account cannot be deleted.");
+}
+
+if (Boolean.TRUE.equals(user.getIsActive())) {
+    throw new IllegalStateException(
+            "Deactivate the account before deleting it.");
+}
+
+repository.delete(user);
     }
 
     @Transactional
@@ -165,6 +195,11 @@ public class UserAccountService {
         UserAccount user =
                 findEntityOrThrow(id);
 
+
+if (user.getRole() == UserRole.ADMIN) {
+    throw new IllegalStateException(
+            "The Administrator account cannot be deactivated.");
+}
         boolean activating = !Boolean.TRUE.equals(user.getIsActive());
         if (activating && user.getRole() == UserRole.DEPT_HEAD) {
             resolveManagedMajor(UserRole.DEPT_HEAD,
@@ -209,4 +244,17 @@ public class UserAccountService {
         }
         return major;
     }
+    
+private boolean hasAnotherAdmin(
+        Integer excludedUserId) {
+
+    return repository
+            .findByRole(UserRole.ADMIN)
+            .stream()
+            .anyMatch(user ->
+                    excludedUserId == null
+                            || !excludedUserId.equals(
+                                    user.getId()));
+}
+
 }

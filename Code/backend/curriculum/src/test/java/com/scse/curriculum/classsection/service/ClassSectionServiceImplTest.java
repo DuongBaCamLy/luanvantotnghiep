@@ -1,5 +1,11 @@
 package com.scse.curriculum.classsection.service;
-
+import com.scse.curriculum.cohort.entity.Cohort;
+import com.scse.curriculum.cohort.repository.CohortRepository;
+import com.scse.curriculum.courseprogram.entity.CourseProgram;
+import com.scse.curriculum.courseprogram.repository.CourseProgramRepository;
+import com.scse.curriculum.major.entity.Major;
+import com.scse.curriculum.program.entity.Program;
+import com.scse.curriculum.program.repository.ProgramRepository;
 import com.scse.curriculum.auth.security.CurrentUserService;
 import com.scse.curriculum.classsection.dto.ClassSectionResponse;
 import com.scse.curriculum.classsection.dto.CreateClassSectionRequest;
@@ -38,6 +44,24 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class ClassSectionServiceImplTest {
 
+
+        @Mock
+private ProgramRepository programRepository;
+
+@Mock
+private CohortRepository cohortRepository;
+
+@Mock
+private CourseProgramRepository courseProgramRepository;
+
+private Major csMajor;
+private Major itMajor;
+
+private Program csProgram;
+private Program itProgram;
+
+private Cohort csCohort;
+private Cohort itCohort;
     @Mock
     private ClassSectionRepository repository;
 
@@ -97,13 +121,55 @@ class ClassSectionServiceImplTest {
                 .isActive(true)
                 .build();
 
+                csMajor = Major.builder()
+        .id(7)
+        .code("CS")
+        .name("Computer Science")
+        .build();
+
+itMajor = Major.builder()
+        .id(8)
+        .code("IT")
+        .name("Information Technology")
+        .build();
+
+csProgram = Program.builder()
+        .id(70)
+        .code("CS")
+        .name("Computer Science")
+        .major(csMajor)
+        .build();
+
+itProgram = Program.builder()
+        .id(80)
+        .code("IT")
+        .name("Information Technology")
+        .major(itMajor)
+        .build();
+
+csCohort = Cohort.builder()
+        .id(700)
+        .name("CS2026")
+        .entryYear(2026)
+        .program(csProgram)
+        .isActive(true)
+        .build();
+
+itCohort = Cohort.builder()
+        .id(800)
+        .name("IT2026")
+        .entryYear(2026)
+        .program(itProgram)
+        .isActive(true)
+        .build();
         csDepartmentHeadAccount = UserAccount.builder()
-                .id(2)
-                .username("cs_head")
-                .role(UserRole.DEPT_HEAD)
-                .instructorId(100)
-                .isActive(true)
-                .build();
+        .id(2)
+        .username("cs_head")
+        .role(UserRole.DEPT_HEAD)
+        .instructorId(100)
+        .managedMajor(csMajor)
+        .isActive(true)
+        .build();
 
         csDepartmentHeadProfile = Instructor.builder()
                 .id(100)
@@ -177,107 +243,105 @@ class ClassSectionServiceImplTest {
     }
 
     @Test
-    void departmentHeadGetAllUsesOwnDepartmentScope() {
-        ClassSection section = createSection(
-                2,
-                csCourse,
-                csInstructor,
-                null);
+void departmentHeadGetAllUsesOwnManagedMajorScope() {
+    ClassSection section = createSection(
+            2,
+            csCourse,
+            csInstructor,
+            null);
 
-        when(currentUserService.getCurrentUser())
-                .thenReturn(csDepartmentHeadAccount);
+    when(currentUserService.getCurrentUser())
+            .thenReturn(csDepartmentHeadAccount);
 
-        when(instructorRepository.findById(100))
-                .thenReturn(Optional.of(
-                        csDepartmentHeadProfile));
+    when(repository.findAllInScope(7))
+            .thenReturn(List.of(section));
 
-        when(repository.findAllInScope(1))
-                .thenReturn(List.of(section));
+    List<ClassSectionResponse> result =
+            service.getAll();
 
-        List<ClassSectionResponse> result =
-                service.getAll();
+    assertThat(result).hasSize(1);
+    assertThat(result.getFirst().getCourseId())
+            .isEqualTo(10);
 
-        assertThat(result).hasSize(1);
-        assertThat(result.getFirst().getCourseId())
-                .isEqualTo(10);
+    verify(repository).findAllInScope(7);
+}
+    @Test
+void departmentHeadCannotReadSectionOutsideManagedMajor() {
+    when(currentUserService.getCurrentUser())
+            .thenReturn(csDepartmentHeadAccount);
 
-        verify(repository).findAllInScope(1);
-    }
+    when(repository.findByIdInScope(999, 7))
+            .thenReturn(Optional.empty());
+
+    assertThatThrownBy(() -> service.getById(999))
+            .isInstanceOf(ResourceNotFoundException.class)
+            .hasMessage("Class section not found");
+
+    verify(repository).findByIdInScope(999, 7);
+}
+    @Test
+void departmentHeadCannotCreateSectionForProgramOfOtherManagedMajor() {
+    CreateClassSectionRequest request =
+            createRequest(20, 101);
+
+    request.setProgramId(80);
+    request.setCohortId(800);
+
+    when(currentUserService.getCurrentUser())
+            .thenReturn(csDepartmentHeadAccount);
+
+    when(courseRepository.findById(20))
+            .thenReturn(Optional.of(itCourse));
+
+    when(instructorRepository.findById(101))
+            .thenReturn(Optional.of(csInstructor));
+
+    stubCurriculumContext(
+            itCourse,
+            itProgram,
+            itCohort);
+
+    assertThatThrownBy(() -> service.create(request))
+            .isInstanceOf(ForbiddenOperationException.class)
+            .hasMessageContaining("Managed Major");
+
+    verify(repository, never())
+            .save(any(ClassSection.class));
+}
 
     @Test
-    void departmentHeadCannotReadSectionOutsideDepartment() {
-        when(currentUserService.getCurrentUser())
-                .thenReturn(csDepartmentHeadAccount);
+void departmentHeadCanAssignActiveInstructorWhenProgramIsInManagedMajor() {
+    CreateClassSectionRequest request =
+            createRequest(10, 201);
 
-        when(instructorRepository.findById(100))
-                .thenReturn(Optional.of(
-                        csDepartmentHeadProfile));
+    when(currentUserService.getCurrentUser())
+            .thenReturn(csDepartmentHeadAccount);
 
-        when(repository.findByIdInScope(999, 1))
-                .thenReturn(Optional.empty());
+    when(courseRepository.findById(10))
+            .thenReturn(Optional.of(csCourse));
 
-        assertThatThrownBy(() -> service.getById(999))
-                .isInstanceOf(ResourceNotFoundException.class)
-                .hasMessage("Class section not found");
+    when(instructorRepository.findById(201))
+            .thenReturn(Optional.of(itInstructor));
 
-        verify(repository).findByIdInScope(999, 1);
-    }
+    stubCurriculumContext(
+            csCourse,
+            csProgram,
+            csCohort);
 
-    @Test
-    void departmentHeadCannotCreateSectionForCourseOfOtherDepartment() {
-        CreateClassSectionRequest request =
-                createRequest(20, 101);
+    when(repository.findByCourse_Id(10))
+            .thenReturn(List.of());
 
-        when(currentUserService.getCurrentUser())
-                .thenReturn(csDepartmentHeadAccount);
+    when(repository.save(any(ClassSection.class)))
+            .thenAnswer(invocation -> invocation.getArgument(0));
 
-        when(courseRepository.findById(20))
-                .thenReturn(Optional.of(itCourse));
+    ClassSectionResponse result =
+            service.create(request);
 
-        when(instructorRepository.findById(101))
-                .thenReturn(Optional.of(csInstructor));
-
-        when(instructorRepository.findById(100))
-                .thenReturn(Optional.of(
-                        csDepartmentHeadProfile));
-
-        assertThatThrownBy(() -> service.create(request))
-                .isInstanceOf(
-                        ForbiddenOperationException.class)
-                .hasMessageContaining(
-                        "môn học thuộc bộ môn của mình");
-
-        verify(repository, never())
-                .save(any(ClassSection.class));
-    }
-
-    @Test
-    void departmentHeadCannotAssignInstructorOfOtherDepartment() {
-        CreateClassSectionRequest request =
-                createRequest(10, 201);
-
-        when(currentUserService.getCurrentUser())
-                .thenReturn(csDepartmentHeadAccount);
-
-        when(courseRepository.findById(10))
-                .thenReturn(Optional.of(csCourse));
-
-        when(instructorRepository.findById(201))
-                .thenReturn(Optional.of(itInstructor));
-
-        when(instructorRepository.findById(100))
-                .thenReturn(Optional.of(
-                        csDepartmentHeadProfile));
-
-        assertThatThrownBy(() -> service.create(request))
-                .isInstanceOf(
-                        ForbiddenOperationException.class)
-                .hasMessageContaining(
-                        "giảng viên thuộc bộ môn của mình");
-
-        verify(repository, never())
-                .save(any(ClassSection.class));
-    }
+    assertThat(result.getCourseId()).isEqualTo(10);
+    assertThat(result.getInstructorId()).isEqualTo(201);
+    assertThat(result.getProgramId()).isEqualTo(70);
+    assertThat(result.getCohortId()).isEqualTo(700);
+}
 
     @Test
     void cannotDeleteSectionThatAlreadyHasSyllabus() {
@@ -359,9 +423,8 @@ class ClassSectionServiceImplTest {
 
         verify(repository).delete(section);
     }
-
     @Test
-    void cannotCreateDuplicateCourseTermYearAndGroup() {
+    void cannotCreateDuplicateInstructorCourseAssignment() {
         CreateClassSectionRequest request =
                 createRequest(10, 101);
 
@@ -374,23 +437,163 @@ class ClassSectionServiceImplTest {
         when(instructorRepository.findById(101))
                 .thenReturn(Optional.of(csInstructor));
 
-        when(repository.countDuplicateAssignment(
-                10,
-                1,
-                "2026-2027",
-                1,
-                null))
-                .thenReturn(1L);
+        stubCurriculumContext(
+                csCourse,
+                csProgram,
+                csCohort);
 
-        assertThatThrownBy(() -> service.create(request))
-                .isInstanceOf(IllegalStateException.class)
+        ClassSection duplicate =
+                ClassSection.builder()
+                        .id(99)
+                        .course(csCourse)
+                        .program(csProgram)
+                        .cohort(csCohort)
+                        .instructor(csInstructor)
+                        .syllabus(null)
+                        .semester(1)
+                        .academicYear("2026-2027")
+                        .groupNumber(1)
+                        .sectionType(SectionType.THEORY)
+                        .isActive(true)
+                        .build();
+
+        when(repository.findByCourse_Id(10))
+                .thenReturn(List.of(duplicate));
+
+        assertThatThrownBy(
+                () -> service.create(request))
+                .isInstanceOf(
+                        IllegalStateException.class)
                 .hasMessageContaining(
-                        "Đã tồn tại phân công");
+                        "Teaching assignment already exists");
 
         verify(repository, never())
                 .save(any(ClassSection.class));
     }
 
+    @Test
+    void linkedSyllabusUsesCohortIdentityNotTeachingAcademicYear() {
+        /*
+         * Regression:
+         *
+         * Syllabus academicYear stores the curriculum Cohort name:
+         *     CS2026
+         *
+         * ClassSection academicYear stores the teaching academic year:
+         *     2026-2027
+         *
+         * They are different concepts and must not be compared directly.
+         */
+        Program program = Program.builder()
+                .id(71)
+                .code("CS-2021")
+                .name("Computer Science 2021")
+                .major(csMajor)
+                .build();
+
+        Cohort cohort = Cohort.builder()
+                .id(701)
+                .name("CS2026")
+                .entryYear(2026)
+                .program(program)
+                .isActive(true)
+                .build();
+
+        CourseProgram curriculumEntry =
+                CourseProgram.builder()
+                        .course(csCourse)
+                        .program(program)
+                        .cohort(cohort)
+                        .semesterSuggest(2)
+                        .build();
+
+        Syllabus syllabus =
+                Syllabus.builder()
+                        .id(501)
+                        .course(csCourse)
+                        .program("CS-2021")
+                        .academicYear("CS2026")
+                        .semester("Semester 2")
+                        .versionNumber(1)
+                        .build();
+
+        CreateClassSectionRequest request =
+                createRequest(10, 101);
+
+        request.setProgramId(71);
+        request.setCohortId(701);
+        request.setSyllabusId(501);
+        /*
+         * Simulate stale/wrong client metadata.
+         * Curriculum is authoritative and says Semester 2.
+         */
+        request.setSemester(1);
+
+        /*
+         * Teaching academic year deliberately differs from
+         * the syllabus Cohort identity.
+         */
+        request.setAcademicYear("2026-2027");
+
+        when(currentUserService.getCurrentUser())
+                .thenReturn(adminAccount);
+
+        when(courseRepository.findById(10))
+                .thenReturn(Optional.of(csCourse));
+
+        when(programRepository.findById(71))
+                .thenReturn(Optional.of(program));
+
+        when(cohortRepository.findById(701))
+                .thenReturn(Optional.of(cohort));
+
+        when(courseProgramRepository
+                .findEffectiveByProgramIdAndCohortIdWithRelations(
+                        71,
+                        701))
+                .thenReturn(List.of(curriculumEntry));
+
+        when(courseProgramRepository
+                .findByCourse_IdAndProgram_IdAndCohort_Id(
+                        10,
+                        71,
+                        701))
+                .thenReturn(Optional.of(curriculumEntry));
+
+        when(instructorRepository.findById(101))
+                .thenReturn(Optional.of(csInstructor));
+
+        when(syllabusRepository.findById(501))
+                .thenReturn(Optional.of(syllabus));
+
+        when(repository.findByCourse_Id(10))
+                .thenReturn(List.of());
+
+        when(repository.save(any(ClassSection.class)))
+                .thenAnswer(invocation ->
+                        invocation.getArgument(0));
+
+        ClassSectionResponse result =
+                service.create(request);
+
+        assertThat(result.getCourseId())
+                .isEqualTo(10);
+
+        assertThat(result.getProgramCode())
+                .isEqualTo("CS-2021");
+
+        assertThat(result.getCohortName())
+                .isEqualTo("CS2026");
+
+        assertThat(result.getSemester())
+                .isEqualTo(2);
+
+        assertThat(result.getAcademicYear())
+                .isEqualTo("2026-2027");
+
+        assertThat(result.getSyllabusId())
+                .isEqualTo(501);
+    }
     private CreateClassSectionRequest createRequest(
             Integer courseId,
             Integer instructorId) {
@@ -399,6 +602,8 @@ class ClassSectionServiceImplTest {
                 new CreateClassSectionRequest();
 
         request.setCourseId(courseId);
+        request.setProgramId(70);
+request.setCohortId(700);
         request.setSyllabusId(null);
         request.setInstructorId(instructorId);
         request.setSemester(1);
@@ -413,7 +618,30 @@ class ClassSectionServiceImplTest {
 
         return request;
     }
+private void stubCurriculumContext(
+        Course course,
+        Program program,
+        Cohort cohort) {
 
+    when(programRepository.findById(program.getId()))
+            .thenReturn(Optional.of(program));
+
+    when(cohortRepository.findById(cohort.getId()))
+            .thenReturn(Optional.of(cohort));
+
+    CourseProgram curriculumEntry =
+            CourseProgram.builder()
+                    .course(course)
+                    .program(program)
+                    .cohort(cohort)
+                    .build();
+
+    when(courseProgramRepository
+            .findEffectiveByProgramIdAndCohortIdWithRelations(
+                    program.getId(),
+                    cohort.getId()))
+            .thenReturn(List.of(curriculumEntry));
+}
     private ClassSection createSection(
             Integer id,
             Course course,

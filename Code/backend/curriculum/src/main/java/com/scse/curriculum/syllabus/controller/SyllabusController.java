@@ -37,11 +37,10 @@ import org.springframework.security.access.prepost.PreAuthorize;
 
 
 import org.springframework.web.bind.annotation.*;
-
+import com.scse.curriculum.syllabus.comparison.dto.SemanticSyllabusDiffResponse;
 
 import java.nio.charset.StandardCharsets;
 import java.util.List;
-import java.util.Map;
 
 
 
@@ -297,7 +296,7 @@ public class SyllabusController {
 
 
 
-    @DeleteMapping("/{id}")
+    @DeleteMapping("/{id:[0-9]+}")
     @PreAuthorize(
             "hasAnyRole('INSTRUCTOR','ADMIN')"
     )
@@ -316,12 +315,7 @@ public class SyllabusController {
 
     }
 
-    @DeleteMapping("/all")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Map<String, Integer>> deleteAll() {
-        int deletedCount = service.deleteAll();
-        return ResponseEntity.ok(Map.of("deletedCount", deletedCount));
-    }
+
 
 
 
@@ -370,42 +364,76 @@ public class SyllabusController {
     }
 
 
+@GetMapping("/{id}/previous-comparable")
+@PreAuthorize(
+        "hasAnyRole('DEPT_HEAD','DEAN','ADMIN','INSTRUCTOR')")
+public ResponseEntity<SyllabusResponse>
+getPreviousComparable(
+        @PathVariable Integer id) {
 
+    SyllabusResponse previous =
+            service.getPreviousComparable(id);
 
-
-
-
-    /*
-     * =====================================================
-     * VERSION DIFF
-     * =====================================================
-     */
-
-
-    @GetMapping("/{id}/diff")
-    @PreAuthorize(
-            "hasAnyRole('DEPT_HEAD','DEAN','ADMIN','INSTRUCTOR')"
-    )
-    public SyllabusDiffResponse getDiff(
-
-            @PathVariable Integer id,
-
-            @RequestParam Integer compareWith
-
-    ){
-
-        return service.getDiff(
-                compareWith,
-                id
-        );
-
+    if (previous == null) {
+        return ResponseEntity
+                .noContent()
+                .build();
     }
 
+    return ResponseEntity.ok(previous);
+}
+
+/*
+ * =====================================================
+ * VERSION DIFF
+ * =====================================================
+ */
+
+@GetMapping("/{id}/diff")
+@PreAuthorize(
+        "hasAnyRole('DEPT_HEAD','DEAN','ADMIN','INSTRUCTOR')"
+)
+public SyllabusDiffResponse getDiff(
+
+        @PathVariable Integer id,
+
+        @RequestParam Integer compareWith
+
+) {
+
+    return service.getDiff(
+            compareWith,
+            id
+    );
+}
 
 
+/*
+ * =====================================================
+ * AI-ASSISTED SEMANTIC DIFF
+ *
+ * compareWith = OLD / baseline syllabus
+ * id          = NEW / target syllabus
+ * =====================================================
+ */
 
+@PostMapping("/{id}/diff/semantic")
+@PreAuthorize(
+        "hasAnyRole('DEPT_HEAD','DEAN','ADMIN','INSTRUCTOR')"
+)
+public SemanticSyllabusDiffResponse getSemanticDiff(
 
+        @PathVariable Integer id,
 
+        @RequestParam Integer compareWith
+
+) {
+
+    return service.getSemanticDiff(
+            compareWith,
+            id
+    );
+}
 
     /*
      * =====================================================

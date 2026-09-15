@@ -142,7 +142,7 @@ export default function CurriculumTimelinePage() {
   const hasError = isProgramError || isTimelineError
 
   return (
-    <div className="mx-auto w-full max-w-[1450px] space-y-5 pb-10">
+    <div data-admin-page="CurriculumTimelinePage" className="mx-auto w-full max-w-[1450px] space-y-5 pb-10">
       <section className="relative overflow-hidden rounded-2xl border border-[#d7e5e8] bg-white shadow-sm">
         <div className="absolute inset-x-0 top-0 h-[3px] bg-gradient-to-r from-[#007d84] via-[#15949a] to-[#f0a72f]" />
 
@@ -152,7 +152,7 @@ export default function CurriculumTimelinePage() {
               <History className="size-5" />
             </div>
 
-            <div>
+            <div data-admin-page-header="CurriculumTimelinePage">
               <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#708894]">
                 Curriculum Evolution
               </p>

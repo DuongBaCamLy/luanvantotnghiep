@@ -1,0 +1,8 @@
+[INFO] Tests run: 18, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.500 s -- in com.scse.curriculum.syllabus.service.SyllabusAccessServiceTest
+[INFO] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.594 s -- in com.scse.curriculum.syllabus.service.SyllabusServiceImplCloneTest
+[INFO] Tests run: 7, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.050 s -- in com.scse.curriculum.syllabus.service.SyllabusServiceImplCreateTest
+[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.108 s -- in com.scse.curriculum.syllabus.service.SyllabusServiceImplDeleteTest
+[INFO] Tests run: 31, Failures: 0, Errors: 0, Skipped: 0
+[INFO] BUILD SUCCESS
+[INFO] Total time:  5.035 s
+[INFO] Finished at: 2026-09-10T00:39:22+07:00

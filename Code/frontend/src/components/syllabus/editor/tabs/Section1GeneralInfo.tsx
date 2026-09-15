@@ -1,3 +1,4 @@
+import { formatVersionLabel } from "@/lib/syllabusVersion"
 import { useQuery } from "@tanstack/react-query"
 import { courseRelationshipApi } from "@/api/courseRelationshipApi"
 import { useState } from "react"
@@ -40,7 +41,7 @@ export default function Section1GeneralInfo({ syllabus, readOnly = false }: Prop
 
   const [form, setForm] = useState({
   // Các field đang được render trong UI
-  versionLabel: syllabus.versionLabel ?? "",
+  versionLabel: formatVersionLabel(syllabus.versionNumber, syllabus.versionLabel),
   academicYear: syllabus.academicYear ?? "",
   changeSummary: syllabus.changeSummary ?? "",
   notes: syllabus.notes ?? "",
@@ -233,10 +234,9 @@ export default function Section1GeneralInfo({ syllabus, readOnly = false }: Prop
               </Label>
               <Input
                 className={`${fieldClass} ${readOnly ? readOnlyClass : ""}`}
-                readOnly={readOnly}
-                placeholder="v1.0, v2024.1..."
+                readOnly
+                placeholder="v1.0"
                 value={form.versionLabel}
-                onChange={(e) => setForm({ ...form, versionLabel: e.target.value })}
               />
             </div>
 
@@ -245,7 +245,7 @@ export default function Section1GeneralInfo({ syllabus, readOnly = false }: Prop
                 Version Number
               </Label>
               <div className={`h-10 px-3 flex items-center rounded-lg border border-slate-200 text-sm ${readOnlyClass}`}>
-                v{syllabus.versionNumber}
+                {formatVersionLabel(syllabus.versionNumber, syllabus.versionLabel)}
               </div>
             </div>
           </div>

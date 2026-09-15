@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react"
+import { isAxiosError } from "axios"
+import { useMemo, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 
 import { getMyActiveAssignments } from "@/api/classSectionApi"
@@ -24,7 +25,9 @@ import {
 import { useCloneSyllabus } from "@/hooks/useCloneSyllabus"
 import { useAuthStore } from "@/store/authStore"
 import type { Syllabus } from "@/types/syllabus"
-
+import {
+  SYLLABUS_SEMESTER_OPTIONS,
+} from "@/lib/syllabusCatalogFilters"
 type Props = {
   source: Syllabus | null
   open: boolean
@@ -39,14 +42,28 @@ export default function CloneSyllabusDialog({
   onCloned,
 }: Props) {
   const isInstructor = useAuthStore((state) => state.user?.role === "INSTRUCTOR")
+const normalizeSemesterLabel = (
+  value: unknown,
+) => {
+  const text = String(value ?? "").trim()
 
+  if (!text) return ""
+
+  const match = text.match(
+    /^(?:(?:semester|hk)\s*)?([1-8])$/i,
+  )
+
+  return match
+    ? `Semester ${match[1]}`
+    : text
+}
   const cloneMutation = useCloneSyllabus()
   const [assignmentId, setAssignmentId] = useState<number | null>(null)
-  const [academicYear, setAcademicYear] = useState("")
-  const [semester, setSemester] = useState("")
-  const [changeSummary, setChangeSummary] = useState("")
-  const [cohortId, setCohortId] = useState("")
-
+  const [semester, setSemester] =
+  useState("")
+const [cohortId, setCohortId] =
+  useState("")
+const [changeSummary, setChangeSummary] = useState("")
   const { data: assignments = [], isLoading } = useQuery({
     queryKey: ["my-active-assignments"],
     queryFn: getMyActiveAssignments,
@@ -58,7 +75,46 @@ export default function CloneSyllabusDialog({
     queryFn: cohortApi.getAll,
     enabled: open && !isInstructor,
   })
+const targetCohorts =
+  useMemo(() => {
+    if (!source) {
+      return []
+    }
 
+    return cohorts
+      .filter(
+        (cohort) =>
+          cohort.isActive
+          && (
+            !source.programId
+            || cohort.programId
+              === source.programId
+          ),
+      )
+      .slice()
+      .sort(
+        (a, b) =>
+          a.entryYear
+          - b.entryYear,
+      )
+  }, [
+    cohorts,
+    source,
+  ])
+
+const selectedCohort =
+  useMemo(
+    () =>
+      targetCohorts.find(
+        (cohort) =>
+          String(cohort.id)
+          === cohortId,
+      ),
+    [
+      cohortId,
+      targetCohorts,
+    ],
+  )
   const targetAssignments = useMemo(() => {
     if (!source) return []
 
@@ -70,61 +126,77 @@ export default function CloneSyllabusDialog({
     )
   }, [assignments, source])
 
-  useEffect(() => {
-    if (!open || !source) return
+  const [formContext, setFormContext] = useState<{ open: boolean; source: typeof source }>({ open: false, source: null })
+  if (formContext.open !== open || formContext.source !== source) {
+    setFormContext({ open, source })
+    if (open && source) {
 
-    setAcademicYear(source.academicYear ?? "")
-    setSemester(source.semester ?? "")
-    setCohortId(source.cohortId ? String(source.cohortId) : "")
+    setSemester(
+  normalizeSemesterLabel(
+    source.semester,
+  ),
+)
+
+setCohortId(
+  source.cohortId
+    ? String(source.cohortId)
+    : "",
+)
     setChangeSummary(
-      `Clone from ${source.versionLabel} (${source.academicYear} - ${source.semester ?? ""})`
-    )
+  `Clone from ${source.versionLabel} (${source.academicYear} - ${normalizeSemesterLabel(
+    source.semester,
+  )})`,
+)
     setAssignmentId(null)
-  }, [open, source])
-
-  useEffect(() => {
-    if (!open || !isInstructor || assignmentId !== null) return
-    if (targetAssignments.length > 0) {
-      setAssignmentId(targetAssignments[0].id)
     }
-  }, [assignmentId, isInstructor, open, targetAssignments])
+  }
+
+  const effectiveAssignmentId = assignmentId ?? (isInstructor ? targetAssignments[0]?.id ?? null : null)
 
   const handleClone = () => {
     if (!source) return
 
-    if (isInstructor && assignmentId === null) {
+    if (isInstructor && effectiveAssignmentId === null) {
       alert("Please select the target-semester teaching assignment.")
       return
     }
 
-    if (!isInstructor && (!academicYear.trim() || !semester.trim())) {
-      alert("Please enter the target academic year and semester.")
-      return
-    }
+    if (
+  !isInstructor
+  && (
+    !selectedCohort
+    || !semester
+  )
+) {
+  alert(
+    "Please select the target academic year and semester.",
+  )
+  return
+}
 
     cloneMutation.mutate(
       {
         id: source.id,
         request: isInstructor
           ? {
-              classSectionId: assignmentId ?? undefined,
+              classSectionId: effectiveAssignmentId ?? undefined,
               changeSummary: changeSummary.trim(),
             }
           : {
-              academicYear: academicYear.trim(),
-              semester: semester.trim(),
-              cohortId: cohortId ? Number(cohortId) : undefined,
-              changeSummary: changeSummary.trim(),
-            },
+    cohortId: selectedCohort?.id,
+    academicYear: selectedCohort?.name,
+    semester,
+    changeSummary: changeSummary.trim(),
+  },
       },
       {
         onSuccess: (cloned) => {
           onOpenChange(false)
           onCloned(cloned)
         },
-        onError: (error: any) => {
+        onError: (error: unknown) => {
           alert(
-            error?.response?.data?.message
+            (isAxiosError<{ message?: string }>(error) ? error.response?.data?.message : undefined)
             || "Unable to clone the syllabus."
           )
         },
@@ -149,7 +221,11 @@ export default function CloneSyllabusDialog({
               {source.courseCode} — {source.courseName}
             </div>
             <div className="text-slate-500">
-              Source: {source.versionLabel} · {source.academicYear} · {source.semester}
+              Source: {source.versionLabel}
+{" · "}
+{source.cohortName || source.academicYear}
+{" · "}
+{normalizeSemesterLabel(source.semester)}
             </div>
           </div>
         )}
@@ -167,7 +243,7 @@ export default function CloneSyllabusDialog({
                 </div>
               ) : (
                 <Select
-                  value={assignmentId ? String(assignmentId) : undefined}
+                  value={effectiveAssignmentId ? String(effectiveAssignmentId) : undefined}
                   onValueChange={(value) => setAssignmentId(Number(value))}
                 >
                   <SelectTrigger>
@@ -179,8 +255,10 @@ export default function CloneSyllabusDialog({
                         key={assignment.id}
                         value={String(assignment.id)}
                       >
-                        HK{assignment.semester} — {assignment.academicYear}
-                        {` — Group ${assignment.groupNumber}`}
+                        Semester {assignment.semester}
+{" — "}
+{assignment.cohortName || assignment.academicYear}
+{` — Group ${assignment.groupNumber}`}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -204,26 +282,61 @@ export default function CloneSyllabusDialog({
                   </SelectContent>
                 </Select>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-2">
-                  <Label htmlFor="clone-academic-year">Target Academic Year</Label>
-                  <Input
-                    id="clone-academic-year"
-                    value={academicYear}
-                    onChange={(event) => setAcademicYear(event.target.value)}
-                    placeholder="2026-2027"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="clone-semester">Target Semester</Label>
-                  <Input
-                    id="clone-semester"
-                    value={semester}
-                    onChange={(event) => setSemester(event.target.value)}
-                    placeholder="HK2"
-                  />
-                </div>
-              </div>
+              <div className="space-y-3">
+  <div className="grid grid-cols-2 gap-3">
+
+    <div className="space-y-2">
+      <Label>Target Academic Year</Label>
+
+      <Select
+        value={cohortId}
+        onValueChange={setCohortId}
+      >
+        <SelectTrigger>
+          <SelectValue placeholder="Select academic year" />
+        </SelectTrigger>
+
+        <SelectContent>
+          {targetCohorts.map((cohort) => (
+            <SelectItem
+              key={cohort.id}
+              value={String(cohort.id)}
+            >
+              {cohort.name}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+
+    <div className="space-y-2">
+      <Label>Target Semester</Label>
+
+      <Select
+        value={semester}
+        onValueChange={setSemester}
+      >
+        <SelectTrigger>
+          <SelectValue placeholder="Select semester" />
+        </SelectTrigger>
+
+        <SelectContent>
+          {SYLLABUS_SEMESTER_OPTIONS.map(
+            (value) => (
+              <SelectItem
+                key={value}
+                value={`Semester ${value}`}
+              >
+                Semester {value}
+              </SelectItem>
+            ),
+          )}
+        </SelectContent>
+      </Select>
+    </div>
+
+  </div>
+</div>
             </div>
           )}
 
@@ -252,7 +365,13 @@ export default function CloneSyllabusDialog({
               cloneMutation.isPending
               || !source
               || (isInstructor && targetAssignments.length === 0)
-              || (!isInstructor && !cohortId)
+              || (
+  !isInstructor
+  && (
+    !selectedCohort
+    || !semester
+  )
+)
             }
           >
             {cloneMutation.isPending ? "Cloning..." : "Clone, Import and Edit"}

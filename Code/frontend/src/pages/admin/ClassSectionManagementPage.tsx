@@ -1,3 +1,4 @@
+import { formatVersionLabel } from "@/lib/syllabusVersion"
 import { useMemo, useState } from "react"
 import {
   useMutation,
@@ -12,11 +13,13 @@ import {
   Plus,
   Power,
   Search,
+  Trash2,
   Users,
 } from "lucide-react"
 
 import {
   createClassSection,
+  deleteClassSection,
   getClassSections,
   updateClassSection,
   type ClassSectionResponse,
@@ -181,6 +184,26 @@ export default function ClassSectionManagementPage() {
     },
   })
 
+
+  const deleteMutation = useMutation({
+  mutationFn: deleteClassSection,
+
+  onSuccess: async () => {
+    await refreshData()
+
+    setNotice({
+      type: "success",
+      message: "Teaching assignment deleted successfully.",
+    })
+  },
+
+  onError: (mutationError) => {
+    setNotice({
+      type: "error",
+      message: getErrorMessage(mutationError),
+    })
+  },
+})
   const filteredSections = useMemo(() => {
     const keyword = searchTerm.trim().toLowerCase()
 
@@ -323,6 +346,21 @@ export default function ClassSectionManagementPage() {
     })
   }
 
+const handleDelete = (
+  section: ClassSectionResponse,
+) => {
+  const confirmed = window.confirm(
+    `Delete teaching assignment for ${section.courseCode} — ${section.instructorName}?\n\nThis action permanently removes this assignment. It is only allowed when no syllabus or enrollment is linked.`,
+  )
+
+  if (!confirmed) {
+    return
+  }
+
+  setNotice(null)
+  deleteMutation.mutate(section.id)
+}
+
   const clearFilters = () => {
     setSearchTerm("")
     setStatusFilter(ALL)
@@ -333,12 +371,12 @@ export default function ClassSectionManagementPage() {
     createMutation.isPending || updateMutation.isPending
 
   return (
-    <div className="mx-auto w-full max-w-[1500px] space-y-5 pb-10">
+    <div data-admin-page="ClassSectionManagementPage" className="mx-auto w-full max-w-[1500px] space-y-5 pb-10">
       <section className="relative overflow-hidden rounded-2xl border border-[#d7e5e8] bg-white shadow-sm">
         <div className="absolute inset-x-0 top-0 h-[3px] bg-gradient-to-r from-[#007d84] via-[#15949a] to-[#f0a72f]" />
 
         <div className="flex flex-col gap-4 px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
-          <div>
+          <div data-admin-page-header="ClassSectionManagementPage">
             <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#708894]">
               FR-01.4 · Teaching Responsibility
             </p>
@@ -403,7 +441,7 @@ export default function ClassSectionManagementPage() {
       )}
 
       <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(280px,1fr)_180px_190px_auto]">
+        <div data-admin-filter className="grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(280px,1fr)_180px_190px_auto]">
           <div className="relative">
             <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
             <Input
@@ -525,7 +563,7 @@ export default function ClassSectionManagementPage() {
                             variant="outline"
                             className="border-blue-200 bg-blue-50 text-blue-700"
                           >
-                            v{section.syllabusVersionNumber}
+                            {formatVersionLabel(section.syllabusVersionNumber)}
                           </Badge>
                           <p className="mt-1 text-xs text-slate-500">
                             {formatSyllabusStatus(section.syllabusStatus)}
@@ -586,6 +624,26 @@ export default function ClassSectionManagementPage() {
                           <Power className="size-3.5" />
                           {section.isActive ? "Deactivate" : "Activate"}
                         </Button>
+
+                        <Button
+  type="button"
+  variant="outline"
+  size="sm"
+  disabled={
+    deleteMutation.isPending
+    || section.syllabusId !== null
+  }
+  className="border-rose-200 text-rose-700 hover:bg-rose-50 hover:text-rose-800 disabled:opacity-40"
+  title={
+    section.syllabusId !== null
+      ? "Assignments linked to a syllabus cannot be deleted. Deactivate it instead."
+      : "Delete teaching assignment"
+  }
+  onClick={() => handleDelete(section)}
+>
+  <Trash2 className="size-3.5" />
+  Delete
+</Button>
                       </div>
                     </TableCell>
                   </TableRow>

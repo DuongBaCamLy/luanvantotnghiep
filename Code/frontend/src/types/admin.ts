@@ -227,3 +227,28 @@ export interface CurriculumTimelineItem {
   removedCourses: CurriculumTimelineCourseChange[]
   changedCourses: CurriculumTimelineCourseChange[]
 }
+export interface ProgramDiffField {
+  oldValue: string | null
+  newValue: string | null
+}
+
+export interface ProgramDiffCourse {
+  courseId: number
+  courseCode: string
+  courseName: string
+  changes: Record<string, ProgramDiffField> | null
+}
+
+export interface ProgramDiffResponse {
+  programId: number
+  programCode: string
+  oldCohortId: number
+  newCohortId: number
+  oldCohortYear: string
+  newCohortYear: string
+  courseDiff: {
+    added: ProgramDiffCourse[]
+    removed: ProgramDiffCourse[]
+    modified: ProgramDiffCourse[]
+  }
+}

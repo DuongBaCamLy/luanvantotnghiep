@@ -19,7 +19,7 @@ export default function SyllabusImportPage() {
   if (!role) return <Navigate to="/" replace />
 
   return (
-    <div className="container mx-auto max-w-3xl p-6">
+    <div data-admin-page="SyllabusImportPage" data-admin-ui={role === "ADMIN" ? "true" : undefined} className="container mx-auto max-w-3xl p-6">
       <Card>
         <CardHeader>
           <CardTitle>Import Syllabus Template</CardTitle>

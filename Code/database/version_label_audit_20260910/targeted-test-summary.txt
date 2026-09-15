@@ -1,0 +1,10 @@
+[INFO] Tests run: 6, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.503 s -- in com.scse.curriculum.curriculummap.service.CurriculumMapServiceImplTest
+[INFO] Tests run: 14, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.214 s -- in com.scse.curriculum.syllabus.entity.SyllabusVersionTest
+[INFO] Tests run: 6, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.597 s -- in com.scse.curriculum.syllabus.importer.service.SyllabusXlsxPreviewTest
+[INFO] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.592 s -- in com.scse.curriculum.syllabus.service.SyllabusServiceImplCloneTest
+[INFO] Tests run: 7, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.064 s -- in com.scse.curriculum.syllabus.service.SyllabusServiceImplCreateTest
+[INFO] Tests run: 8, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.072 s -- in com.scse.curriculum.syllabus.service.SyllabusServiceImplUpdateTest
+[INFO] Tests run: 45, Failures: 0, Errors: 0, Skipped: 0
+[INFO] BUILD SUCCESS
+[INFO] Total time:  11.538 s
+[INFO] Finished at: 2026-09-10T01:06:02+07:00

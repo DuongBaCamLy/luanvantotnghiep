@@ -1,8 +1,8 @@
+import { formatVersionLabel } from "@/lib/syllabusVersion"
 import { useMemo, useState, type ReactNode } from "react"
 import {
   AlertCircle,
   ArrowLeft,
-  FileUp,
   Loader2,
   RefreshCcw,
   ShieldAlert,
@@ -11,7 +11,6 @@ import {
 import { useLocation, useNavigate, useParams } from "react-router-dom"
 import { toast } from "sonner"
 
-import ImportSyllabusDialog from "@/components/syllabus/ImportSyllabusDialog"
 import SyllabusForm from "@/components/syllabus/SyllabusForm"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
@@ -20,7 +19,6 @@ import { Card, CardContent } from "@/components/ui/card"
 import { useSyllabus } from "@/hooks/useSyllabus"
 import { useUpdateSyllabus } from "@/hooks/useUpdateSyllabus"
 import { getSyllabusBasePath } from "@/lib/programContext"
-import { saveSyllabusImportDraft } from "@/lib/syllabusImportDraft"
 import {
   SyllabusRelationSyncError,
   syncStandardSyllabusRelations,
@@ -31,7 +29,6 @@ import {
 } from "@/lib/syllabusFormData"
 import { useAuthStore } from "@/store/authStore"
 import type { CreateSyllabusRequest } from "@/types/syllabus"
-import type { SyllabusImportPreviewResponse } from "@/types/syllabusImport"
 
 type EditNavigationState = {
   classSectionId?: number
@@ -49,12 +46,6 @@ const normalizeRole = (role?: string) => String(role ?? "")
   .replace(/^ROLE_/i, "")
   .toUpperCase()
 
-const removeImportFlag = (search: string) => {
-  const params = new URLSearchParams(search)
-  params.delete("import")
-  return params.toString()
-}
-
 export default function SyllabusEditPage() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -64,9 +55,6 @@ export default function SyllabusEditPage() {
   const syllabusId = Number(id)
   const validSyllabusId = Number.isInteger(syllabusId) && syllabusId > 0
   const role = normalizeRole(user?.role)
-  const isAdmin = Boolean(role) && role !== "INSTRUCTOR"
-  const importRequested = new URLSearchParams(location.search).get("import") === "1"
-  const [importOpen, setImportOpen] = useState(false)
   const [synchronizingRelations, setSynchronizingRelations] = useState(false)
 
   const {
@@ -112,19 +100,6 @@ export default function SyllabusEditPage() {
       : undefined,
     [curriculumMajor, initialData],
   )
-
-  const closeImport = () => {
-    setImportOpen(false)
-    if (!importRequested) return
-
-    navigate(
-      {
-        pathname: location.pathname,
-        search: removeImportFlag(location.search),
-      },
-      { replace: true, state: location.state },
-    )
-  }
 
   if (!validSyllabusId) {
     return (
@@ -174,7 +149,7 @@ export default function SyllabusEditPage() {
       <PageState
         icon={ShieldAlert}
         title="This version is read-only"
-        description={`${data.versionLabel || `v${data.versionNumber}.0`} is currently ${data.status}. Only Draft or Revision Requested syllabuses can be changed.`}
+        description={`${formatVersionLabel(data.versionNumber, data.versionLabel)} is currently ${data.status}. Only Draft or Revision Requested syllabuses can be changed.`}
         tone="warning"
         actions={(
           <>
@@ -236,38 +211,11 @@ export default function SyllabusEditPage() {
     }
   }
 
-  const handleImportedPreview = (importPreview: SyllabusImportPreviewResponse) => {
-    const importDraftId = saveSyllabusImportDraft(
-      importPreview,
-      data.courseId,
-      draftContext.courseProgramId,
-    )
-    const params = new URLSearchParams({
-      courseId: String(data.courseId),
-      importDraft: importDraftId,
-    })
-    if (draftContext.courseProgramId) {
-      params.set("courseProgramId", String(draftContext.courseProgramId))
-    }
-
-    setImportOpen(false)
-    navigate(
-      `${basePath}/create?${params.toString()}`,
-      {
-        state: {
-          importPreview,
-          targetCourseId: data.courseId,
-          targetCourseProgramId: draftContext.courseProgramId,
-        },
-      },
-    )
-  }
-
   return (
-    <div className="mx-auto w-full max-w-[1180px] space-y-6 px-4 pb-20 pt-6 sm:px-6">
+    <div data-admin-page="SyllabusEditPage" className="mx-auto w-full max-w-[1180px] space-y-6 px-4 pb-20 pt-6 sm:px-6">
       <header className="rounded-xl border border-[#cfdee1] border-t-4 border-t-[#007d84] bg-white px-5 py-4 shadow-sm">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div className="min-w-0">
+          <div data-admin-page-header="SyllabusEditPage" className="min-w-0">
             <div className="mb-2 flex flex-wrap items-center gap-2">
               <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#607b83]">
                 Syllabus administration
@@ -285,17 +233,11 @@ export default function SyllabusEditPage() {
               {data.courseCode} — {data.courseName}
             </h1>
             <p className="mt-1 text-sm text-slate-500">
-              {data.academicYear} · {data.semester || "Semester not set"} · {data.versionLabel || `v${data.versionNumber}.0`}
+              {data.academicYear} · {data.semester || "Semester not set"} · {formatVersionLabel(data.versionNumber, data.versionLabel)}
             </p>
           </div>
 
           <div className="flex flex-wrap gap-2">
-            {isAdmin && (
-              <Button type="button" variant="outline" onClick={() => setImportOpen(true)}>
-                <FileUp className="size-4" />
-                Import PDF as new version
-              </Button>
-            )}
             <Button type="button" variant="outline" onClick={() => navigate(basePath)}>
               <ArrowLeft className="size-4" />
               Back to catalog
@@ -318,7 +260,7 @@ export default function SyllabusEditPage() {
         onSubmit={handleUpdate}
         loading={updateMutation.isPending || synchronizingRelations}
         lockProgramContext
-        lockAssignmentContext={false /* TEMPORARY: global Instructor testing */}
+        lockAssignmentContext={role === "INSTRUCTOR"}
         autoPrefillExisting={false}
         formId="edit-syllabus-form"
         submitLabel="Save syllabus Draft"
@@ -329,13 +271,6 @@ export default function SyllabusEditPage() {
         } : undefined}
       />
 
-      <ImportSyllabusDialog
-        open={importOpen || (importRequested && isAdmin)}
-        onClose={closeImport}
-        expectedCourseCode={data.courseCode}
-        expectedCourseName={data.courseName}
-        onPreviewConfirmed={handleImportedPreview}
-      />
     </div>
   )
 }
@@ -366,7 +301,7 @@ function PageState({
           <span className={`inline-flex size-11 items-center justify-center rounded-full ${iconClass}`}>
             <Icon className="size-5" />
           </span>
-          <div>
+          <div data-admin-page-header="SyllabusEditPage">
             <h1 className="text-xl font-bold text-slate-900">{title}</h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">{description}</p>
           </div>

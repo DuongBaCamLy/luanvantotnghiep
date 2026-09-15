@@ -1,0 +1,182 @@
+[
+  {
+    "file": "Code/backend/curriculum/SyllabusImportServiceImpl.java",
+    "line": 414,
+    "text": ".versionLabel("
+  },
+  {
+    "file": "Code/backend/curriculum/SyllabusImportServiceImpl.java",
+    "line": 1790,
+    "text": ".versionLabel("
+  },
+  {
+    "file": "Code/backend/curriculum/src/main/java/com/scse/curriculum/approval/service/ApprovalRequestServiceImpl.java",
+    "line": 486,
+    "text": ".versionLabel("
+  },
+  {
+    "file": "Code/backend/curriculum/src/main/java/com/scse/curriculum/email/EmailTemplateService.java",
+    "line": 55,
+    "text": "values.put(\"{{VERSION}}\", esc(defaultText(email.versionLabel(), \"-\")));"
+  },
+  {
+    "file": "Code/backend/curriculum/src/main/java/com/scse/curriculum/email/EmailTemplateService.java",
+    "line": 117,
+    "text": "values.put(\"{{VERSION_ROW}}\", metadataRow(\"Phiên bản\", email.versionLabel()));"
+  },
+  {
+    "file": "Code/backend/curriculum/src/main/java/com/scse/curriculum/email/EmailTemplateService.java",
+    "line": 141,
+    "text": ".append(\"Phiên bản: \").append(defaultText(email.versionLabel(), \"-\")).append(\"\\n\")"
+  },
+  {
+    "file": "Code/backend/curriculum/src/main/java/com/scse/curriculum/report/service/SyllabusSemesterReportQueryService.java",
+    "line": 171,
+    "text": ".versionNumber(s.getVersionNumber()).versionLabel(s.getVersionLabel())"
+  },
+  {
+    "file": "Code/backend/curriculum/src/main/java/com/scse/curriculum/syllabus/entity/SyllabusVersion.java",
+    "line": 11,
+    "text": "return \"v\" + versionNumber + \".0\";"
+  },
+  {
+    "file": "Code/backend/curriculum/src/main/java/com/scse/curriculum/syllabus/importer/service/SyllabusImportServiceImpl.java",
+    "line": 414,
+    "text": ".versionLabel("
+  },
+  {
+    "file": "Code/backend/curriculum/src/main/java/com/scse/curriculum/syllabus/importer/service/SyllabusImportServiceImpl.java",
+    "line": 1790,
+    "text": ".versionLabel("
+  },
+  {
+    "file": "Code/backend/curriculum/src/main/java/com/scse/curriculum/syllabus/pdf/SyllabusPdfRenderer.java",
+    "line": 90,
+    "text": "data.versionLabel(),"
+  },
+  {
+    "file": "Code/backend/curriculum/src/main/java/com/scse/curriculum/syllabus/pdf/SyllabusPdfRenderer.java",
+    "line": 203,
+    "text": "SyllabusVersion.display(data.versionNumber(), data.versionLabel()));"
+  },
+  {
+    "file": "Code/backend/curriculum/src/main/java/com/scse/curriculum/syllabus/pdf/SyllabusPdfServiceImpl.java",
+    "line": 34,
+    "text": "value(document.versionLabel()),"
+  },
+  {
+    "file": "Code/backend/curriculum/src/main/java/com/scse/curriculum/syllabus/service/SyllabusContentGuard.java",
+    "line": 37,
+    "text": "\"Version \" + syllabus.getVersionLabel()"
+  },
+  {
+    "file": "Code/backend/curriculum/src/main/java/com/scse/curriculum/syllabus/service/SyllabusManagementServiceImpl.java",
+    "line": 178,
+    "text": ".versionLabel(syllabus.getVersionLabel())"
+  },
+  {
+    "file": "Code/backend/curriculum/src/main/java/com/scse/curriculum/syllabus/service/SyllabusManagementServiceImpl.java",
+    "line": 347,
+    "text": ".versionLabel(syllabus.getVersionLabel())"
+  },
+  {
+    "file": "Code/backend/curriculum/src/main/java/com/scse/curriculum/syllabus/service/SyllabusManagementServiceImpl.java",
+    "line": 441,
+    "text": ".versionLabel("
+  },
+  {
+    "file": "Code/backend/curriculum/src/main/java/com/scse/curriculum/syllabus/service/SyllabusServiceImpl.java",
+    "line": 252,
+    "text": ".versionLabel(SyllabusVersion.format(version))"
+  },
+  {
+    "file": "Code/backend/curriculum/src/main/java/com/scse/curriculum/syllabus/service/SyllabusServiceImpl.java",
+    "line": 862,
+    "text": ".versionLabel(syllabus.getVersionLabel())"
+  },
+  {
+    "file": "Code/backend/curriculum/src/main/java/com/scse/curriculum/syllabus/service/SyllabusServiceImpl.java",
+    "line": 1647,
+    "text": ".versionLabel("
+  },
+  {
+    "file": "Code/backend/curriculum/src/main/java/com/scse/curriculum/syllabus/service/SyllabusServiceImpl.java",
+    "line": 1907,
+    "text": ".versionLabel("
+  },
+  {
+    "file": "Code/backend/curriculum/src/main/java/com/scse/curriculum/syllabus/service/SyllabusServiceImpl.java",
+    "line": 2171,
+    "text": ".versionLabel(SyllabusVersion.format(nextVersion))"
+  },
+  {
+    "file": "Code/backend/curriculum/src/main/java/com/scse/curriculum/syllabus/service/SyllabusSubmissionValidationService.java",
+    "line": 176,
+    "text": "\"Version label is required.\", collector);"
+  },
+  {
+    "file": "Code/frontend/src/i18n/en.ts",
+    "line": 6,
+    "text": "\"app.version\": \"Version 1.0\","
+  },
+  {
+    "file": "Code/frontend/src/i18n/en.ts",
+    "line": 52,
+    "text": "\"nav.versionComparison\": \"Version Comparison\","
+  },
+  {
+    "file": "Code/frontend/src/lib/syllabusVersion.ts",
+    "line": 8,
+    "text": "&& (versionNumber == null || label === `v${versionNumber}.0`)) {"
+  },
+  {
+    "file": "Code/frontend/src/lib/syllabusVersion.ts",
+    "line": 12,
+    "text": "return `v${versionNumber}.0`"
+  },
+  {
+    "file": "Code/frontend/src/lib/syllabusVersion.ts",
+    "line": 15,
+    "text": "return legacy ? `v${legacy[1]}.0` : \"—\""
+  },
+  {
+    "file": "Code/frontend/src/pages/admin/PloManagementPage.tsx",
+    "line": 314,
+    "text": "window.alert(\"Version PLO phải là số nguyên lớn hơn hoặc bằng 1.\")"
+  },
+  {
+    "file": "Code/frontend/src/pages/syllabus/CohortSyllabusDiffPage.tsx",
+    "line": 729,
+    "text": ": \"Version comparison is not available yet\"}"
+  },
+  {
+    "file": "Code/frontend/src/pages/syllabus/SyllabusDetailPage.tsx",
+    "line": 277,
+    "text": "`Syllabus_${safeFilePart(syllabus.courseCode)}_${safeFilePart(versionLabel(syllabus))}_Official.pdf`,"
+  },
+  {
+    "file": "Code/frontend/src/pages/syllabus/SyllabusDetailPage.tsx",
+    "line": 309,
+    "text": "{versionLabel(syllabus)} · {syllabus.academicYear} · {syllabus.semester || \"Semester not specified\"}"
+  },
+  {
+    "file": "Code/frontend/src/pages/syllabus/SyllabusDetailPage.tsx",
+    "line": 539,
+    "text": "<SelectContent>{ordered.filter((item) => item.id !== newerId).map((item) => <SelectItem key={item.id} value={String(item.id)}>{versionLabel(item)} · {item.academicYear} · {item.semester}</SelectItem>)}</SelectContent>"
+  },
+  {
+    "file": "Code/frontend/src/pages/syllabus/SyllabusDetailPage.tsx",
+    "line": 546,
+    "text": "<SelectContent>{ordered.filter((item) => item.id !== olderId).map((item) => <SelectItem key={item.id} value={String(item.id)}>{versionLabel(item)} · {item.academicYear} · {item.semester}</SelectItem>)}</SelectContent>"
+  },
+  {
+    "file": "Code/frontend/src/pages/syllabus/SyllabusDetailPage.tsx",
+    "line": 628,
+    "text": "{versionLabel(version)}"
+  },
+  {
+    "file": "Code/frontend/src/pages/syllabus/SyllabusDetailPage.tsx",
+    "line": 660,
+    "text": "<td className=\"px-5 py-3 font-medium text-slate-800\">{versionLabel(current)} · {reviewLevelLabel(review.step)}</td>"
+  }
+]

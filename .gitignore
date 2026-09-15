@@ -29,7 +29,8 @@ password_reset_token.sql
 
 # OS
 .DS_Store
-Thumbs.dbCode/backend/curriculum/PdfProgramDocumentParser.java
+Thumbs.db
+Code/backend/curriculum/PdfProgramDocumentParser.java
 Code/backend/curriculum/SyllabusPdfParser.java
 Code/backend/curriculum/SyllabusSectionBoundaryDetector.java
 Code/backend/curriculum/README.txt
@@ -44,3 +45,16 @@ tmp/
 batch4.ps1
 tatus
 Code/backend/curriculum/src/main/java/com/scse/curriculum/syllabus/importer/parser/apply_multiformat_phase1.ps1
+
+# Local historical backups (preserve on disk)
+/Code/backend/curriculum/backup_phase*/
+/Code/backend/curriculum/backup_multiformat_phase*/
+/Code/database/backups/
+
+# Generated source review snapshots
+repomix.txt
+repomix-output.txt
+/Code/frontend/lint-result.txt
+# Local source backup copies
+/Code/frontend/src/components/syllabus/SyllabusForm.tsx.before-courselevel-fix
+/Code/backend/curriculum/src/main/java/com/scse/curriculum/syllabus/importer/parser/SyllabusPdfParser.java.bak_before_contet_fix

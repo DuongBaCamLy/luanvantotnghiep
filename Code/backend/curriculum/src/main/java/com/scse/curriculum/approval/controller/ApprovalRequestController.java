@@ -27,7 +27,7 @@ public class ApprovalRequestController {
     private final ApprovalRequestService service;
 
     @PutMapping("/{id}/review")
-@PreAuthorize("hasAnyRole('ADMIN', 'DEAN', 'DEPT_HEAD')")
+@PreAuthorize("hasAnyRole('DEAN', 'DEPT_HEAD')")
     public ApprovalResponse review(
             @PathVariable Integer id,
             @Valid @RequestBody ReviewApprovalRequest request) {

@@ -245,9 +245,9 @@ export default function SystemSettingsPage() {
   const deadlines = deadlinesQuery.data ?? []
 
   return (
-    <div className="space-y-6">
+    <div data-admin-page="SystemSettingsPage" className="space-y-6">
       <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
-        <div>
+        <div data-admin-page-header="SystemSettingsPage">
           <h1 className="text-3xl font-bold tracking-tight">
             Cấu hình hệ thống
           </h1>

@@ -22,10 +22,37 @@ class CloPloMatrixExcelExporterTest {
     void exportsExcel2016CompatibleWorkbookWithExactScopeAndNoDuplicateCourses() throws Exception {
         DashboardHeatmapResponse matrix = matrix();
         matrix.setCourseCoverages(List.of(
-                course(10, "IT001", "Nhập môn Tin học", "COMPULSORY", "Môn bắt buộc", "I", 4, 4),
-                course(10, "IT001", "Nhập môn Tin học", "COMPULSORY", "Môn bắt buộc", "I", 4, 4),
-                course(11, "IT002", "Cấu trúc dữ liệu", "ELECTIVE", "Môn tự chọn", "D", 5, 3)
-        ));
+        course(
+                10,
+                "IT001",
+                "Nhập môn Tin học",
+                "COMPULSORY",
+                "Môn bắt buộc",
+                "X",
+                4,
+                4
+        ),
+        course(
+                10,
+                "IT001",
+                "Nhập môn Tin học",
+                "COMPULSORY",
+                "Môn bắt buộc",
+                "X",
+                4,
+                4
+        ),
+        course(
+                11,
+                "IT002",
+                "Cấu trúc dữ liệu",
+                "ELECTIVE",
+                "Môn tự chọn",
+                "XX",
+                5,
+                3
+        )
+));
 
         byte[] content = CloPloMatrixExcelExporter.export(matrix);
 
@@ -39,13 +66,45 @@ class CloPloMatrixExcelExporterTest {
             assertThat(sheet).isNotNull();
             assertThat(workbook.isSheetHidden(workbook.getSheetIndex(CloPloMatrixExcelExporter.META_SHEET))).isTrue();
 
-            assertThat(sheet.getRow(1).getCell(1).getStringCellValue()).contains("CS-2021", "Khoa học Máy tính");
-            assertThat(sheet.getRow(2).getCell(1).getStringCellValue()).isEqualTo("CS2021");
-            assertThat(sheet.getRow(3).getCell(1).getStringCellValue()).isEqualTo("2026-2027");
-            assertThat(sheet.getRow(4).getCell(1).getStringCellValue()).isEqualTo("1");
-            assertThat(sheet.getRow(5).getCell(1).getStringCellValue()).isEqualTo("Tất cả");
-            assertThat(sheet.getRow(6).getCell(1).getStringCellValue())
-                    .isEqualTo("program=1|cohort=2|academicYear=2026-2027|semester=1|courseType=ALL");
+            assertThat(
+        sheet.getRow(1)
+                .getCell(1)
+                .getStringCellValue())
+        .contains(
+                "CS-2021",
+                "Khoa học Máy tính");
+
+assertThat(
+        sheet.getRow(2)
+                .getCell(1)
+                .getStringCellValue())
+        .isEqualTo("CS2021");
+
+assertThat(
+        sheet.getRow(3)
+                .getCell(0)
+                .getStringCellValue())
+        .isEqualTo("Phạm vi");
+
+assertThat(
+        sheet.getRow(3)
+                .getCell(1)
+                .getStringCellValue())
+        .isEqualTo(
+                "Toàn bộ chương trình của cohort");
+
+assertThat(
+        sheet.getRow(6)
+                .getCell(0)
+                .getStringCellValue())
+        .isEqualTo("Khóa phạm vi");
+
+assertThat(
+        sheet.getRow(6)
+                .getCell(1)
+                .getStringCellValue())
+        .isEqualTo(
+                "program=1|cohort=2");
             assertThat(sheet.getRow(8).getCell(1).getNumericCellValue()).isEqualTo(2);
             assertThat(sheet.getRow(9).getCell(1).getNumericCellValue()).isEqualTo(1);
             assertThat(sheet.getRow(11).getCell(1).getNumericCellValue()).isEqualTo(1.0);
@@ -72,7 +131,10 @@ class CloPloMatrixExcelExporterTest {
             Row firstCourse = sheet.getRow(CloPloMatrixExcelExporter.DATA_START_ROW_INDEX);
             assertThat(firstCourse.getCell(3).getStringCellValue()).isEqualTo("Môn bắt buộc");
             assertThat(firstCourse.getCell(7).getStringCellValue()).isEqualTo("Có");
-            assertThat(firstCourse.getCell(11).getStringCellValue()).isEqualTo("I");
+            assertThat(
+        firstCourse.getCell(11)
+                .getStringCellValue())
+        .isEqualTo("X");
         }
     }
 
@@ -97,7 +159,8 @@ class CloPloMatrixExcelExporterTest {
         matrix.setAcademicYear("2026-2027");
         matrix.setSemester("1");
         matrix.setDataSource("Canonical heatmap query");
-        matrix.setScopeKey("program=1|cohort=2|academicYear=2026-2027|semester=1|courseType=ALL");
+        matrix.setScopeKey(
+        "program=1|cohort=2");
 
         DashboardHeatmapResponse.PloColumn plo1 = new DashboardHeatmapResponse.PloColumn();
         plo1.setId(100);

@@ -1,5 +1,7 @@
 package com.scse.curriculum.syllabus.pdf;
 
+import com.scse.curriculum.syllabus.entity.SyllabusVersion;
+
 import com.lowagie.text.Document;
 import com.lowagie.text.DocumentException;
 import com.lowagie.text.Element;
@@ -198,11 +200,7 @@ public class SyllabusPdfRenderer {
                 "Version");
         addValueCell(
                 table,
-                firstNonBlank(
-                        data.versionLabel(),
-                        "v"
-                                + safeNumber(
-                                data.versionNumber())));
+                SyllabusVersion.display(data.versionNumber(), data.versionLabel()));
 
         addLabelCell(
                 table,

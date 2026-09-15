@@ -1,5 +1,7 @@
 package com.scse.curriculum.syllabus.service;
 
+import com.scse.curriculum.syllabus.entity.SyllabusVersion;
+
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -30,6 +32,7 @@ import com.scse.curriculum.clo.repository.CloRepository;
 import com.scse.curriculum.cloplomapping.entity.CloPloMapping;
 import com.scse.curriculum.cloplomapping.repository.CloPloMappingRepository;
 import com.scse.curriculum.common.exception.ResourceNotFoundException;
+import com.scse.curriculum.common.exception.ForbiddenOperationException;
 import com.scse.curriculum.course.entity.Course;
 import com.scse.curriculum.course.repository.CourseRepository;
 import com.scse.curriculum.cohort.entity.Cohort;
@@ -67,7 +70,8 @@ import com.scse.curriculum.plo.entity.Plo;
 import com.scse.curriculum.plo.repository.PloRepository;
 import lombok.RequiredArgsConstructor;
 import com.scse.curriculum.syllabus.dto.SyllabusCatalogResponse;
-
+import com.scse.curriculum.syllabus.comparison.dto.SemanticSyllabusDiffResponse;
+import com.scse.curriculum.syllabus.comparison.service.SyllabusSemanticComparisonService;
 @Service
 @RequiredArgsConstructor
 public class SyllabusServiceImpl implements SyllabusService {
@@ -85,7 +89,7 @@ public class SyllabusServiceImpl implements SyllabusService {
         private final AssessmentComponentRepository assessmentComponentRepository;
         private final AssessmentCloRepository assessmentCloRepository;
         private final StudentScoreRepository studentScoreRepository;
-
+        private final SyllabusSemanticComparisonService syllabusSemanticComparisonService;
         private final ApprovalRequestRepository approvalRequestRepository;
         private final ClassSectionRepository classSectionRepository;
         private final SyllabusImportHistoryRepository syllabusImportHistoryRepository;
@@ -95,6 +99,8 @@ public class SyllabusServiceImpl implements SyllabusService {
         private final SyllabusSubmissionValidationService submissionValidationService;
         private final SyllabusDiffService syllabusDiffService;
         private final EntityManager entityManager;
+        private final SyllabusIdentityService syllabusIdentityService;
+        private final com.scse.curriculum.syllabus.history.SyllabusHistoryService syllabusHistoryService;
 
         @Override
         @Transactional
@@ -132,10 +138,11 @@ public class SyllabusServiceImpl implements SyllabusService {
                  * Version phải được tính theo course đã được backend xác thực,
                  * không tính trực tiếp từ dữ liệu client.
                  */
-                Integer version = nextVersionNumber(course.getId());
+                Integer version = 1;
                 SyllabusSourceType sourceType = resolveSourceType(request.getSourceType());
                 boolean imported = sourceType == SyllabusSourceType.IMPORT_PDF
-                                || sourceType == SyllabusSourceType.IMPORT_DOCX;
+                                || sourceType == SyllabusSourceType.IMPORT_DOCX
+                                || sourceType == SyllabusSourceType.IMPORT_XLSX;
 
                 CourseProgram courseProgram = null;
 
@@ -197,16 +204,76 @@ public class SyllabusServiceImpl implements SyllabusService {
                                 }
                         }
                 }
+if (courseProgram == null && request.getCohortId() != null) {
+    courseProgram = courseProgramRepository.findByCourse_IdAndCohort_Id(course.getId(), request.getCohortId())
+            .stream().filter(cp -> request.getProgramId() == null || cp.getProgram() != null
+                    && Objects.equals(cp.getProgram().getId(), request.getProgramId())).findFirst().orElse(null);
+}
+if (courseProgram == null && !creationAuthorization.assignments().isEmpty()) {
+    ClassSection assignment = creationAuthorization.assignments().get(0);
+    if (assignment.getCohort() != null) {
+        courseProgram = courseProgramRepository.findByCourse_IdAndCohort_Id(course.getId(), assignment.getCohort().getId())
+                .stream().filter(cp -> assignment.getProgram() == null || cp.getProgram() != null
+                        && Objects.equals(cp.getProgram().getId(), assignment.getProgram().getId())).findFirst().orElse(null);
+    }
+}
+String canonicalAcademicYear =
+        creationAuthorization.academicYear();
 
+String canonicalSemester =
+        normalizeSemesterLabel(
+                creationAuthorization.semester());
+
+String canonicalProgram =
+        request.getProgram();
+
+/*
+ * Canonical curriculum context always wins.
+ *
+ * Syllabus.academicYear in this project represents
+ * the applicable curriculum cohort, e.g. CS2026.
+ */
+if (courseProgram != null) {
+
+    if (courseProgram.getCohort() != null
+            && courseProgram.getCohort().getName() != null) {
+
+        canonicalAcademicYear =
+                courseProgram
+                        .getCohort()
+                        .getName();
+    }
+
+    if (courseProgram.getProgram() != null
+            && courseProgram.getProgram().getCode() != null) {
+
+        canonicalProgram =
+                courseProgram
+                        .getProgram()
+                        .getCode();
+    }
+
+    if (courseProgram.getSemesterSuggest() != null) {
+
+        canonicalSemester =
+                "Semester "
+                        + courseProgram
+                                .getSemesterSuggest();
+    }
+}
+                syllabusIdentityService.assertAvailable(course, canonicalProgram, canonicalAcademicYear, canonicalSemester, null);
                 Syllabus syllabus = Syllabus.builder()
                                 .course(course)
                                 .versionNumber(version)
-                                .versionLabel("v" + version + ".0")
+                                .versionLabel(SyllabusVersion.format(version))
                                 .academicYear(
-                                                creationAuthorization.academicYear())
+        canonicalAcademicYear)
                                 .courseDesignation(request.getCourseDesignation())
                                 .courseTypes(request.getCourseTypes())
-                                .semester(normalizeSemesterLabel(creationAuthorization.semester()))
+                                .semester(
+        canonicalSemester)
+        .program(
+        canonicalProgram)
                                 .language(request.getLanguage())
                                 .relation(request.getRelation())
                                 .teachingMethods(request.getTeachingMethods())
@@ -615,7 +682,7 @@ public class SyllabusServiceImpl implements SyllabusService {
                                 .map(CourseProgram::getSemesterSuggest)
                                 .filter(Objects::nonNull)
                                 .findFirst()
-                                .map(semesterSuggest -> "HK" + semesterSuggest)
+                                .map(semesterSuggest -> "Semester " + semesterSuggest)
                                 .orElse(null);
 
                 SyllabusCreateContextResponse.DefaultsContext defaults = SyllabusCreateContextResponse.DefaultsContext
@@ -693,6 +760,86 @@ public class SyllabusServiceImpl implements SyllabusService {
                                 .toList();
         }
 
+        @Override
+        @Transactional(readOnly = true)
+        public SyllabusResponse getPreviousComparable(
+                        Integer id) {
+
+                Syllabus current =
+                                repository.findByIdWithRelations(id)
+                                                .orElseThrow(() ->
+                                                                new ResourceNotFoundException(
+                                                                                "Syllabus not found"));
+
+                syllabusAccessService.assertCanView(current);
+
+                /*
+                 * Visible cohort comparison is APPROVED-only.
+                 *
+                 * A Draft/Submitted/Under Review/Rejected syllabus must never
+                 * acquire a Compare action merely because an older syllabus
+                 * exists for the same course.
+                 */
+                if (current.getStatus() != SyllabusStatus.APPROVED) {
+                        return null;
+                }
+
+                ComparisonContext currentContext =
+                                findComparisonContext(current);
+
+                if (currentContext == null
+                                || currentContext.entryYear() == null) {
+                        return null;
+                }
+
+                /*
+                 * SAME COURSE
+                 * SAME PROGRAM
+                 * DIFFERENT / OLDER COHORT
+                 * APPROVED candidate only
+                 */
+                CourseProgram previousMapping =
+                                courseProgramRepository
+                                                .findPreviousComparableCandidates(
+                                                                currentContext.courseId(),
+                                                                currentContext.programId(),
+                                                                currentContext.entryYear())
+                                                .stream()
+                                                .filter(cp ->
+                                                                cp != null
+                                                                                && cp.getSyllabus() != null
+                                                                                && cp.getSyllabus().getStatus()
+                                                                                                == SyllabusStatus.APPROVED)
+                                                .filter(cp ->
+                                                                cp.getCohort() != null
+                                                                                && cp.getCohort().getId() != null
+                                                                                && !Objects.equals(
+                                                                                                cp.getCohort().getId(),
+                                                                                                currentContext.cohortId()))
+                                                .filter(cp ->
+                                                                cp.getCourse() != null
+                                                                                && Objects.equals(
+                                                                                                cp.getCourse().getId(),
+                                                                                                currentContext.courseId()))
+                                                .filter(cp ->
+                                                                cp.getProgram() != null
+                                                                                && Objects.equals(
+                                                                                                cp.getProgram().getId(),
+                                                                                                currentContext.programId()))
+                                                .filter(cp ->
+                                                                syllabusAccessService
+                                                                                .canView(
+                                                                                                cp.getSyllabus()))
+                                                .findFirst()
+                                                .orElse(null);
+
+                if (previousMapping == null) {
+                        return null;
+                }
+
+                return map(
+                                previousMapping.getSyllabus());
+        }
         /**
          * "Person responsible for the course": derived from the linked teaching
          * assignment's instructor, matching the PDF export. Not the account that
@@ -725,6 +872,7 @@ public class SyllabusServiceImpl implements SyllabusService {
                                 .courseId(syllabus.getCourse().getId())
                                 .courseCode(syllabus.getCourse().getCourseCode())
                                 .courseName(syllabus.getCourse().getName())
+                                .courseNameVn(syllabus.getCourse().getNameVn())
                                 .versionNumber(syllabus.getVersionNumber())
                                 .versionLabel(syllabus.getVersionLabel())
                                 .cohortId(syllabusCourseProgram == null
@@ -865,7 +1013,7 @@ public class SyllabusServiceImpl implements SyllabusService {
                 }
 
                 if (request.getVersionLabel() != null) {
-                        syllabus.setVersionLabel(request.getVersionLabel());
+                        SyllabusVersion.requireCanonical(syllabus.getVersionNumber(), request.getVersionLabel());
                 }
                 if (request.getAcademicYear() != null) {
                         syllabus.setAcademicYear(request.getAcademicYear());
@@ -946,6 +1094,7 @@ public class SyllabusServiceImpl implements SyllabusService {
 
                 syllabus.setUpdatedAt(LocalDateTime.now());
 
+                syllabusIdentityService.assertAvailable(syllabus.getCourse(), syllabus.getProgram(), syllabus.getAcademicYear(), syllabus.getSemester(), syllabus.getId());
                 Syllabus saved = repository.save(syllabus);
                 repository.flush();
 
@@ -1201,9 +1350,15 @@ public class SyllabusServiceImpl implements SyllabusService {
         @Override
         @Transactional
         public void delete(Integer id) {
+                syllabusHistoryService.assertDeletable(id);
 
                 Syllabus syllabus = repository.findByIdWithRelations(id)
                                 .orElseThrow(() -> new ResourceNotFoundException("Syllabus not found"));
+
+                if (syllabus.getStatus() == SyllabusStatus.APPROVED) {
+                        throw new ForbiddenOperationException(
+                                        "Approved syllabus cannot be deleted. Archive it instead.");
+                }
 
                 syllabusAccessService.assertCanModify(syllabus);
                 assertContentIsMutable(syllabus);
@@ -1269,77 +1424,6 @@ public class SyllabusServiceImpl implements SyllabusService {
 
                 repository.deleteById(id);
                 repository.flush();
-        }
-        @Override
-        @Transactional
-        public int deleteAll() {
-
-                List<Integer> syllabusIds = repository.findAll()
-                                .stream()
-                                .map(Syllabus::getId)
-                                .filter(Objects::nonNull)
-                                .toList();
-
-                for (Integer syllabusId : syllabusIds) {
-
-                        /*
-                         * GIU CourseProgram, chi bo link syllabus.
-                         */
-                        List<CourseProgram> linkedCoursePrograms =
-                                        courseProgramRepository.findBySyllabus_Id(syllabusId);
-
-                        for (CourseProgram courseProgram : linkedCoursePrograms) {
-                                courseProgram.setSyllabus(null);
-                        }
-
-                        if (!linkedCoursePrograms.isEmpty()) {
-                                courseProgramRepository.saveAll(linkedCoursePrograms);
-                                courseProgramRepository.flush();
-                        }
-
-                        /*
-                         * GIU ClassSection / Teaching Assignment, chi bo link syllabus.
-                         */
-                        List<ClassSection> linkedClassSections =
-                                        classSectionRepository.findBySyllabusId(syllabusId);
-
-                        for (ClassSection classSection : linkedClassSections) {
-                                classSection.setSyllabus(null);
-                        }
-
-                        if (!linkedClassSections.isEmpty()) {
-                                classSectionRepository.saveAll(linkedClassSections);
-                                classSectionRepository.flush();
-                        }
-
-                        /*
-                         * Xoa CHI snapshot cua syllabus nay.
-                         * KHONG xoa SourceDocument / Original Word.
-                         */
-                        deleteOwnedSourceSnapshot(syllabusId);
-
-                        deleteSyllabusDetailData(syllabusId);
-
-                        syllabusBookRepository.deleteAll(
-                                        syllabusBookRepository.findBySyllabus_Id(syllabusId));
-
-                        approvalRequestRepository.deleteAll(
-                                        approvalRequestRepository.findBySyllabusId(syllabusId));
-
-                        syllabusImportHistoryRepository.deleteAll(
-                                        syllabusImportHistoryRepository
-                                                        .findBySyllabusIdOrderByCreatedAtDesc(syllabusId));
-
-                        /*
-                         * Day child cleanup xuong DB truoc parent.
-                         */
-                        entityManager.flush();
-
-                        repository.deleteById(syllabusId);
-                        repository.flush();
-                }
-
-                return syllabusIds.size();
         }
 
         private void deleteOwnedSourceSnapshot(Integer syllabusId) {
@@ -1434,82 +1518,171 @@ public class SyllabusServiceImpl implements SyllabusService {
 
                 return submissionValidationService.validate(syllabus);
         }
+@Override
+@Transactional
+public SyllabusResponse submit(Integer id) {
+    repository.lockWorkflow(id);
 
+    Syllabus draft =
+            repository.findByIdWithRelations(id)
+                    .orElseThrow(() ->
+                            new ResourceNotFoundException(
+                                    "Syllabus not found"));
+
+    /*
+     * Only an authorized Instructor/Admin may submit
+     * an editable Draft.
+     */
+    syllabusAccessService.assertCanModify(draft);
+    assertContentIsMutable(draft);
+
+    if (draft.getCourse() == null
+            || draft.getCourse().getId() == null) {
+        throw new IllegalStateException(
+                "The Draft is not linked to a valid course.");
+    }
+
+    List<CourseProgram> linkedCoursePrograms =
+            courseProgramRepository
+                    .findBySyllabus_Id(
+                            draft.getId());
+
+    /*
+     * =====================================================
+     * CANONICAL CURRICULUM CONTEXT
+     * =====================================================
+     *
+     * Do not trust legacy academicYear/semester text.
+     *
+     * Submitted syllabus identity comes from:
+     * CourseProgram -> Program -> Cohort.
+     */
+    CourseProgram curriculumContext =
+            linkedCoursePrograms
+                    .stream()
+                    .filter(cp ->
+                            cp.getProgram() != null
+                            && cp.getCohort() != null)
+                    .findFirst()
+                    .orElseThrow(() ->
+                            new IllegalStateException(
+                                    "The Draft is not linked to a valid Program/Cohort curriculum entry."));
+
+    String canonicalAcademicYear =
+            curriculumContext
+                    .getCohort()
+                    .getName();
+
+    if (canonicalAcademicYear == null
+            || canonicalAcademicYear.isBlank()) {
+        throw new IllegalStateException(
+                "The linked Cohort does not have a valid name.");
+    }
+
+    String canonicalProgram =
+            curriculumContext
+                    .getProgram()
+                    .getCode();
+
+    if (canonicalProgram == null
+            || canonicalProgram.isBlank()) {
+        throw new IllegalStateException(
+                "The linked Program does not have a valid code.");
+    }
+
+    Integer semesterSuggest = curriculumContext.getSemesterSuggest();
+    if (semesterSuggest == null || semesterSuggest < 1 || semesterSuggest > 8) {
+        throw new IllegalStateException(
+                "The linked curriculum entry must specify a semester from 1 to 8.");
+    }
+    String canonicalSemester = "Semester " + semesterSuggest;
+
+    syllabusIdentityService.assertAvailable(draft.getCourse(), canonicalProgram, canonicalAcademicYear, canonicalSemester, draft.getId());
+    /*
+     * Normalize the Draft too, so History will never
+     * preserve 2026-2027 / HK1 style legacy metadata.
+     */
+    draft.setAcademicYear(
+            canonicalAcademicYear);
+
+    draft.setProgram(
+            canonicalProgram);
+
+    draft.setSemester(
+            canonicalSemester);
+
+    /*
+     * Resolve the correct Department Head.
+     */
+    List<UserAccount> deptHeads =
+            syllabusAccessService
+                    .findActiveDeptHeadsFor(draft);
+
+    /*
+     * IMPORTANT:
+     * Pending workflow detection must use canonical
+     * Program/Cohort semester metadata.
+     */
+    boolean hasPendingApproval =
+            approvalRequestRepository
+                    .existsBySyllabus_Course_IdAndSyllabus_ProgramAndSyllabus_AcademicYearAndSyllabus_SemesterAndStatus(
+                            draft.getCourse().getId(),
+                            canonicalProgram,
+                            canonicalAcademicYear,
+                            canonicalSemester,
+                            ApprovalStatus.PENDING);
+
+    if (hasPendingApproval) {
+        throw new IllegalStateException(
+                "This course already has a version pending approval.");
+    }
+
+    LocalDateTime now = LocalDateTime.now();
+    draft.setStatus(SyllabusStatus.SUBMITTED);
+    draft.setSubmittedAt(now);
+    draft.setUpdatedAt(now);
+    draft.setVersionLabel(SyllabusVersion.format(draft.getVersionNumber()));
+    repository.saveAndFlush(draft);
+    approvalRequestRepository.save(ApprovalRequest.builder().syllabus(draft)
+            .syllabusVersionNumber(draft.getVersionNumber())
+            .step(ApprovalStep.STEP1_DEPT_HEAD).status(ApprovalStatus.PENDING)
+            .requestedBy(draft.getCreatedBy()).createdAt(now).build());
+    syllabusHistoryService.capture(draft, "SUBMITTED", syllabusAccessService.currentUser().getUsername());
+    workflowNotificationService.notifySubmitted(draft, deptHeads);
+    return map(draft);
+}
         @Override
-        @Transactional
-        public SyllabusResponse submit(Integer id) {
-
-                Syllabus draft = repository.findByIdWithRelations(id)
-                                .orElseThrow(() -> new ResourceNotFoundException(
-                                                "Syllabus not found"));
-
-                // Chỉ Faculty được phân công môn này hoặc Admin mới được nộp.
-                syllabusAccessService.assertCanModify(draft);
-                assertContentIsMutable(draft);
-
-                // FR-03.10: backend validate toàn bộ nội dung trước mọi bước submit.
-                submissionValidationService.validateOrThrow(draft);
-
-                // FR-05.1: xác định đúng Trưởng bộ môn trước khi tạo snapshot.
-                List<UserAccount> deptHeads = syllabusAccessService.findActiveDeptHeadsFor(draft);
-
-                /*
-                 * Không cho tồn tại hai version đang chờ duyệt cho cùng
-                 * course + academicYear + semester.
-                 */
-                boolean hasPendingApproval = approvalRequestRepository
-                                .existsBySyllabus_Course_IdAndSyllabus_AcademicYearAndSyllabus_SemesterAndStatus(
-                                                draft.getCourse().getId(),
-                                                draft.getAcademicYear(),
-                                                draft.getSemester(),
-                                                ApprovalStatus.PENDING);
-
-                if (hasPendingApproval) {
-                        throw new IllegalStateException(
-                                        "This course already has a version pending approval.");
-                }
-
-                // Submit is a workflow transition on the same syllabus/version.
-                // New versions are created only by explicit clone/new-version flows.
-                LocalDateTime submittedAt = LocalDateTime.now();
-                draft.setStatus(SyllabusStatus.SUBMITTED);
-                draft.setSubmittedAt(submittedAt);
-                draft.setUpdatedAt(submittedAt);
-                Syllabus submittedSyllabus = repository.saveAndFlush(draft);
-
-                ApprovalRequest approvalRequest = ApprovalRequest.builder()
-                                .syllabus(submittedSyllabus)
-                                .step(ApprovalStep.STEP1_DEPT_HEAD)
-                                .status(ApprovalStatus.PENDING)
-                                .requestedBy(submittedSyllabus.getCreatedBy())
-                                .reviewedBy(null)
-                                .comment(null)
-                                .createdAt(LocalDateTime.now())
-                                .resolvedAt(null)
-                                .build();
-
-                approvalRequestRepository.save(approvalRequest);
-
-                // FR-05.4: tạo đồng thời in-app notification và email outbox.
-                workflowNotificationService.notifySubmitted(
-                                submittedSyllabus,
-                                deptHeads);
-
-                return map(submittedSyllabus);
-        }
-
+@Transactional
+public SyllabusResponse createRevisionDraftFromRejected(Integer sourceId) {
+    repository.lockWorkflow(sourceId);
+    Syllabus syllabus = repository.findByIdWithRelations(sourceId)
+            .orElseThrow(() -> new ResourceNotFoundException("Syllabus not found"));
+    syllabusAccessService.assertCanModify(syllabus);
+    if (syllabus.getStatus() != SyllabusStatus.REJECTED) {
+        throw new IllegalStateException("A revision can only start from REJECTED.");
+    }
+    if (approvalRequestRepository.existsBySyllabusIdAndStatus(sourceId, ApprovalStatus.PENDING)) {
+        throw new IllegalStateException("Resolve pending approval requests before starting a revision.");
+    }
+    syllabus.setVersionNumber(Math.addExact(syllabus.getVersionNumber(), 1));
+    syllabus.setVersionLabel(SyllabusVersion.format(syllabus.getVersionNumber()));
+    syllabus.setStatus(SyllabusStatus.DRAFT);
+    syllabus.setSubmittedAt(null);
+    syllabus.setApprovedAt(null);
+    syllabus.setApprovedBy(null);
+    syllabus.setFinalApprovalDate(null);
+    syllabus.setIsCurrent(false);
+    syllabus.setUpdatedAt(LocalDateTime.now());
+    repository.saveAndFlush(syllabus);
+    syllabusHistoryService.capture(syllabus, "REVISION_CREATED", syllabusAccessService.currentUser().getUsername());
+    return map(syllabus);
+}
         private void assertContentIsMutable(Syllabus syllabus) {
                 if (syllabus.getStatus() != SyllabusStatus.DRAFT
                                 && syllabus.getStatus() != SyllabusStatus.REVISION_REQUESTED) {
                         throw new IllegalStateException(
                                         "Only a DRAFT or REVISION_REQUESTED syllabus may be changed.");
                 }
-        }
-
-        /** Used only by explicit create/clone/new-version operations, never by submit. */
-        private int nextVersionNumber(Integer courseId) {
-                Integer maxVersion = repository.findMaxVersionNumberByCourseId(courseId);
-                return (maxVersion == null ? 0 : maxVersion) + 1;
         }
 
         @Override
@@ -1524,6 +1697,181 @@ public class SyllabusServiceImpl implements SyllabusService {
                                 .map(this::map)
                                 .toList();
         }
+
+        /**
+         * Canonical safety boundary for visible syllabus comparison.
+         *
+         * Business rule:
+         * - both syllabuses must be APPROVED;
+         * - same Course;
+         * - same Program;
+         * - different Cohorts.
+         *
+         * The Program/Cohort identity comes from CourseProgram, not from
+         * free-text Syllabus.program / academicYear fields.
+         */
+        private void assertApprovedCohortComparison(
+                        Syllabus oldSyllabus,
+                        Syllabus newSyllabus) {
+
+                if (oldSyllabus == null || newSyllabus == null) {
+                        throw new IllegalArgumentException(
+                                        "Two syllabuses are required for comparison.");
+                }
+
+                if (Objects.equals(
+                                oldSyllabus.getId(),
+                                newSyllabus.getId())) {
+                        throw new IllegalArgumentException(
+                                        "Comparison requires two different cohort syllabuses.");
+                }
+
+                if (oldSyllabus.getStatus() != SyllabusStatus.APPROVED
+                                || newSyllabus.getStatus() != SyllabusStatus.APPROVED) {
+                        throw new IllegalArgumentException(
+                                        "Only APPROVED syllabuses can be compared between cohorts.");
+                }
+
+                if (oldSyllabus.getCourse() == null
+                                || newSyllabus.getCourse() == null
+                                || oldSyllabus.getCourse().getId() == null
+                                || newSyllabus.getCourse().getId() == null
+                                || !Objects.equals(
+                                                oldSyllabus.getCourse().getId(),
+                                                newSyllabus.getCourse().getId())) {
+
+                        throw new IllegalArgumentException(
+                                        "Only syllabuses of the same course can be compared.");
+                }
+
+                ComparisonContext oldContext =
+                                requireComparisonContext(
+                                                oldSyllabus,
+                                                "Old");
+
+                ComparisonContext newContext =
+                                requireComparisonContext(
+                                                newSyllabus,
+                                                "New");
+
+                if (!Objects.equals(
+                                oldContext.courseId(),
+                                newContext.courseId())) {
+                        throw new IllegalArgumentException(
+                                        "Only syllabuses of the same course can be compared.");
+                }
+
+                if (!Objects.equals(
+                                oldContext.programId(),
+                                newContext.programId())) {
+                        throw new IllegalArgumentException(
+                                        "Only syllabuses in the same program can be compared.");
+                }
+
+                if (Objects.equals(
+                                oldContext.cohortId(),
+                                newContext.cohortId())) {
+                        throw new IllegalArgumentException(
+                                        "Comparison requires two different cohorts.");
+                }
+        }
+
+        private ComparisonContext requireComparisonContext(
+                        Syllabus syllabus,
+                        String sideLabel) {
+
+                ComparisonContext context =
+                                findComparisonContext(
+                                                syllabus);
+
+                if (context == null) {
+                        throw new IllegalArgumentException(
+                                        sideLabel
+                                                        + " syllabus is not linked to a valid Program/Cohort curriculum context.");
+                }
+
+                return context;
+        }
+
+        /**
+         * Resolve one logical syllabus context from CourseProgram.
+         *
+         * A syllabus is allowed to have repeated technical links only when
+         * they all represent the same Course + Program + Cohort identity.
+         * Conflicting curriculum contexts are rejected instead of selecting
+         * an arbitrary first row.
+         */
+        private ComparisonContext findComparisonContext(
+                        Syllabus syllabus) {
+
+                if (syllabus == null
+                                || syllabus.getId() == null
+                                || syllabus.getCourse() == null
+                                || syllabus.getCourse().getId() == null) {
+                        return null;
+                }
+
+                List<CourseProgram> mappings =
+                                courseProgramRepository
+                                                .findBySyllabus_Id(
+                                                                syllabus.getId())
+                                                .stream()
+                                                .filter(Objects::nonNull)
+                                                .filter(cp ->
+                                                                cp.getCourse() != null
+                                                                                && cp.getCourse().getId() != null
+                                                                                && cp.getProgram() != null
+                                                                                && cp.getProgram().getId() != null
+                                                                                && cp.getCohort() != null
+                                                                                && cp.getCohort().getId() != null)
+                                                .filter(cp ->
+                                                                Objects.equals(
+                                                                                cp.getCourse().getId(),
+                                                                                syllabus.getCourse().getId()))
+                                                .toList();
+
+                if (mappings.isEmpty()) {
+                        return null;
+                }
+
+                CourseProgram first =
+                                mappings.getFirst();
+
+                ComparisonContext context =
+                                new ComparisonContext(
+                                                first.getCourse().getId(),
+                                                first.getProgram().getId(),
+                                                first.getCohort().getId(),
+                                                first.getCohort().getEntryYear());
+
+                boolean conflictingContext =
+                                mappings.stream()
+                                                .anyMatch(cp ->
+                                                                !Objects.equals(
+                                                                                cp.getCourse().getId(),
+                                                                                context.courseId())
+                                                                                || !Objects.equals(
+                                                                                                cp.getProgram().getId(),
+                                                                                                context.programId())
+                                                                                || !Objects.equals(
+                                                                                                cp.getCohort().getId(),
+                                                                                                context.cohortId()));
+
+                if (conflictingContext) {
+                        throw new IllegalArgumentException(
+                                        "Syllabus is linked to more than one Program/Cohort curriculum context.");
+                }
+
+                return context;
+        }
+
+        private record ComparisonContext(
+                        Integer courseId,
+                        Integer programId,
+                        Integer cohortId,
+                        Integer entryYear) {
+        }
+
 
         @Override
         @Transactional(readOnly = true)
@@ -1540,14 +1888,18 @@ public class SyllabusServiceImpl implements SyllabusService {
                 syllabusAccessService.assertCanView(oldSyllabus);
                 syllabusAccessService.assertCanView(newSyllabus);
 
-                if (!Objects.equals(
-                                oldSyllabus.getCourse().getId(),
-                                newSyllabus.getCourse().getId())) {
-                        throw new IllegalArgumentException(
-                                        "Only versions of the same course can be compared");
-                }
+                /*
+                 * Structural comparison is a comparison BETWEEN TWO APPROVED
+                 * COHORT SYLLABUSES, not a revision/version comparison inside
+                 * one cohort.
+                 */
+                assertApprovedCohortComparison(
+                                oldSyllabus,
+                                newSyllabus);
 
-                return syllabusDiffService.compare(oldSyllabus, newSyllabus);
+                return syllabusDiffService.compare(
+                                oldSyllabus,
+                                newSyllabus);
         }
 
         @Override
@@ -1576,7 +1928,27 @@ public class SyllabusServiceImpl implements SyllabusService {
                                 request.getAcademicYear(),
                                 request.getSemester());
 
-                int nextVersion = nextVersionNumber(source.getCourse().getId());
+                Integer targetCohortId = request.getCohortId();
+                if (!authorization.assignments().isEmpty()) {
+                    ClassSection assignment = authorization.assignments().getFirst();
+                    if (assignment.getCohort() == null) {
+                        throw new IllegalArgumentException("The target teaching assignment must have a Cohort.");
+                    }
+                    if (targetCohortId != null && !Objects.equals(targetCohortId, assignment.getCohort().getId())) {
+                        throw new IllegalArgumentException("The target Cohort must match the teaching assignment.");
+                    }
+                    targetCohortId = assignment.getCohort().getId();
+                }
+                CourseProgram targetContext = courseProgramRepository.findByCourse_IdAndCohort_Id(
+                        source.getCourse().getId(), targetCohortId).stream()
+                        .filter(cp -> cp.getProgram() != null && cp.getCohort() != null
+                                && Objects.equals(cp.getProgram().getCode(), source.getProgram()))
+                        .findFirst().orElseThrow(() -> new IllegalArgumentException("Select the target Program/Cohort curriculum entry."));
+                String targetCohort = targetContext.getCohort().getName();
+                String targetProgram = targetContext.getProgram().getCode();
+                String targetSemester = targetContext.getSemesterSuggest() == null ? null : "Semester " + targetContext.getSemesterSuggest();
+                syllabusIdentityService.assertAvailable(source.getCourse(), targetProgram, targetCohort, targetSemester, null);
+                int nextVersion = 1;
                 LocalDateTime now = LocalDateTime.now();
 
                 String changeSummary = request.getChangeSummary();
@@ -1593,11 +1965,12 @@ public class SyllabusServiceImpl implements SyllabusService {
                 Syllabus draft = Syllabus.builder()
                                 .course(authorization.course())
                                 .versionNumber(nextVersion)
-                                .versionLabel("v" + nextVersion + ".0")
-                                .academicYear(authorization.academicYear())
+                                .versionLabel(SyllabusVersion.format(nextVersion))
+                                .academicYear(targetCohort)
+                                .program(targetProgram)
                                 .courseDesignation(source.getCourseDesignation())
                                 .courseTypes(source.getCourseTypes())
-                                .semester(authorization.semester())
+                                .semester(targetSemester)
                                 .language(source.getLanguage())
                                 .relation(source.getRelation())
                                 .teachingMethods(source.getTeachingMethods())
@@ -1633,24 +2006,8 @@ public class SyllabusServiceImpl implements SyllabusService {
                         classSectionRepository.saveAll(authorization.assignments());
                 }
 
-                if (request.getCohortId() != null) {
-                        List<CourseProgram> cohortCoursePrograms = courseProgramRepository
-                                        .findByCourse_IdAndCohort_Id(
-                                                        draft.getCourse().getId(),
-                                                        request.getCohortId())
-                                        .stream()
-                                        .filter(courseProgram -> courseProgram.getSemesterSuggest() == null
-                                                        || normalizeSemesterLabel(authorization.semester())
-                                                                        .equals("Semester " + courseProgram.getSemesterSuggest()))
-                                        .toList();
-                        if (cohortCoursePrograms.isEmpty()) {
-                                throw new IllegalArgumentException(
-                                                "The selected target cohort is not configured for this course.");
-                        }
-                        final Syllabus clonedDraft = draft;
-                        cohortCoursePrograms.forEach(courseProgram -> courseProgram.setSyllabus(clonedDraft));
-                        courseProgramRepository.saveAll(cohortCoursePrograms);
-                }
+                targetContext.setSyllabus(draft);
+                courseProgramRepository.save(targetContext);
 
                 repository.flush();
                 entityManager.clear();
@@ -1659,5 +2016,39 @@ public class SyllabusServiceImpl implements SyllabusService {
                                 .orElseThrow(() -> new ResourceNotFoundException(
                                                 "Cloned syllabus not found")));
         }
+        @Override
+        @Transactional(readOnly = true)
+        public SemanticSyllabusDiffResponse getSemanticDiff(
+                        Integer oldId,
+                        Integer newId) {
 
+                Syllabus oldSyllabus =
+                                repository.findByIdWithRelations(oldId)
+                                                .orElseThrow(
+                                                                () -> new ResourceNotFoundException(
+                                                                                "Old Syllabus not found"));
+
+                Syllabus newSyllabus =
+                                repository.findByIdWithRelations(newId)
+                                                .orElseThrow(
+                                                                () -> new ResourceNotFoundException(
+                                                                                "New Syllabus not found"));
+
+                syllabusAccessService.assertCanView(oldSyllabus);
+                syllabusAccessService.assertCanView(newSyllabus);
+
+                /*
+                 * Semantic AI must obey the same comparison boundary as the
+                 * deterministic structural diff. Never let the AI endpoint
+                 * become a bypass for Draft/same-cohort/different-program
+                 * comparisons.
+                 */
+                assertApprovedCohortComparison(
+                                oldSyllabus,
+                                newSyllabus);
+
+                return syllabusSemanticComparisonService.compare(
+                                oldSyllabus,
+                                newSyllabus);
+        }
 }

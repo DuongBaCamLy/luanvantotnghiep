@@ -55,10 +55,16 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)
-    @ResponseStatus(HttpStatus.CONFLICT)
-    public Map<String, String> handleConflict(DataIntegrityViolationException ex) {
-        return Map.of("message", ex.getMessage());
-    }
+@ResponseStatus(HttpStatus.CONFLICT)
+public Map<String, String> handleConflict(
+        DataIntegrityViolationException ex) {
+
+    ex.printStackTrace();
+
+    return Map.of(
+            "message",
+            "Unable to complete the operation because related data still exists.");
+}
 
     @ExceptionHandler(BadCredentialsException.class)
     @ResponseStatus(HttpStatus.UNAUTHORIZED)
@@ -100,6 +106,18 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public Map<String, String> handleIllegalArgument(IllegalArgumentException ex) {
         return Map.of("message", ex.getMessage() != null ? ex.getMessage() : "null");
+    }
+
+    @ExceptionHandler(org.springframework.web.HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<Map<String, String>> handleMethodNotAllowed(
+            org.springframework.web.HttpRequestMethodNotSupportedException ex) {
+        var headers = new org.springframework.http.HttpHeaders();
+        if (ex.getSupportedHttpMethods() != null) {
+            headers.setAllow(ex.getSupportedHttpMethods());
+        }
+        return new ResponseEntity<>(
+                Map.of("message", "HTTP method is not supported for this resource."),
+                headers, HttpStatus.METHOD_NOT_ALLOWED);
     }
 
     @ExceptionHandler(Exception.class)

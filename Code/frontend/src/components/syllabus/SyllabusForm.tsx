@@ -35,7 +35,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import type { Course } from "@/types/course"
+import type {
+  Course,
+  CourseLevel,
+} from "@/types/course"
 import type {
   CreateSyllabusRequest,
 } from "@/types/syllabus"
@@ -242,7 +245,8 @@ export default function SyllabusForm({
   const [newCourseDepartmentId, setNewCourseDepartmentId] = useState("")
   const [newCourseTheory, setNewCourseTheory] = useState("3")
   const [newCourseLab, setNewCourseLab] = useState("0")
-  const [newCourseLevel, setNewCourseLevel] = useState("INTRODUCTORY")
+ const [newCourseLevel, setNewCourseLevel] =
+  useState<CourseLevel>("UNDERGRADUATE")
 
   const { data: departments = [] } = useQuery({
     queryKey: ["departments", "syllabus-new-course"],
@@ -459,35 +463,75 @@ export default function SyllabusForm({
 
   useEffect(() => {
     if (!importedContentTopics?.length) return
-    setPrefilledContent((current) => ({
-      ...current,
-      topics: current.topics.map((topic, index) => {
-        const imported = importedContentTopics[index]
-        if (!imported) return topic
-        return {
-          ...topic,
-          contentWeight: imported.contentWeight ?? imported.teachingHours,
-          contentLevel: imported.contentLevel ?? imported.teachingLevel,
-          teachingLevel: imported.teachingLevel ?? imported.contentLevel,
-        }
-      }),
-    }))
-    setSupplemental((current) => ({
-      ...current,
-      topicDetails: {
-        ...current.topicDetails,
-        ...Object.fromEntries(importedContentTopics.map((topic, index) => {
-          const existing = current.topicDetails[String(index)]
-          return [String(index), {
-            clo: existing?.clo ?? "",
-            assessments: existing?.assessments ?? "",
-            resources: existing?.resources ?? "",
-            weight: existing?.weight || String(topic.contentWeight ?? topic.teachingHours ?? ""),
-            level: existing?.level || String(topic.teachingLevel ?? topic.contentLevel ?? ""),
-          }]
-        })),
-      },
-    }))
+
+    let cancelled = false
+    const importedTopics = importedContentTopics
+
+    queueMicrotask(() => {
+      if (cancelled) return
+
+      setPrefilledContent((current) => ({
+        ...current,
+        topics: current.topics.map((topic, index) => {
+          const imported = importedTopics[index]
+          if (!imported) return topic
+          return {
+            ...topic,
+            contentWeight:
+              imported.contentWeight
+              ?? imported.teachingHours,
+            contentLevel:
+              imported.contentLevel
+              ?? imported.teachingLevel,
+            teachingLevel:
+              imported.teachingLevel
+              ?? imported.contentLevel,
+          }
+        }),
+      }))
+
+      setSupplemental((current) => ({
+        ...current,
+        topicDetails: {
+          ...current.topicDetails,
+          ...Object.fromEntries(
+            importedTopics.map((topic, index) => {
+              const existing =
+                current.topicDetails[String(index)]
+
+              return [
+                String(index),
+                {
+                  clo: existing?.clo ?? "",
+                  assessments:
+                    existing?.assessments ?? "",
+                  resources:
+                    existing?.resources ?? "",
+                  weight:
+                    existing?.weight
+                    || String(
+                      topic.contentWeight
+                      ?? topic.teachingHours
+                      ?? "",
+                    ),
+                  level:
+                    existing?.level
+                    || String(
+                      topic.teachingLevel
+                      ?? topic.contentLevel
+                      ?? "",
+                    ),
+                },
+              ]
+            }),
+          ),
+        },
+      }))
+    })
+
+    return () => {
+      cancelled = true
+    }
   }, [importedContentTopics])
 
   const [creditFieldsEdited, setCreditFieldsEdited] = useState({
@@ -538,7 +582,7 @@ export default function SyllabusForm({
       laboratoryCredits: false,
     })
     setFormError(null)
-  }, [initialDataSignature])
+  }, [initialData, initialDataSignature])
 
   const selectedCourse =
     useMemo(
@@ -1408,14 +1452,26 @@ export default function SyllabusForm({
           <div className="grid gap-4 sm:grid-cols-3">
             <Input type="number" min={0} placeholder="Theory credits" value={newCourseTheory} onChange={(event) => setNewCourseTheory(event.target.value)} />
             <Input type="number" min={0} placeholder="Lab credits" value={newCourseLab} onChange={(event) => setNewCourseLab(event.target.value)} />
-            <Select value={newCourseLevel} onValueChange={setNewCourseLevel}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="INTRODUCTORY">Introductory</SelectItem>
-                <SelectItem value="INTERMEDIATE">Intermediate</SelectItem>
-                <SelectItem value="ADVANCED">Advanced</SelectItem>
-              </SelectContent>
-            </Select>
+            <Select
+  value={newCourseLevel}
+  onValueChange={(value) =>
+    setNewCourseLevel(value as CourseLevel)
+  }
+>
+  <SelectTrigger>
+    <SelectValue />
+  </SelectTrigger>
+
+  <SelectContent>
+    <SelectItem value="UNDERGRADUATE">
+      Undergraduate
+    </SelectItem>
+
+    <SelectItem value="GRADUATE">
+      Graduate
+    </SelectItem>
+  </SelectContent>
+</Select>
           </div>
           {createCourseMutation.isError && (
             <p className="text-sm text-rose-600">

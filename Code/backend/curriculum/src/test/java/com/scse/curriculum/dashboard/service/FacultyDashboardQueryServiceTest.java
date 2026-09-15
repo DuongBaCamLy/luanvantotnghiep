@@ -224,6 +224,57 @@ class FacultyDashboardQueryServiceTest {
                 .hasMessageContaining("chính mình");
     }
 
+    @Test
+    void instructorCanReadOwnIdWithEmptyAssignments() {
+        mockCurrentFaculty(List.of(), List.of());
+        assertThat(service.getForRequestedUser(faculty.getId()).getAssignedCourses()).isZero();
+        org.mockito.Mockito.verify(classSectionRepository).findActiveByInstructorId(50);
+    }
+
+    @Test
+    void adminCanInspectRequestedFaculty() {
+        mockCurrentFaculty(List.of(), List.of());
+        when(currentUserService.getCurrentUser()).thenReturn(
+                UserAccount.builder().id(1).role(UserRole.ADMIN).build());
+        when(userAccountRepository.findById(faculty.getId())).thenReturn(Optional.of(faculty));
+        assertThat(service.getForRequestedUser(faculty.getId()).getFacultyUserId()).isEqualTo(faculty.getId());
+    }
+
+    @Test
+    void selfEndpointRequiresInstructorRole() {
+        when(currentUserService.getCurrentUser()).thenReturn(
+                UserAccount.builder().id(1).role(UserRole.ADMIN).build());
+        assertThatThrownBy(service::getMyDashboard).isInstanceOf(ForbiddenOperationException.class);
+    }
+
+    @Test
+    void missingInstructorProfileIsReportedClearly() {
+        faculty.setInstructorId(null);
+        when(currentUserService.getCurrentUser()).thenReturn(faculty);
+        assertThatThrownBy(service::getMyDashboard)
+                .isInstanceOf(ForbiddenOperationException.class).hasMessageContaining("Instructor");
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.EnumSource(value = SyllabusStatus.class, names = {"SUBMITTED", "DRAFT"})
+    void followsRelinkedWorkflowVersion(SyllabusStatus status) {
+        Course course = course(101, "IT001IU", "Course", "Course", 3, 0);
+        Syllabus linked = syllabus(202, 2, "v2.0", status);
+        mockCurrentFaculty(List.of(section(1, course, linked, 1, "2026-2027", 1)), List.of());
+        var item = service.getMyDashboard().getUpcomingDeadlines().getFirst();
+        assertThat(item.getSyllabusId()).isEqualTo(202);
+        assertThat(item.getStatus()).isEqualTo(status.name());
+    }
+
+    @Test
+    void rejectedHistoryDoesNotRecommendEditing() {
+        Course course = course(101, "IT001IU", "Course", "Course", 3, 0);
+        mockCurrentFaculty(List.of(section(1, course,
+                syllabus(201, 1, "v1.0", SyllabusStatus.REJECTED), 1, "2026-2027", 1)), List.of());
+        assertThat(service.getMyDashboard().getUpcomingDeadlines().getFirst().getRecommendedAction())
+                .isEqualTo("VIEW_HISTORY");
+    }
+
     private void mockCurrentFaculty(
             List<ClassSection> assignments,
             List<SyllabusDeadline> deadlines) {

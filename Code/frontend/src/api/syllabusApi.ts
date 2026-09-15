@@ -1,3 +1,4 @@
+import { formatVersionLabel } from "@/lib/syllabusVersion"
 import { api } from "./axios"
 import type {
   CloneSyllabusRequest,
@@ -6,7 +7,10 @@ import type {
   SubmissionValidationResponse,
   SyllabusCreateContextResponse,
 } from "@/types/syllabus"
-import type { SyllabusDiffResponse } from "@/types/syllabusDiff"
+import type {
+  SemanticSyllabusDiffResponse,
+  SyllabusDiffResponse,
+} from "@/types/syllabusDiff"
 
 const normalizeSemesterLabel = (value: unknown) => {
   const text = String(value ?? "").trim()
@@ -16,16 +20,25 @@ const normalizeSemesterLabel = (value: unknown) => {
   return match ? `Semester ${match[1]}` : text
 }
 
+const withoutCreatedBy = (
+  data: CreateSyllabusRequest
+): CreateSyllabusRequest => {
+  const safeData = { ...data }
+  delete safeData.createdBy
+  return safeData
+}
+
+
 const normalizeSyllabusCreatePayload = (
   data: CreateSyllabusRequest
 ): CreateSyllabusRequest => {
-  const { createdBy: _ignoredCreatedBy, ...safeData } = data
+  const safeData = withoutCreatedBy(data)
 
   return {
     ...safeData,
     courseId: Number(data.courseId),
     versionNumber: Number(data.versionNumber || 1),
-    versionLabel: data.versionLabel || "v1.0",
+    versionLabel: formatVersionLabel(Number(data.versionNumber || 1), data.versionLabel),
     academicYear: data.academicYear?.trim() || "",
     semester: normalizeSemesterLabel(data.semester),
     changeSummary: data.changeSummary ?? "",
@@ -39,7 +52,7 @@ const normalizeSyllabusCreatePayload = (
 const normalizeSyllabusUpdatePayload = (
   data: CreateSyllabusRequest
 ): CreateSyllabusRequest => {
-  const { createdBy: _ignoredCreatedBy, ...safeData } = data
+  const safeData = withoutCreatedBy(data)
   const payload: CreateSyllabusRequest = {
     ...safeData,
     courseId: Number(data.courseId),
@@ -84,7 +97,21 @@ export const syllabusApi = {
     })
     return response.data
   },
+getPreviousComparable:
+  async (
+    id: number,
+  ): Promise<Syllabus | null> => {
+    const response =
+      await api.get(
+        `/api/syllabuses/${id}/previous-comparable`,
+      )
 
+    if (response.status === 204) {
+      return null
+    }
+
+    return response.data
+  },
   getByCourse: async (courseId: number): Promise<Syllabus[]> => {
     const response = await api.get(`/api/syllabuses/course/${courseId}`)
     return response.data
@@ -115,11 +142,23 @@ export const syllabusApi = {
   delete: async (id: number): Promise<void> => {
     await api.delete(`/api/syllabuses/${id}`)
   },
+  deleteCohortForReimport: async (
+  programId: number,
+  cohortId: number,
+  confirmCohort: string,
+): Promise<number> => {
+  const response = await api.delete<{
+    deletedCount: number
+  }>("/api/syllabuses/maintenance/cohort", {
+    params: {
+      programId,
+      cohortId,
+      confirmCohort,
+    },
+  })
 
-  deleteAll: async (): Promise<number> => {
-    const response = await api.delete<{ deletedCount: number }>("/api/syllabuses/all")
-    return response.data.deletedCount
-  },
+  return response.data.deletedCount
+},
 
   validateForSubmit: async (id: number): Promise<SubmissionValidationResponse> => {
     const response = await api.get(`/api/syllabuses/${id}/submission-validation`)
@@ -141,6 +180,23 @@ export const syllabusApi = {
     return response.data
   },
 
+  getSemanticDiff: async (
+  id: number,
+  compareWith: number
+): Promise<SemanticSyllabusDiffResponse> => {
+  const response =
+    await api.post<SemanticSyllabusDiffResponse>(
+      `/api/syllabuses/${id}/diff/semantic`,
+      null,
+      {
+        params: {
+          compareWith,
+        },
+      }
+    )
+
+  return response.data
+},
   clone: async (
     id: number,
     request: CloneSyllabusRequest

@@ -129,7 +129,7 @@ const looksCorrupted = (
     text.includes("???")
     || text.includes("�")
     || /[ÃÂÆÐ]/.test(text)
-    || /[\u0000-\u0008\u000B\u000C\u000E-\u001F]/.test(text)
+    || hasUnexpectedControlCharacter(text)
   )
 }
 
@@ -164,7 +164,19 @@ const cleanDescription = (
   return "Description unavailable — repair the PLO master-data encoding."
 }
 
+const hasUnexpectedControlCharacter = (
+  value: string
+) =>
+  Array.from(value).some((character) => {
+    const code = character.charCodeAt(0)
 
+    return (
+      code <= 0x08 ||
+      code === 0x0b ||
+      code === 0x0c ||
+      (code >= 0x0e && code <= 0x1f)
+    )
+  })
 const baseProgramCode = (
   value: string,
 ) => {

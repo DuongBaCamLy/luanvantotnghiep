@@ -492,10 +492,10 @@ public class FacultyDashboardQueryService {
         }
         return switch (syllabus.getStatus()) {
             case DRAFT -> "EDIT";
-            case REVISION_REQUESTED, REJECTED -> "REVISE";
+            case REVISION_REQUESTED -> "REVISE";
             case SUBMITTED, UNDER_REVIEW -> "VIEW_PROGRESS";
             case APPROVED -> "VIEW_APPROVED";
-            case ARCHIVED -> "VIEW_HISTORY";
+            case REJECTED, ARCHIVED -> "VIEW_HISTORY";
         };
     }
 

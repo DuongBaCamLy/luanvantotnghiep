@@ -2,10 +2,13 @@ import { Outlet } from "react-router-dom"
 
 import Sidebar from "@/components/layout/Sidebar"
 import Header from "@/components/layout/Header"
+import { useAuthStore } from "@/store/authStore"
+import "@/styles/admin-workspace.css"
 
 export default function DashboardLayout() {
+  const adminPresentation = useAuthStore((state) => state.user?.role === "ADMIN")
   return (
-    <div className="iu-dashboard-theme flex h-screen overflow-hidden bg-[#edf5f7] text-[#19313c]">
+    <div data-admin-ui={adminPresentation ? "true" : undefined} className="iu-dashboard-theme flex h-screen overflow-hidden bg-[#edf5f7] text-[#19313c]">
       <Sidebar />
 
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">

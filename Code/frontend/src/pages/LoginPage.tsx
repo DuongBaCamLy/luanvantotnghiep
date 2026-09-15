@@ -6,7 +6,6 @@ import {
   AlertCircle,
   Eye,
   EyeOff,
-  Headphones,
   LockKeyhole,
   Mail,
 } from "lucide-react"
@@ -66,10 +65,6 @@ function getAuthErrorMessage(error: unknown): string | null {
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID as
   | string
   | undefined
-
-// Optional. If your university has an SSO URL, add it to .env as:
-// VITE_SSO_URL=https://your-sso-url
-const SSO_URL = import.meta.env.VITE_SSO_URL as string | undefined
 
 const ROLE_HOME: Record<UserRole, string> = {
   ADMIN: "/admin",
@@ -309,43 +304,10 @@ export default function LoginPage() {
                   </button>
                 )}
 
-                {SSO_URL ? (
-                  <a
-                    href={SSO_URL}
-                    className="flex h-[42px] w-full items-center justify-center bg-[#006b72] text-[13px] font-semibold text-white transition hover:bg-[#005960] focus:outline-none focus:ring-2 focus:ring-[#006b72]/30"
-                  >
-                    Sign in via SSO
-                  </a>
-                ) : (
-                  <button
-                    type="button"
-                    disabled
-                    title="Configure VITE_SSO_URL to enable SSO"
-                    className="flex h-[42px] w-full items-center justify-center bg-[#006b72] text-[13px] font-semibold text-white"
-                  >
-                    Sign in via SSO
-                  </button>
-                )}
-
                 <p className="pt-1 text-center text-[9px] text-[#71818a]">
                   Use your school account to continue.
                 </p>
               </form>
-            </div>
-
-            <div className="flex h-[94px] items-center justify-center gap-4 bg-[#eef4f6] px-5">
-              <Headphones className="h-8 w-8 stroke-[1.7] text-[#006b72]" />
-              <div>
-                <div className="text-[10px] font-extrabold uppercase tracking-[0.6px] text-[#006b72]">
-                  Help &amp; Support
-                </div>
-                <div className="mt-[1px] text-[16px] font-semibold leading-none text-[#f0aa39]">
-                  *************
-                </div>
-                <div className="mt-[5px] text-[10px] text-[#71818a]">
-                  Extension 2 (toll-free)
-                </div>
-              </div>
             </div>
           </section>
         </div>

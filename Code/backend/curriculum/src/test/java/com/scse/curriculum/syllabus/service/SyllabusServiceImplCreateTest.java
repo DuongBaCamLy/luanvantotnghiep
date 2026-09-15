@@ -108,6 +108,8 @@ class SyllabusServiceImplCreateTest {
     @Mock
     private EntityManager entityManager;
 
+    @Mock private com.scse.curriculum.syllabus.service.SyllabusIdentityService syllabusIdentityService;
+    @Mock private com.scse.curriculum.syllabus.history.SyllabusHistoryService syllabusHistoryService;
     @InjectMocks
     private SyllabusServiceImpl service;
 
@@ -175,6 +177,7 @@ class SyllabusServiceImplCreateTest {
                         "2099-2100",
                         "HK1");
 
+
         /*
          * Client cố gửi user và version giả.
          * Backend không được tin hai giá trị này.
@@ -194,14 +197,13 @@ class SyllabusServiceImplCreateTest {
                 .thenReturn(Optional.of(course));
 
         when(syllabusAccessService.authorizeCreate(
-                6,
-                course,
-                "2099-2100",
-                "HK1"))
-                .thenReturn(authorization);
-
-        when(repository.findMaxVersionNumberByCourseId(20))
-                .thenReturn(4);
+        6,
+        course,
+        "2099-2100",
+        "HK1",
+        null,
+        null))
+        .thenReturn(authorization);
 
         stubSyllabusSave(100);
 
@@ -228,7 +230,7 @@ class SyllabusServiceImplCreateTest {
          * Version phải do server tạo:
          * max hiện tại là 4 nên version mới là 5.
          */
-        assertThat(saved.getVersionNumber()).isEqualTo(5);
+        assertThat(saved.getVersionNumber()).isEqualTo(1);
         assertThat(saved.getVersionNumber())
                 .isNotEqualTo(request.getVersionNumber());
 
@@ -239,7 +241,7 @@ class SyllabusServiceImplCreateTest {
                 .isEqualTo("2099-2100");
 
         assertThat(saved.getSemester())
-                .isEqualTo("HK1");
+        .isEqualTo("Semester 1");
 
         /*
          * Chỉ đúng assignment được gắn syllabus.
@@ -251,20 +253,21 @@ class SyllabusServiceImplCreateTest {
                 .saveAll(List.of(assignment));
 
         verify(syllabusAccessService).authorizeCreate(
-                6,
-                course,
-                "2099-2100",
-                "HK1");
+        6,
+        course,
+        "2099-2100",
+        "HK1",
+        null,
+        null);
 
-        verify(repository)
-                .findMaxVersionNumberByCourseId(20);
+        verify(repository, never()).findMaxVersionNumberByCourseId(20);
 
         assertThat(response.getId()).isEqualTo(100);
         assertThat(response.getCourseId()).isEqualTo(20);
         assertThat(response.getCreatedById()).isEqualTo(10);
         assertThat(response.getCreatedByUsername())
                 .isEqualTo("instructor1");
-        assertThat(response.getVersionNumber()).isEqualTo(5);
+        assertThat(response.getVersionNumber()).isEqualTo(1);
         assertThat(response.getStatus()).isEqualTo("DRAFT");
     }
 
@@ -294,14 +297,13 @@ class SyllabusServiceImplCreateTest {
                 .thenReturn(Optional.of(course));
 
         when(syllabusAccessService.authorizeCreate(
-                6,
-                course,
-                "CLIENT-FORGED-YEAR",
-                "HK8"))
-                .thenReturn(authorization);
-
-        when(repository.findMaxVersionNumberByCourseId(20))
-                .thenReturn(0);
+        6,
+        course,
+        "CLIENT-FORGED-YEAR",
+        "HK8",
+        null,
+        null))
+        .thenReturn(authorization);
 
         stubSyllabusSave(101);
 
@@ -318,7 +320,7 @@ class SyllabusServiceImplCreateTest {
                 .isEqualTo("2099-2100");
 
         assertThat(saved.getSemester())
-                .isEqualTo("HK1");
+        .isEqualTo("Semester 1");
 
         assertThat(saved.getAcademicYear())
                 .isNotEqualTo(request.getAcademicYear());
@@ -335,7 +337,8 @@ class SyllabusServiceImplCreateTest {
                         20,
                         "2026-2027",
                         "HK2");
-
+request.setProgramId(1);
+request.setCohortId(12);
         SyllabusAccessService.CreationAuthorization authorization =
                 new SyllabusAccessService.CreationAuthorization(
                         admin,
@@ -348,14 +351,13 @@ class SyllabusServiceImplCreateTest {
                 .thenReturn(Optional.of(course));
 
         when(syllabusAccessService.authorizeCreate(
-                null,
-                course,
-                "2026-2027",
-                "HK2"))
-                .thenReturn(authorization);
-
-        when(repository.findMaxVersionNumberByCourseId(20))
-                .thenReturn(null);
+        null,
+        course,
+        "2026-2027",
+        "HK2",
+        1,
+        12))
+        .thenReturn(authorization);
 
         stubSyllabusSave(102);
 
@@ -369,13 +371,19 @@ class SyllabusServiceImplCreateTest {
         assertThat(response.getId()).isEqualTo(102);
         assertThat(response.getCreatedById()).isEqualTo(1);
         assertThat(response.getVersionNumber()).isEqualTo(1);
+        assertThat(response.getVersionLabel()).isEqualTo("v1.0");
         assertThat(response.getAcademicYear())
                 .isEqualTo("2026-2027");
-        assertThat(response.getSemester()).isEqualTo("HK2");
+        assertThat(response.getSemester()).isEqualTo("Semester 2");
     }
 
-    @Test
-    void reviewedPdfImportCreatesANewVersionAndKeepsFileProvenance() {
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.CsvSource({
+        "IMPORT_PDF,syllabus.pdf,application/pdf",
+        "IMPORT_DOCX,syllabus.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "IMPORT_XLSX,syllabus.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    })
+    void reviewedImportCreatesANewVersionAndKeepsFileProvenance(String sourceType, String fileName, String mime) {
         CreateSyllabusRequest request =
                 createRequest(
                         null,
@@ -385,10 +393,11 @@ class SyllabusServiceImplCreateTest {
 
         request.setVersionNumber(999);
         request.setVersionLabel("v999.0");
-        request.setSourceType("IMPORT_PDF");
-        request.setOriginalFileName("CS Program Specification CS - Full.pdf");
-        request.setOriginalFileType("application/pdf");
-
+        request.setSourceType(sourceType);
+        request.setOriginalFileName(fileName);
+        request.setOriginalFileType(mime);
+request.setProgramId(1);
+request.setCohortId(12);
         CreateSyllabusRequest.TopicDTO importedTopic =
                 new CreateSyllabusRequest.TopicDTO();
         importedTopic.setWeekNumber(1);
@@ -408,13 +417,13 @@ class SyllabusServiceImplCreateTest {
         when(courseRepository.findById(20))
                 .thenReturn(Optional.of(course));
         when(syllabusAccessService.authorizeCreate(
-                null,
-                course,
-                "2026-2027",
-                "HK2"))
+        null,
+        course,
+        "2026-2027",
+        "HK2",
+        1,
+        12))
                 .thenReturn(authorization);
-        when(repository.findMaxVersionNumberByCourseId(20))
-                .thenReturn(4);
 
         stubSyllabusSave(103);
 
@@ -427,28 +436,28 @@ class SyllabusServiceImplCreateTest {
         Syllabus saved = captor.getValue();
 
         assertThat(saved.getId()).isEqualTo(103);
-        assertThat(saved.getVersionNumber()).isEqualTo(5);
+        assertThat(saved.getVersionNumber()).isEqualTo(1);
         assertThat(saved.getVersionNumber()).isNotEqualTo(request.getVersionNumber());
-        assertThat(saved.getVersionLabel()).isEqualTo("v5.0");
+        assertThat(saved.getVersionLabel()).isEqualTo("v1.0");
         assertThat(saved.getVersionLabel()).isNotEqualTo(request.getVersionLabel());
         assertThat(saved.getStatus()).isEqualTo(SyllabusStatus.DRAFT);
-        assertThat(saved.getSourceType()).isEqualTo(SyllabusSourceType.IMPORT_PDF);
+        assertThat(saved.getSourceType()).isEqualTo(SyllabusSourceType.valueOf(sourceType));
         assertThat(saved.getImportStatus()).isEqualTo(SyllabusImportStatus.CONFIRMED);
         assertThat(saved.getOriginalFileName())
-                .isEqualTo("CS Program Specification CS - Full.pdf");
-        assertThat(saved.getOriginalFileType()).isEqualTo("application/pdf");
+                .isEqualTo(fileName);
+        assertThat(saved.getOriginalFileType()).isEqualTo(mime);
         assertThat(saved.getTopics()).hasSize(1);
         assertThat(saved.getTopics().get(0).getTeachingHours()).isEqualTo(3);
         assertThat(saved.getTopics().get(0).getLabHours()).isZero();
         assertThat(saved.getTopics().get(0).getSelfStudyHours()).isEqualTo(6);
 
-        assertThat(response.getVersionNumber()).isEqualTo(5);
-        assertThat(response.getVersionLabel()).isEqualTo("v5.0");
-        assertThat(response.getSourceType()).isEqualTo("IMPORT_PDF");
+        assertThat(response.getVersionNumber()).isEqualTo(1);
+        assertThat(response.getVersionLabel()).isEqualTo("v1.0");
+        assertThat(response.getSourceType()).isEqualTo(sourceType);
         assertThat(response.getImportStatus()).isEqualTo("CONFIRMED");
         assertThat(response.getOriginalFileName())
-                .isEqualTo("CS Program Specification CS - Full.pdf");
-        assertThat(response.getOriginalFileType()).isEqualTo("application/pdf");
+                .isEqualTo(fileName);
+        assertThat(response.getOriginalFileType()).isEqualTo(mime);
     }
 
     @Test
@@ -460,6 +469,8 @@ class SyllabusServiceImplCreateTest {
                         "2026-2027",
                         "HK1");
 
+                        request.setProgramId(1);
+request.setCohortId(12);
         request.setSourceType("MANUAL");
         request.setOriginalFileName("forged.pdf");
         request.setOriginalFileType("application/pdf");
@@ -475,13 +486,13 @@ class SyllabusServiceImplCreateTest {
         when(courseRepository.findById(20))
                 .thenReturn(Optional.of(course));
         when(syllabusAccessService.authorizeCreate(
-                null,
-                course,
-                "2026-2027",
-                "HK1"))
-                .thenReturn(authorization);
-        when(repository.findMaxVersionNumberByCourseId(20))
-                .thenReturn(5);
+        null,
+        course,
+        "2026-2027",
+        "HK1",
+        1,
+        12))
+        .thenReturn(authorization);
 
         stubSyllabusSave(104);
 
@@ -492,7 +503,7 @@ class SyllabusServiceImplCreateTest {
         verify(repository).save(captor.capture());
 
         Syllabus saved = captor.getValue();
-        assertThat(saved.getVersionNumber()).isEqualTo(6);
+        assertThat(saved.getVersionNumber()).isEqualTo(1);
         assertThat(saved.getSourceType()).isEqualTo(SyllabusSourceType.MANUAL);
         assertThat(saved.getImportStatus()).isEqualTo(SyllabusImportStatus.NONE);
         assertThat(saved.getOriginalFileName()).isNull();

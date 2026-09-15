@@ -36,9 +36,9 @@ export default function AuditLogPage() {
   }
 
   return (
-    <div className="space-y-4">
+    <div data-admin-page="AuditLogPage" className="space-y-4">
       {/* Header */}
-      <div>
+      <div data-admin-page-header="AuditLogPage">
         <h1 className="text-2xl font-bold text-primary font-heading">
           Nhật ký hoạt động (Audit Log)
         </h1>

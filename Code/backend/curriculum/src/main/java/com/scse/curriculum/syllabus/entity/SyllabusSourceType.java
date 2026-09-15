@@ -9,6 +9,8 @@ public enum SyllabusSourceType {
 
     IMPORT_DOCX,
 
+    IMPORT_XLSX,
+
     CLONE,
     
 }

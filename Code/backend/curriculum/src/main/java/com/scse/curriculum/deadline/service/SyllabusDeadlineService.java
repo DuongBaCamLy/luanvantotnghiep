@@ -598,7 +598,7 @@ public class SyllabusDeadlineService {
     }
 
     private String semesterLabel(Integer semester) {
-        return "HK" + semester;
+        return "Semester " + semester;
     }
 
     private LocalDateTime now() {

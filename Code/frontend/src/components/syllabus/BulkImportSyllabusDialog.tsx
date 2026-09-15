@@ -33,8 +33,8 @@ export default function BulkImportSyllabusDialog({ open, onClose, programId, coh
 
   const extract = async () => {
     if (!file) return
-    if (file.size > 50 * 1024 * 1024) {
-      toast.error("The PDF exceeds the 50 MB upload limit.")
+    if (file.size > 200 * 1024 * 1024) {
+      toast.error("The PDF exceeds the 200 MB upload limit.")
       return
     }
     try {

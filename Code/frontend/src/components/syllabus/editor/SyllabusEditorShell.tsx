@@ -1,3 +1,4 @@
+import { formatVersionLabel } from "@/lib/syllabusVersion"
 import {
   lazy,
   Suspense,
@@ -29,15 +30,13 @@ import {
 
 import type {
   Syllabus,
-  SubmissionValidationResponse,
 } from "@/types/syllabus"
 
 import { useSubmitSyllabus } from "@/hooks/useSubmitSyllabus"
 import { useAuthStore } from "@/store/authStore"
 import { saveSyllabusImportDraft } from "@/lib/syllabusImportDraft"
-import { useValidateSyllabusSubmission } from "@/hooks/useValidateSyllabusSubmission"
 
-import SubmissionValidationDialog from "@/components/syllabus/SubmissionValidationDialog"
+
 import SyllabusPdfPreviewDialog from "@/components/syllabus/SyllabusPdfPreviewDialog"
 import ImportSyllabusDialog from "@/components/syllabus/ImportSyllabusDialog"
 
@@ -254,18 +253,7 @@ export default function SyllabusEditorShell({
   const [activeTab, setActiveTab] =
     useState<number>(1)
 
-  const [
-    validation,
-    setValidation,
-  ] =
-    useState<SubmissionValidationResponse | null>(
-      null,
-    )
 
-  const [
-    validationOpen,
-    setValidationOpen,
-  ] = useState(false)
 
   const [
     pdfPreviewOpen,
@@ -285,8 +273,7 @@ export default function SyllabusEditorShell({
   const submitMutation =
     useSubmitSyllabus()
 
-  const validationMutation =
-    useValidateSyllabusSubmission()
+
 
   const normalizedStatus =
     normalizeStatus(syllabus.status)
@@ -318,38 +305,22 @@ export default function SyllabusEditorShell({
     )
 
   const openReviewTab = () => {
-    setActiveTab(8)
+  setActiveTab(9)
 
-    window.scrollTo({
-      top: 0,
-      behavior: "smooth",
-    })
-  }
+  window.scrollTo({
+    top: 0,
+    behavior: "smooth",
+  })
+}
 
   const runSubmissionCheck = () => {
-    if (!canSubmit) {
-      return
-    }
-
-    validationMutation.mutate(
-      syllabus.id,
-      {
-        onSuccess: (result) => {
-          setValidation(result)
-          setValidationOpen(true)
-        },
-
-        onError: (error: unknown) => {
-          alert(
-            apiMessage(
-              error,
-              "Unable to validate the syllabus submission requirements.",
-            ),
-          )
-        },
-      },
-    )
+  if (!canSubmit) {
+    return
   }
+
+  handleConfirmSubmit()
+}
+
 
   const handleConfirmSubmit = () => {
     if (!canSubmit) {
@@ -359,57 +330,34 @@ export default function SyllabusEditorShell({
     submitMutation.mutate(
       syllabus.id,
       {
-        onSuccess: () => {
-          setValidationOpen(false)
+        onSuccess: (submitted) => {
 
           alert(
             "Syllabus submitted successfully. It is now pending Department review.",
           )
 
-          navigate(
-            `/instructor/syllabus/${syllabus.id}`,
-          )
+          const syllabusBasePath =
+  location.pathname.startsWith("/admin")
+    ? "/admin/syllabus"
+    : "/instructor/syllabus"
+
+navigate(
+  `${syllabusBasePath}/${submitted.id}`,
+)
         },
 
         onError: (error: unknown) => {
-          const response =
-            axios.isAxiosError(error)
-              ? (
-                  error.response
-                    ?.data as
-                    | SubmissionValidationResponse
-                    | undefined
-                )
-              : undefined
-
-          if (response?.issues) {
-            setValidation(response)
-            setValidationOpen(true)
-            return
-          }
-
-          alert(
-            apiMessage(
-              error,
-              "Unable to submit the syllabus.",
-            ),
-          )
-        },
+  alert(
+    apiMessage(
+      error,
+      "Unable to submit the syllabus.",
+    ),
+  )
+},
       },
     )
   }
 
-  const handleGoToSection = (
-    tabId: number,
-  ) => {
-    setActiveTab(tabId)
-    setValidationOpen(false)
-
-    window.scrollTo({
-      top: 0,
-      behavior: "smooth",
-    })
-  }
 
   const renderSection = () => {
     switch (activeTab) {
@@ -467,9 +415,7 @@ export default function SyllabusEditorShell({
             syllabus={syllabus}
             statusCfg={statusCfg}
             canSubmit={canSubmit}
-            validating={
-              validationMutation.isPending
-            }
+
             submitting={
               submitMutation.isPending
             }
@@ -552,8 +498,7 @@ export default function SyllabusEditorShell({
                     syllabus.semester,
                   )}
                   {" · "}
-                  {syllabus.versionLabel
-                    || `v${syllabus.versionNumber ?? 1}`}
+                  {formatVersionLabel(syllabus.versionNumber, syllabus.versionLabel)}
                 </p>
               </div>
             </div>
@@ -719,23 +664,7 @@ export default function SyllabusEditorShell({
         status={statusCfg.label}
       />
 
-      <SubmissionValidationDialog
-        open={validationOpen}
-        validation={validation}
-        submitting={
-          submitMutation.isPending
-        }
-        onOpenChange={
-          setValidationOpen
-        }
-        onSubmit={
-          handleConfirmSubmit
-        }
-        onGoToSection={
-          handleGoToSection
-        }
-      />
-
+      
       <ImportSyllabusDialog
         open={importOpen}
         onClose={() =>
@@ -767,18 +696,15 @@ interface ReviewAndSubmitSectionProps {
   syllabus: Syllabus
   statusCfg: StatusDisplay
   canSubmit: boolean
-  validating: boolean
   submitting: boolean
   onPreview: () => void
   onRunCheck: () => void
   onGoToSection: (tabId: number) => void
 }
-
 function ReviewAndSubmitSection({
   syllabus,
   statusCfg,
   canSubmit,
-  validating,
   submitting,
   onPreview,
   onRunCheck,
@@ -888,8 +814,7 @@ function ReviewAndSubmitSection({
           <ReviewMetric
             label="Version"
             value={
-              syllabus.versionLabel
-              || `v${syllabus.versionNumber ?? 1}`
+              formatVersionLabel(syllabus.versionNumber, syllabus.versionLabel)
             }
           />
         </div>
@@ -965,19 +890,16 @@ function ReviewAndSubmitSection({
               type="button"
               onClick={onRunCheck}
               disabled={
-                !canSubmit
-                || validating
-                || submitting
-              }
+  !canSubmit
+  || submitting
+}
               className="mt-5 w-full gap-2 bg-[#007d84] text-white hover:bg-[#006c72]"
             >
               <Send className="size-4" />
 
-              {validating
-                ? "Running Check..."
-                : submitting
-                  ? "Submitting..."
-                  : "Run Submission Check"}
+              {submitting
+  ? "Submitting..."
+  : "Submit Syllabus"}
             </Button>
 
             {!canSubmit && (

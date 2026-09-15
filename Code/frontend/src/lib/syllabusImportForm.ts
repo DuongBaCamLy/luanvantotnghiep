@@ -1,3 +1,10 @@
+import { formatVersionLabel } from "@/lib/syllabusVersion"
+import {
+  buildImportedComparisonTemplateProfile,
+} from "@/lib/syllabusComparisonTemplate"
+import type {
+  SyllabusComparisonTemplateProfile,
+} from "@/lib/syllabusComparisonTemplate"
 import type { CreateSyllabusRequest, TopicDTO } from "@/types/syllabus"
 import type {
   SyllabusImportData,
@@ -300,7 +307,10 @@ const buildTopicRows = (data: SyllabusImportData): ImportedTopicRow[] => {
   return rows
 }
 
-export const buildImportedStandardNotes = (data?: SyllabusImportData) => {
+export const buildImportedStandardNotes = (
+  data?: SyllabusImportData,
+  comparisonTemplate?: SyllabusComparisonTemplateProfile,
+) => {
   if (!data) return ""
   const topicRows = buildTopicRows(data)
   const weeklyActivities = normalizeWeeklyActivities(data)
@@ -368,6 +378,7 @@ export const buildImportedStandardNotes = (data?: SyllabusImportData) => {
 
   return JSON.stringify({
     schemaVersion: 1,
+    comparisonTemplate,
     internalNotes: "",
     personResponsible: text(data.personResponsible),
     dateRevised: normalizeDateForInput(data.dateRevised),
@@ -420,7 +431,7 @@ export const buildImportedSyllabusInitialData = (
     courseId: options.courseId,
     courseProgramId: options.courseProgramId,
     versionNumber: options.nextVersionNumber,
-    versionLabel: `v${options.nextVersionNumber}.0`,
+    versionLabel: formatVersionLabel(options.nextVersionNumber),
     academicYear: "",
     semester: data.semester ?? "",
     courseDesignation: data.courseDesignation ?? "",
@@ -437,10 +448,19 @@ export const buildImportedSyllabusInitialData = (
     examRequirements: data.examRequirements ?? "",
     major: data.major ?? "",
     changeSummary: `Imported from ${preview.fileName}`,
-    sourceType: "IMPORT_PDF",
+    sourceType: /\.xlsx$/i.test(preview.fileName) || preview.fileType.includes("spreadsheetml")
+      ? "IMPORT_XLSX"
+      : /\.docx$/i.test(preview.fileName) || preview.fileType.includes("wordprocessingml")
+        ? "IMPORT_DOCX"
+        : "IMPORT_PDF",
     originalFileName: preview.fileName,
-    originalFileType: preview.fileType || "application/pdf",
-    notes: buildImportedStandardNotes(data),
+    originalFileType: /\.xlsx$/i.test(preview.fileName)
+      ? "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      : preview.fileType || "application/pdf",
+    notes: buildImportedStandardNotes(
+      data,
+      buildImportedComparisonTemplateProfile(preview),
+    ),
     clos: (data.clos ?? []).map((item, index) => ({
       code: text(item.code) || `CLO${index + 1}`,
       description: text(item.description),

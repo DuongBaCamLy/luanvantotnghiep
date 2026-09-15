@@ -344,11 +344,11 @@ export default function PloManagementPage() {
   const hasError = isProgramError || isPloError
 
   return (
-    <div className="space-y-6">
+    <div data-admin-page="PloManagementPage" className="space-y-6">
       <section className="relative overflow-hidden rounded-2xl border border-[#d7e5e8] bg-gradient-to-br from-white via-[#f8fbfb] to-[#eef7f7] px-6 py-5 shadow-sm">
         <div className="absolute inset-x-0 top-0 h-[3px] bg-gradient-to-r from-[#007d84] via-[#15949a] to-[#f0a72f]" />
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div>
+          <div data-admin-page-header="PloManagementPage">
             <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#708894]">
               Academic Outcomes
             </p>
@@ -437,7 +437,7 @@ export default function PloManagementPage() {
       </div>
 
       <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
-        <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(260px,1fr)_240px_220px]">
+        <div data-admin-filter className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(260px,1fr)_240px_220px]">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
             <Input

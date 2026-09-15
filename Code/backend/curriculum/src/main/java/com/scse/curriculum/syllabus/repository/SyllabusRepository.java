@@ -22,6 +22,19 @@ public interface SyllabusRepository
 
 
 
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("select s from Syllabus s where s.id = :id")
+    Optional<Syllabus> lockWorkflow(@Param("id") Integer id);
+
+    @Query("""
+        select count(s) > 0 from Syllabus s where s.course.id=:courseId
+        and s.program=:program and s.academicYear=:cohort
+        and (s.semester=:semester or (s.semester is null and :semester is null))
+        and (:excludeId is null or s.id<>:excludeId)
+        """)
+    boolean existsLogicalIdentity(@Param("courseId") Integer courseId, @Param("program") String program,
+            @Param("cohort") String cohort, @Param("semester") String semester, @Param("excludeId") Integer excludeId);
+
     /*
      * =====================================================
      * EXISTING
@@ -63,20 +76,29 @@ public interface SyllabusRepository
 
 
     @Query("""
-        SELECT DISTINCT s
+    SELECT DISTINCT s
 
-        FROM Syllabus s
+    FROM Syllabus s
 
-        LEFT JOIN FETCH s.course
+    LEFT JOIN FETCH s.course
 
-        LEFT JOIN FETCH s.createdBy
+    LEFT JOIN FETCH s.createdBy
 
-        LEFT JOIN FETCH s.approvedBy
+    LEFT JOIN FETCH s.approvedBy
 
-        ORDER BY s.createdAt DESC
+    WHERE (
+        s.program IS NULL
+        OR s.program NOT LIKE '__AUDIT_RESET__%'
+    )
+    AND (
+        s.academicYear IS NULL
+        OR s.academicYear NOT LIKE 'AUDIT%'
+    )
 
-    """)
-    List<Syllabus> findAllWithRelations();
+    ORDER BY s.createdAt DESC
+
+""")
+List<Syllabus> findAllWithRelations();
 
     /**
      * Canonical curriculum scope used by both Syllabus Catalog and Curriculum Map.
@@ -323,20 +345,28 @@ public interface SyllabusRepository
 
 
     @Query("""
-        SELECT DISTINCT s
+    SELECT DISTINCT s
 
-        FROM Syllabus s
+    FROM Syllabus s
 
-        LEFT JOIN FETCH s.course
+    LEFT JOIN FETCH s.course
 
-        LEFT JOIN FETCH s.createdBy
+    LEFT JOIN FETCH s.createdBy
 
-        LEFT JOIN FETCH s.approvedBy
+    LEFT JOIN FETCH s.approvedBy
 
-        ORDER BY s.createdAt DESC
+    WHERE (
+        s.program IS NULL
+        OR s.program NOT LIKE '__AUDIT_RESET__%'
+    )
+    AND (
+        s.academicYear IS NULL
+        OR s.academicYear NOT LIKE 'AUDIT%'
+    )
 
-    """)
-    List<Syllabus> findAdminList();
+    ORDER BY s.createdAt DESC
+""")
+List<Syllabus> findAdminList();
 
     @Query("""
         SELECT DISTINCT s FROM Syllabus s

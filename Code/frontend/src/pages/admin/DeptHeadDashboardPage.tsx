@@ -1,3 +1,4 @@
+import { formatVersionLabel } from "@/lib/syllabusVersion"
 import type { ReactNode } from "react"
 import { useMemo, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
@@ -219,7 +220,7 @@ export default function DeptHeadCoursesPage() {
     isLoading: pendingReviewsLoading,
     refetch: refetchPendingReviews,
   } = useQuery({
-    queryKey: ["approval-requests", "pending", "STEP1_DEPT_HEAD"],
+    queryKey: ["approval-requests", "pending", "STEP1_DEPT_HEAD", user?.userId],
     queryFn: () => approvalRequestApi.getPendingByStep("STEP1_DEPT_HEAD"),
     enabled: Boolean(user?.userId),
     staleTime: 15_000,
@@ -631,7 +632,7 @@ export default function DeptHeadCoursesPage() {
                 <div key={review.id} className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <p className="font-semibold text-slate-800"><span className="font-mono text-[#007d84]">{review.courseCode}</span> — {review.courseName}</p>
-                    <p className="mt-1 text-xs text-slate-500">Instructor: {review.requestedByUsername || "—"} · {review.versionLabel || `v${review.versionNumber}`} · Pending Department Review</p>
+                    <p className="mt-1 text-xs text-slate-500">Instructor: {review.requestedByUsername || "—"} · {formatVersionLabel(review.versionNumber, review.versionLabel)} · Pending Department Review</p>
                   </div>
                   <Button asChild size="sm" className="bg-[#007d84] text-white hover:bg-[#006d73]">
                     <Link to={`/dept-head/syllabus/${review.syllabusId}`}>Review <ArrowRight className="size-4" /></Link>

@@ -11,7 +11,7 @@ interface ProtectedRouteProps {
 export default function ProtectedRoute({ allowedRoles, permission }: ProtectedRouteProps) {
   const { isAuthenticated, user } = useAuthStore()
 
-  if (!isAuthenticated) {
+  if (!isAuthenticated || !user) {
     return <Navigate to="/login" replace />
   }
 

@@ -33,7 +33,47 @@ public class ReportServiceImpl implements ReportService {
     private final DashboardService dashboardService;
     private final SyllabusPdfFontProvider pdfFonts;
     private final SyllabusSemesterReportQueryService syllabusSemesterReportQueryService;
+private DashboardHeatmapResponse loadScopedMatrix(
+        long programId,
+        Integer cohortId,
+        String academicYear,
+        String semester,
+        Integer courseTypeId,
+        String search,
+        String status) {
 
+    if (cohortId == null) {
+        throw new IllegalArgumentException(
+                "cohortId là bắt buộc.");
+    }
+
+    DashboardHeatmapResponse matrix =
+            dashboardService.getHeatmapCoverage(
+                    programId,
+                    cohortId,
+                    academicYear,
+                    semester,
+                    courseTypeId,
+                    search,
+                    status);
+
+    if (matrix == null) {
+        throw new IllegalStateException(
+                "Không có dữ liệu ma trận CLO–PLO cho phạm vi đã chọn.");
+    }
+
+    if (matrix.getPloDetails() == null) {
+        matrix.setPloDetails(
+                new ArrayList<>());
+    }
+
+    if (matrix.getCourseCoverages() == null) {
+        matrix.setCourseCoverages(
+                new ArrayList<>());
+    }
+
+    return matrix;
+}
     @Override
     public byte[] generateCloPloMatrixExcel(
             long programId,
@@ -66,6 +106,48 @@ public class ReportServiceImpl implements ReportService {
         return CloPloMatrixPdfExporter.export(matrix, pdfFonts);
     }
 
+    @Override
+public byte[] generateCloPloMatrixExcel(
+        long programId,
+        Integer cohortId,
+        String academicYear,
+        String semester,
+        Integer courseTypeId,
+        String search,
+        String status) {
+
+    return CloPloMatrixExcelExporter.export(
+            loadScopedMatrix(
+                    programId,
+                    cohortId,
+                    academicYear,
+                    semester,
+                    courseTypeId,
+                    search,
+                    status));
+}
+
+@Override
+public byte[] generateCloPloMatrixPdf(
+        long programId,
+        Integer cohortId,
+        String academicYear,
+        String semester,
+        Integer courseTypeId,
+        String search,
+        String status) {
+
+    return CloPloMatrixPdfExporter.export(
+            loadScopedMatrix(
+                    programId,
+                    cohortId,
+                    academicYear,
+                    semester,
+                    courseTypeId,
+                    search,
+                    status),
+            pdfFonts);
+}
     @Override
     public byte[] generateCloPloMatrixExcel(long programId, Integer cohortId,
                                             String semester, String search, String status) {

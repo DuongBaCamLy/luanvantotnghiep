@@ -1,3 +1,28 @@
+export interface SyllabusImportTemplateField {
+    key:string;
+    label:string;
+}
+
+export interface SyllabusImportTemplateSection {
+    key:
+        | "general"
+        | "workloadCredit"
+        | "requirements"
+        | "clo"
+        | "content"
+        | "topicClo"
+        | "cloPlo"
+        | "plannedActivities"
+        | "assessment"
+        | "assessmentClo"
+        | "examination"
+        | "readings"
+        | "revision";
+
+    label:string;
+    fields:SyllabusImportTemplateField[];
+}
+
 export interface CloImportData {
 
     code:string;
@@ -198,6 +223,15 @@ export interface AssessmentCloMappingItem {
  * SyllabusImportData
  */
 export interface SyllabusImportData {
+
+    /**
+     * Ordered section/field structure detected from the uploaded
+     * syllabus template.
+     *
+     * Comparison follows this structure instead of assuming
+     * one fixed syllabus template.
+     */
+    templateSections?:SyllabusImportTemplateSection[];
 
 
     sourceCourseCode?:string;

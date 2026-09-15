@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { isUsableSyllabusImportPreview } from "@/lib/syllabusImportDraft"
 import type { SyllabusImportPreviewResponse } from "@/types/syllabusImport"
+import xlsxTemplateUrl from "../../../../templates/syllabus-import-template.xlsx?url"
 
 type Props = {
   open: boolean
@@ -54,11 +55,11 @@ export default function ImportSyllabusDialog({ open, onClose, expectedCourseCode
 
   const handlePreview = async () => {
     if (!file) {
-      toast.error("Please select a DOCX or PDF syllabus file.")
+      toast.error("Please select a DOCX, XLSX, or PDF syllabus file.")
       return
     }
-    if (!/\.(docx|pdf)$/i.test(file.name)) {
-      toast.error("Only DOCX and PDF syllabus files are supported.")
+    if (!/\.(docx|xlsx|pdf)$/i.test(file.name)) {
+      toast.error("Only DOCX, XLSX, and PDF syllabus files are supported.")
       return
     }
     const requestId = ++previewRequestId.current
@@ -112,14 +113,20 @@ export default function ImportSyllabusDialog({ open, onClose, expectedCourseCode
         <DialogHeader>
           <DialogTitle>Import Syllabus File</DialogTitle>
           <DialogDescription>
-            Upload a DOCX syllabus (recommended) or a PDF. The importer recognizes semantic fields across template versions; nothing is saved until you review and press Save.
+            Upload a DOCX, XLSX, or PDF syllabus file. XLSX files must follow the syllabus import template. Nothing is saved until you review and press Save.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-5">
-          <div className="space-y-2">
-            <Label>Syllabus file</Label>
-            <Input type="file" accept=".docx,.pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/pdf" disabled={loading} onChange={(event) => {
+          <div data-admin-upload className="space-y-2">
+            <Label htmlFor="syllabus-import-file">Syllabus file</Label>
+            <a href={xlsxTemplateUrl} download="syllabus-import-template.xlsx" className="block text-sm text-teal-700 underline">
+              Download XLSX Template
+            </a>
+            <p className="text-xs text-slate-500">
+              For XLSX, fill course code and course name in General Info with the selected course's identity, then replace the example syllabus content before importing.
+            </p>
+            <Input id="syllabus-import-file" type="file" accept=".docx,.xlsx,.pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/pdf" disabled={loading} onChange={(event) => {
               previewRequestId.current += 1
               setFile(event.target.files?.[0] ?? null)
               setPreview(null)

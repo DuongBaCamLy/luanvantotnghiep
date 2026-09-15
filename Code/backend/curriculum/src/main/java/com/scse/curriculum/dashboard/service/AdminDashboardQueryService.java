@@ -51,9 +51,13 @@ public class AdminDashboardQueryService {
     public DashboardAdminResponse getDashboard(
         String requestedAcademicYear,
         Integer requestedSemester,
+        Integer majorId,
         Integer programId,
         Integer cohortId) {
-            validateProgramCohortScope(programId, cohortId);
+            validateProgramCohortScope(
+        majorId,
+        programId,
+        cohortId);
         List<TermRow> terms = loadTerms();
         TermRow scope = resolveScope(terms, requestedAcademicYear, requestedSemester);
 
@@ -90,10 +94,11 @@ public class AdminDashboardQueryService {
 
         List<ClassSection> sections =
         loadSections(
-                scope.academicYear(),
-                scope.semester(),
-                programId,
-                cohortId);
+        scope.academicYear(),
+        scope.semester(),
+        majorId,
+        programId,
+        cohortId);
         response.setTotalAssignedSections(sections.size());
         if (sections.isEmpty()) {
             return response;
@@ -185,6 +190,7 @@ response.setApprovalRate(
         return value == null ? 0L : value;
     }
 private void validateProgramCohortScope(
+        Integer majorId,
         Integer programId,
         Integer cohortId) {
 
@@ -202,10 +208,14 @@ private void validateProgramCohortScope(
             SELECT COUNT(p)
             FROM Program p
             WHERE p.id = :programId
-              AND p.isActive = true
+  AND p.isActive = true
+  AND (
+        :majorId IS NULL
+        OR p.major.id = :majorId
+      )
             """,
             Long.class)
-            .setParameter("programId", programId)
+            .setParameter("majorId", majorId)
             .getSingleResult();
 
     if (programCount == null || programCount == 0) {
@@ -252,23 +262,67 @@ public List<DashboardAdminResponse.TermOption> getTermOptions() {
                 .toList();
     }
 
-    private TermRow resolveScope(List<TermRow> terms, String academicYear, Integer semester) {
-        if (terms.isEmpty()) {
-            return null;
-        }
-        if (academicYear == null || academicYear.isBlank()) {
-            return terms.get(0);
-        }
-        String normalized = academicYear.trim();
-        if (semester == null) {
-            return terms.stream()
-                    .filter(t -> t.academicYear().equalsIgnoreCase(normalized))
-                    .max(Comparator.comparing(TermRow::semester))
-                    .orElse(new TermRow(normalized, 1, 0));
-        }
-        return new TermRow(normalized, semester, 0);
+    private TermRow resolveScope(
+        List<TermRow> terms,
+        String academicYear,
+        Integer semester) {
+
+    if (terms.isEmpty()) {
+        return null;
     }
 
+    /*
+     * Dashboard filter is aligned with Syllabus Catalog:
+     * Major -> Cohort -> Semester.
+     *
+     * Academic Year is no longer a user-facing filter.
+     * When only Semester is provided, resolve the latest
+     * academic year that actually contains that semester.
+     */
+    if (academicYear == null || academicYear.isBlank()) {
+
+        if (semester != null) {
+            return terms.stream()
+                    .filter(term ->
+                            Objects.equals(
+                                    term.semester(),
+                                    semester))
+                    .findFirst()
+                    .orElseGet(() ->
+                            new TermRow(
+                                    terms.get(0).academicYear(),
+                                    semester,
+                                    0));
+        }
+
+        return terms.get(0);
+    }
+
+    String normalized =
+            academicYear.trim();
+
+    if (semester == null) {
+        return terms.stream()
+                .filter(term ->
+                        term.academicYear()
+                                .equalsIgnoreCase(
+                                        normalized))
+                .max(
+                        Comparator.comparing(
+                                TermRow::semester))
+                .orElse(
+                        new TermRow(
+                                normalized,
+                                1,
+                                0));
+    }
+
+    return new TermRow(
+            normalized,
+            semester,
+            0);
+}
+    
     private List<DashboardAdminResponse.TermOption> toTermOptions(List<TermRow> terms) {
         return terms.stream().map(term -> {
             DashboardAdminResponse.TermOption option = new DashboardAdminResponse.TermOption();
@@ -295,6 +349,7 @@ public List<DashboardAdminResponse.TermOption> getTermOptions() {
     private List<ClassSection> loadSections(
         String academicYear,
         Integer semester,
+        Integer majorId,
         Integer programId,
         Integer cohortId) {
 
@@ -316,19 +371,19 @@ public List<DashboardAdminResponse.TermOption> getTermOptions() {
               AND cs.semester = :semester
 
               AND (
-                    :programId IS NULL
-                    OR EXISTS (
-                        SELECT cp.id
-                        FROM CourseProgram cp
-                        WHERE cp.course.id = c.id
-                          AND cp.program.id = :programId
-                          AND (
-                                :cohortId IS NULL
-                                OR cp.cohort IS NULL
-                                OR cp.cohort.id = :cohortId
-                              )
-                    )
-                  )
+      :majorId IS NULL
+      OR cs.program.major.id = :majorId
+    )
+
+AND (
+      :programId IS NULL
+      OR cs.program.id = :programId
+    )
+
+AND (
+      :cohortId IS NULL
+      OR cs.cohort.id = :cohortId
+    )
 
             ORDER BY
                 i.fullName,
@@ -338,6 +393,7 @@ public List<DashboardAdminResponse.TermOption> getTermOptions() {
             ClassSection.class)
             .setParameter("year", academicYear)
             .setParameter("semester", semester)
+            .setParameter("majorId", majorId)
             .setParameter("programId", programId)
             .setParameter("cohortId", cohortId)
             .getResultList();
@@ -556,7 +612,12 @@ public List<DashboardAdminResponse.TermOption> getTermOptions() {
                                 .semester()
                 ),
                 List.of());
-            Syllabus latest = candidates.stream().max(latestComparator).orElse(null);
+            // Task 7 relinks assignments to the submitted snapshot/revision Draft.
+            // Historical isCurrent flags must not override that explicit linkage.
+            Syllabus latest = assignment.linkedSyllabuses.stream()
+                    .max(Comparator.comparing((Syllabus s) -> s.getVersionNumber() == null ? 0 : s.getVersionNumber())
+                            .thenComparing(s -> s.getId() == null ? 0 : s.getId()))
+                    .orElseGet(() -> candidates.stream().max(latestComparator).orElse(null));
             assignment.latestSyllabus = latest;
             assignment.submitted = latest != null && latest.getStatus() != null
                     && SUBMITTED_STATES.contains(latest.getStatus());
@@ -853,6 +914,7 @@ return new DashboardAggregation(
         private final Instructor instructor;
         private final Course course;
         private final Set<Integer> sectionIds = new LinkedHashSet<>();
+        private final List<Syllabus> linkedSyllabuses = new ArrayList<>();
         private Syllabus latestSyllabus;
         private boolean submitted;
         private boolean overdue;
@@ -863,6 +925,11 @@ return new DashboardAggregation(
         }
 
         void addSection(ClassSection section) {
+            Syllabus linked = section.getSyllabus();
+            if (linked != null && linked.getCourse() != null
+                    && Objects.equals(linked.getCourse().getId(), course.getId())) {
+                linkedSyllabuses.add(linked);
+            }
             if (section.getId() != null) {
                 sectionIds.add(section.getId());
             }

@@ -39,6 +39,15 @@ public class ApprovalRequest {
     @JoinColumn(name = "syllabus_id")
     private Syllabus syllabus;
 
+    @Column(name = "syllabus_version_number", nullable = false, updatable = false)
+    private Integer syllabusVersionNumber;
+
+    @jakarta.persistence.PrePersist
+    private void captureRevision() {
+        if (syllabusVersionNumber == null) syllabusVersionNumber = syllabus.getVersionNumber();
+    }
+
+
     @Enumerated(EnumType.STRING)
     private ApprovalStep step;
 

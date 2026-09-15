@@ -1,3 +1,4 @@
+import { formatVersionLabel } from "@/lib/syllabusVersion"
 import { useMemo, useState, type ReactNode } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { useNavigate } from "react-router-dom"
@@ -174,12 +175,12 @@ export default function DeanDashboardPage() {
       iconClass: "bg-emerald-50 text-emerald-700",
     },
     {
-      label: "Pending Final Reviews",
-      value: pendingFinalReviews.length,
-      note: "Awaiting the Dean's final decision",
-      icon: Clock3,
-      iconClass: "bg-blue-50 text-blue-700",
-    },
+  label: "Final Reviews · School-wide",
+  value: pendingFinalReviews.length,
+  note: "Across SCSE · awaiting Dean decision",
+  icon: Clock3,
+  iconClass: "bg-blue-50 text-blue-700",
+},
     {
       label: "Chưa có đề cương",
       value: summary.missingSyllabuses,
@@ -866,7 +867,7 @@ function CourseRow({
         </Badge>
         <p className="mt-1.5 text-xs text-slate-500">
           {course.syllabusId
-            ? `${course.versionLabel ?? `v${course.versionNumber ?? 1}`} · ${course.explicitCurriculumLink ? "Curriculum linked" : "Course matched"}`
+            ? `${formatVersionLabel(course.versionNumber, course.versionLabel)} · ${course.explicitCurriculumLink ? "Curriculum linked" : "Course matched"}`
             : "No syllabus version available"}
         </p>
       </td>

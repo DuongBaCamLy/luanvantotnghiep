@@ -20,6 +20,30 @@ import com.scse.curriculum.user.entity.UserRole;
 
 class AdminDashboardQueryServiceTest {
 
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.EnumSource(value = SyllabusStatus.class, names = {"SUBMITTED", "DRAFT"})
+    void linkedWorkflowVersionOverridesHistoricalCurrentSyllabus(SyllabusStatus linkedStatus) {
+        Instructor instructor = Instructor.builder().id(10).fullName("Assigned instructor").build();
+        UserAccount account = UserAccount.builder().id(20).instructorId(10).build();
+        Course course = Course.builder().id(100).courseCode("IT001IU").name("Course").build();
+        ClassSection assignment = section(1, course, instructor, 1);
+        Syllabus history = Syllabus.builder().id(1000).course(course).createdBy(account)
+                .academicYear("2026-2027").semester("1").versionNumber(99)
+                .status(SyllabusStatus.APPROVED).isCurrent(true).build();
+        Syllabus linked = Syllabus.builder().id(1001).course(course).versionNumber(2)
+                .status(linkedStatus).isCurrent(false).build();
+        assignment.setSyllabus(linked);
+
+        var result = AdminDashboardQueryService.aggregate(List.of(assignment), Map.of(10, account),
+                List.of(history), Map.of(), true);
+
+        assertThat(result.statusOverview().get(linkedStatus.name())).isEqualTo(1L);
+        assertThat(result.approvedCount()).isZero();
+        assertThat(result.submittedCount()).isEqualTo(linkedStatus == SyllabusStatus.SUBMITTED ? 1 : 0);
+        assertThat(result.missingCount()).isEqualTo(linkedStatus == SyllabusStatus.DRAFT ? 1 : 0);
+        assertThat(result.overdueCount()).isEqualTo(linkedStatus == SyllabusStatus.DRAFT ? 1 : 0);
+    }
+
     @Test
     void aggregateDeduplicatesSectionsAndCountsOnlySubmittedWorkflowStates() {
         Department department = Department.builder()

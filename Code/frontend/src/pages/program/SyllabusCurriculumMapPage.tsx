@@ -164,13 +164,13 @@ export default function SyllabusCurriculumMapPage() {
   const hasError = programsQuery.isError || majorsQuery.isError || cohortsQuery.isError || mapQuery.isError
 
   return (
-    <div className="space-y-5 pb-8">
+    <div data-admin-page="SyllabusCurriculumMapPage" className="space-y-5 pb-8">
       <section className="relative overflow-hidden rounded-2xl border border-[#d7e5e8] bg-white px-6 py-5 shadow-sm">
         <div className="absolute inset-x-0 top-0 h-[3px] bg-gradient-to-r from-[#007d84] via-[#15949a] to-[#f0a72f]" />
         <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
           <div className="flex items-start gap-3">
             <Button type="button" variant="ghost" size="icon" onClick={() => navigate(-1)} title="Back"><ArrowLeft className="size-4" /></Button>
-            <div>
+            <div data-admin-page-header="SyllabusCurriculumMapPage">
               <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#708894]">SCSE / Curriculum</p>
               <h1 className="mt-1 text-[28px] font-bold tracking-[-0.5px] text-[#006d73]">Curriculum Map</h1>
               <p className="mt-1 text-sm text-slate-500">Cohort determines the curriculum; semester places each course; structured relationships draw the arrows.</p>

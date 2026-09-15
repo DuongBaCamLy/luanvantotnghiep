@@ -1,3 +1,4 @@
+import { formatVersionLabel } from "@/lib/syllabusVersion"
 import { useEffect, useMemo, useState } from "react"
 import type { ReactNode } from "react"
 import {
@@ -23,6 +24,7 @@ import {
 } from "lucide-react"
 
 import { cohortApi } from "@/api/cohortApi"
+import { courseTypeApi } from "@/api/courseTypeApi"
 import {
   dashboardApi,
   type HeatmapCellCoverage,
@@ -631,6 +633,12 @@ export function LiveCloPloHeatmapPage() {
   const [statusFilter, setStatusFilter] =
     useState(searchParams.get("status") || SYLLABUS_FILTER_ALL)
 
+    const [courseTypeId, setCourseTypeId] =
+  useState(
+    searchParams.get("courseTypeId")
+    || SYLLABUS_FILTER_ALL,
+  )
+
   const [selectedCell, setSelectedCell] =
     useState<SelectedCell | null>(null)
 
@@ -659,8 +667,10 @@ export function LiveCloPloHeatmapPage() {
   )
 
   const roleBase =
-    location.pathname.startsWith("/dean")
-      ? "/dean"
+  location.pathname.startsWith("/dean")
+    ? "/dean"
+    : location.pathname.startsWith("/dept-head")
+      ? "/dept-head"
       : "/admin"
 
   const {
@@ -681,15 +691,30 @@ export function LiveCloPloHeatmapPage() {
     queryFn: programApi.getMajors,
   })
 
-  useEffect(() => {
-    if (majorCode || !programId) return
-    const selectedProgram = programs.find(
-      (program) => String(program.id) === programId,
-    )
-    if (selectedProgram?.majorCode) {
-      setMajorCode(selectedProgram.majorCode)
-    }
-  }, [majorCode, programId, programs])
+  const {
+  data: courseTypes = [],
+  isLoading: isLoadingCourseTypes,
+  isError: isCourseTypesError,
+} = useQuery({
+  queryKey: ["course-types"],
+  queryFn: courseTypeApi.getAll,
+})
+
+const courseTypeExists =
+  courseTypeId === SYLLABUS_FILTER_ALL
+  || courseTypes.some(
+    (type) =>
+      String(type.id) === courseTypeId,
+  )
+
+const effectiveCourseTypeId =
+  courseTypeExists
+    ? courseTypeId
+    : SYLLABUS_FILTER_ALL
+  if (!majorCode && programId) {
+    const inferredMajor = programs.find((program) => String(program.id) === programId)?.majorCode
+    if (inferredMajor) setMajorCode(inferredMajor)
+  }
 
   const programExists =
     programs.some(
@@ -755,7 +780,10 @@ export function LiveCloPloHeatmapPage() {
       ? cohortId
       : ""
 
-  useEffect(() => {
+  const urlFilterSignature = searchParams.toString()
+  const [appliedUrlFilters, setAppliedUrlFilters] = useState(urlFilterSignature)
+  if (appliedUrlFilters !== urlFilterSignature) {
+    setAppliedUrlFilters(urlFilterSignature)
     const urlProgramId =
       searchParams.get("programId") || ""
     const urlCohortId =
@@ -775,7 +803,11 @@ export function LiveCloPloHeatmapPage() {
     setCourseSearch(searchParams.get("search") || "")
     setSemesterFilter(searchParams.get("semester") || SYLLABUS_FILTER_ALL)
     setStatusFilter(searchParams.get("status") || SYLLABUS_FILTER_ALL)
-  }, [searchParams])
+    setCourseTypeId(
+  searchParams.get("courseTypeId")
+  || SYLLABUS_FILTER_ALL,
+)
+  }
 
   useEffect(() => {
     if (
@@ -809,13 +841,22 @@ export function LiveCloPloHeatmapPage() {
     if (courseSearch.trim()) next.set("search", courseSearch.trim())
     if (semesterFilter !== SYLLABUS_FILTER_ALL) next.set("semester", semesterFilter)
     if (statusFilter !== SYLLABUS_FILTER_ALL) next.set("status", statusFilter)
-
+if (
+  effectiveCourseTypeId
+  !== SYLLABUS_FILTER_ALL
+) {
+  next.set(
+    "courseTypeId",
+    effectiveCourseTypeId,
+  )
+}
     setSearchParams(
       next,
       { replace: true },
     )
   }, [
     effectiveProgramId,
+    effectiveCourseTypeId,
     effectiveCohortId,
     majorCode,
     courseSearch,
@@ -834,29 +875,52 @@ export function LiveCloPloHeatmapPage() {
     error: heatmapError,
   } = useQuery({
     queryKey: [
-      "clo-plo-heatmap",
-      effectiveProgramId,
-      effectiveCohortId,
-      courseSearch,
-      semesterFilter,
-      statusFilter,
-    ],
+  "clo-plo-heatmap",
+  effectiveProgramId,
+  effectiveCohortId,
+  effectiveCourseTypeId,
+  courseSearch,
+  semesterFilter,
+  statusFilter,
+],
 
     queryFn: () =>
       dashboardApi.getHeatmapCoverage(
         Number(effectiveProgramId),
         {
-          cohortId:
-            effectiveCohortId ? Number(effectiveCohortId) : undefined,
-          search: courseSearch.trim() || undefined,
-          semester: semesterFilter === SYLLABUS_FILTER_ALL ? undefined : semesterFilter,
-          status: statusFilter === SYLLABUS_FILTER_ALL ? undefined : statusFilter,
-        },
+  cohortId:
+    effectiveCohortId
+      ? Number(effectiveCohortId)
+      : undefined,
+
+  courseTypeId:
+    effectiveCourseTypeId
+      === SYLLABUS_FILTER_ALL
+      ? undefined
+      : Number(effectiveCourseTypeId),
+
+  search:
+    courseSearch.trim()
+    || undefined,
+
+  semester:
+    semesterFilter
+      === SYLLABUS_FILTER_ALL
+      ? undefined
+      : semesterFilter,
+
+  status:
+    statusFilter
+      === SYLLABUS_FILTER_ALL
+      ? undefined
+      : statusFilter,
+},
       ),
 
     enabled: Boolean(
-      effectiveProgramId,
-    ),
+  effectiveProgramId
+  && effectiveCohortId,
+),
   })
 
   const approvedCourses =
@@ -1209,11 +1273,13 @@ export function LiveCloPloHeatmapPage() {
     readiness === "READY"
 
   const canExport =
-    Boolean(
-      heatmap
-      && heatmap.summary.totalPlos > 0
-      && heatmap.summary.totalCourses > 0,
-    )
+  Boolean(
+    effectiveProgramId
+    && effectiveCohortId
+    && heatmap
+    && heatmap.summary.totalPlos > 0
+    && heatmap.summary.totalCourses > 0,
+  )
 
   const hasCloAnalysisData =
     Boolean(
@@ -1226,23 +1292,43 @@ export function LiveCloPloHeatmapPage() {
     format: "excel" | "pdf",
   ) {
     if (
-      !effectiveProgramId
-      || !canExport
-    ) {
-      return
-    }
+  !effectiveProgramId
+  || !effectiveCohortId
+  || !canExport
+) {
+  return
+}
 
     setExporting(format)
     setExportError("")
 
     try {
       const scope = {
-        cohortId:
-          effectiveCohortId ? Number(effectiveCohortId) : undefined,
-        search: courseSearch.trim() || undefined,
-        semester: semesterFilter === SYLLABUS_FILTER_ALL ? undefined : semesterFilter,
-        status: statusFilter === SYLLABUS_FILTER_ALL ? undefined : statusFilter,
-      }
+  cohortId:
+    Number(effectiveCohortId),
+
+  courseTypeId:
+    effectiveCourseTypeId
+      === SYLLABUS_FILTER_ALL
+      ? undefined
+      : Number(effectiveCourseTypeId),
+
+  search:
+    courseSearch.trim()
+    || undefined,
+
+  semester:
+    semesterFilter
+      === SYLLABUS_FILTER_ALL
+      ? undefined
+      : semesterFilter,
+
+  status:
+    statusFilter
+      === SYLLABUS_FILTER_ALL
+      ? undefined
+      : statusFilter,
+}
 
       const response =
         format === "excel"
@@ -1324,12 +1410,13 @@ export function LiveCloPloHeatmapPage() {
   }
 
   const isInitialLoading =
-    isLoadingPrograms
-    || isLoadingMajors
-    || (
-      Boolean(effectiveProgramId)
-      && isLoadingCohorts
-    )
+  isLoadingPrograms
+  || isLoadingMajors
+  || isLoadingCourseTypes
+  || (
+    Boolean(effectiveProgramId)
+    && isLoadingCohorts
+  )
 
   return (
     <div className="mx-auto w-full max-w-[1600px] space-y-5 pb-10">
@@ -1342,7 +1429,7 @@ export function LiveCloPloHeatmapPage() {
               <Grid3X3 className="size-6" />
             </div>
 
-            <div>
+            <div data-admin-page-header="CloPloHeatmapPage">
               <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#708894]">
                 Academic Outcome Analysis
               </p>
@@ -1413,7 +1500,7 @@ export function LiveCloPloHeatmapPage() {
             </h2>
 
             <p className="mt-1 text-xs text-slate-500">
-              Select a program and cohort to analyze curriculum-wide CLO contributions to PLOs.
+              Select a major and cohort. The selected cohort determines the exact curriculum program used for CLO–PLO analysis.
             </p>
           </div>
 
@@ -1438,6 +1525,7 @@ export function LiveCloPloHeatmapPage() {
                 setMajorCode("")
                 setSemesterFilter(SYLLABUS_FILTER_ALL)
                 setStatusFilter(SYLLABUS_FILTER_ALL)
+                setCourseTypeId(SYLLABUS_FILTER_ALL)
                 setSearchParams(
                   new URLSearchParams(),
                   { replace: true },
@@ -1468,7 +1556,7 @@ export function LiveCloPloHeatmapPage() {
           </div>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-4">
+        <div data-admin-filter className="grid gap-4 md:grid-cols-5">
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-slate-700">
               Major / Program
@@ -1477,29 +1565,41 @@ export function LiveCloPloHeatmapPage() {
             <Select
               value={majorCode || SYLLABUS_FILTER_ALL}
               onValueChange={(value) => {
-                const matchingProgram = value === SYLLABUS_FILTER_ALL
-                  ? undefined
-                  : programs
-                    .filter((item) => item.majorCode.toLowerCase() === value.toLowerCase())
-                    .sort((a, b) => Number(b.isActive) - Number(a.isActive)
-                      || b.validFrom.localeCompare(a.validFrom))[0]
-                setMajorCode(value === SYLLABUS_FILTER_ALL ? "" : value)
-                setProgramId(matchingProgram ? String(matchingProgram.id) : "")
-                setCohortId("")
-                const next =
-                  new URLSearchParams(searchParams)
-                if (value === SYLLABUS_FILTER_ALL) next.delete("majorCode")
-                else next.set("majorCode", value)
-                if (matchingProgram) next.set("programId", String(matchingProgram.id))
-                else next.delete("programId")
-                next.delete("cohortId")
-                setSearchParams(
-                  next,
-                  { replace: true },
-                )
-                setSelectedCell(null)
-                setSelectedPlo(null)
-              }}
+  const nextMajorCode =
+    value === SYLLABUS_FILTER_ALL
+      ? ""
+      : value
+
+  setMajorCode(nextMajorCode)
+
+  // Major chỉ dùng để thu hẹp danh sách cohort.
+  // Chưa quyết định Program cho đến khi user chọn Cohort.
+  setProgramId("")
+  setCohortId("")
+
+  const next =
+    new URLSearchParams(searchParams)
+
+  if (nextMajorCode) {
+    next.set(
+      "majorCode",
+      nextMajorCode,
+    )
+  } else {
+    next.delete("majorCode")
+  }
+
+  next.delete("programId")
+  next.delete("cohortId")
+
+  setSearchParams(
+    next,
+    { replace: true },
+  )
+
+  setSelectedCell(null)
+  setSelectedPlo(null)
+}}
               disabled={
                 isLoadingPrograms || isLoadingMajors
                 || majors.length === 0
@@ -1537,14 +1637,25 @@ export function LiveCloPloHeatmapPage() {
               value={effectiveCohortId || SYLLABUS_FILTER_ALL}
               onValueChange={(value) => {
                 if (value === SYLLABUS_FILTER_ALL) {
-                  setCohortId("")
-                  const next = new URLSearchParams(searchParams)
-                  next.delete("cohortId")
-                  setSearchParams(next, { replace: true })
-                  setSelectedCell(null)
-                  setSelectedPlo(null)
-                  return
-                }
+  setCohortId("")
+  setProgramId("")
+
+  const next =
+    new URLSearchParams(searchParams)
+
+  next.delete("cohortId")
+  next.delete("programId")
+
+  setSearchParams(
+    next,
+    { replace: true },
+  )
+
+  setSelectedCell(null)
+  setSelectedPlo(null)
+
+  return
+}
                 const selectedCohort = cohorts.find((item) => String(item.id) === value)
                 const cohortProgram = selectedCohort
                   ? programs.find((program) => program.id === selectedCohort.programId)
@@ -1608,7 +1719,49 @@ export function LiveCloPloHeatmapPage() {
               </SelectContent>
             </Select>
           </div>
+<div className="space-y-1.5">
+  <label className="text-xs font-semibold text-slate-700">
+    Course Group
+  </label>
 
+  <Select
+    value={effectiveCourseTypeId}
+    onValueChange={(value) => {
+      setCourseTypeId(value)
+      setSelectedCell(null)
+      setSelectedPlo(null)
+    }}
+    disabled={isLoadingCourseTypes}
+  >
+    <SelectTrigger className="bg-white">
+      <SelectValue />
+    </SelectTrigger>
+
+    <SelectContent>
+      <SelectItem value={SYLLABUS_FILTER_ALL}>
+        All Course Groups
+      </SelectItem>
+
+      {courseTypes
+        .slice()
+        .sort((a, b) =>
+          a.code.localeCompare(
+            b.code,
+            "en",
+            { numeric: true },
+          ),
+        )
+        .map((type) => (
+          <SelectItem
+            key={type.id}
+            value={String(type.id)}
+          >
+            {type.code} — {type.name}
+          </SelectItem>
+        ))}
+    </SelectContent>
+  </Select>
+</div>
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-slate-700">
               Status
@@ -1633,8 +1786,10 @@ export function LiveCloPloHeatmapPage() {
         </div>
       </section>
 
-      {isProgramsError || isMajorsError
-      || isCohortsError ? (
+      {isProgramsError
+|| isMajorsError
+|| isCohortsError
+|| isCourseTypesError ? (
         <section className="rounded-2xl border border-rose-200 bg-rose-50 p-5 text-sm text-rose-700">
           Unable to load program or cohort master data.
         </section>
@@ -1646,14 +1801,22 @@ export function LiveCloPloHeatmapPage() {
         <section className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-800">
           No curriculum programs are available.
         </section>
-      ) : !effectiveProgramId ? (
-        <section className="rounded-2xl border border-blue-200 bg-blue-50 p-5 text-sm text-blue-800">
-          Select a Program to start curriculum-wide CLO–PLO analysis.
-        </section>
-      ) : availableCohorts.length === 0 ? (
-        <section className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-800">
-          The selected program has no active cohort.
-        </section>
+      ) : !majorCode ? (
+  <section className="rounded-2xl border border-blue-200 bg-blue-50 p-5 text-sm text-blue-800">
+    Select a Major and Cohort to start curriculum-wide CLO–PLO analysis.
+  </section>
+) : availableCohorts.length === 0 ? (
+  <section className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-800">
+    The selected Major has no available Cohort.
+  </section>
+) : !effectiveCohortId ? (
+  <section className="rounded-2xl border border-blue-200 bg-blue-50 p-5 text-sm text-blue-800">
+    Select a Cohort to analyze one exact curriculum snapshot.
+  </section>
+) : !effectiveProgramId ? (
+  <section className="rounded-2xl border border-rose-200 bg-rose-50 p-5 text-sm text-rose-700">
+    The selected Cohort is not linked to a valid curriculum Program.
+  </section>
       ) : isHeatmapError ? (
         <section className="rounded-2xl border border-rose-200 bg-rose-50 p-5 shadow-sm">
           <div className="flex items-start gap-3">
@@ -2100,7 +2263,7 @@ export function LiveCloPloHeatmapPage() {
                                     {course.syllabusVersionLabel
                                       || (
                                         course.syllabusVersion
-                                          ? `v${course.syllabusVersion}`
+                                          ? formatVersionLabel(course.syllabusVersion)
                                           : ""
                                       )}
                                   </Badge>
@@ -2604,7 +2767,7 @@ export function LiveCloPloHeatmapPage() {
                     {selectedCell.course.syllabusVersionLabel
                       || (
                         selectedCell.course.syllabusVersion
-                          ? `v${selectedCell.course.syllabusVersion}`
+                          ? formatVersionLabel(selectedCell.course.syllabusVersion)
                           : ""
                       )}
                     {" · APPROVED"}

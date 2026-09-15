@@ -117,7 +117,7 @@ export interface Syllabus {
   examForms?: string | null
   examRequirements?: string | null
   major?: string | null
-  sourceType?: "MANUAL" | "IMPORT_PDF" | "IMPORT_DOCX" | "CLONE" | null
+  sourceType?: "MANUAL" | "IMPORT_PDF" | "IMPORT_DOCX" | "IMPORT_XLSX" | "CLONE" | null
   originalFileName?: string | null
   originalFileType?: string | null
   importStatus?: "NONE" | "PENDING" | "PARSED" | "CONFIRMED" | "FAILED" | null
@@ -178,7 +178,7 @@ major?: string | null
   changeSummary?: string
   notes?: string
 
-  sourceType?: "MANUAL" | "IMPORT_PDF" | "IMPORT_DOCX" | "CLONE"
+  sourceType?: "MANUAL" | "IMPORT_PDF" | "IMPORT_DOCX" | "IMPORT_XLSX" | "CLONE"
   originalFileName?: string
   originalFileType?: string
 

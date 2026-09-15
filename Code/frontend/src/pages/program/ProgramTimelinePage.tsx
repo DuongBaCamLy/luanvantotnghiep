@@ -63,7 +63,7 @@ export default function ProgramTimelinePage() {
   const validProgramId = Number.isInteger(programId) && programId > 0
   const roleBase = getRoleBase(location.pathname)
 
-  const [cohortId, setCohortId] = useState(
+  const [chosenCohortId, setCohortId] = useState(
     searchParams.get("cohortId") ?? "",
   )
 
@@ -100,22 +100,14 @@ export default function ProgramTimelinePage() {
     [cohorts],
   )
 
+  const cohortId = activeCohorts.some((cohort) => String(cohort.id) === chosenCohortId)
+    ? chosenCohortId : activeCohorts[0] ? String(activeCohorts[0].id) : ""
   useEffect(() => {
-    if (activeCohorts.length === 0) return
-
-    const currentIsValid = activeCohorts.some(
-      (cohort) => String(cohort.id) === cohortId,
-    )
-
-    if (currentIsValid) return
-
-    const latest = String(activeCohorts[0].id)
-    setCohortId(latest)
-
+    if (!cohortId || searchParams.get("cohortId") === cohortId) return
     const next = new URLSearchParams(searchParams)
-    next.set("cohortId", latest)
+    next.set("cohortId", cohortId)
     setSearchParams(next, { replace: true })
-  }, [activeCohorts, cohortId, searchParams, setSearchParams])
+  }, [cohortId, searchParams, setSearchParams])
 
   const selectedCohort = activeCohorts.find(
     (cohort) => String(cohort.id) === cohortId,
@@ -232,7 +224,7 @@ export default function ProgramTimelinePage() {
     || isCurriculumError
 
   return (
-    <div className="mx-auto w-full max-w-[1450px] space-y-5 pb-10">
+    <div data-admin-page="ProgramTimelinePage" className="mx-auto w-full max-w-[1450px] space-y-5 pb-10">
       <section className="relative overflow-hidden rounded-2xl border border-[#d7e5e8] bg-white shadow-sm">
         <div className="absolute inset-x-0 top-0 h-[3px] bg-gradient-to-r from-[#007d84] via-[#15949a] to-[#f0a72f]" />
 
@@ -242,7 +234,7 @@ export default function ProgramTimelinePage() {
               <CalendarDays className="size-5" />
             </div>
 
-            <div>
+            <div data-admin-page-header="ProgramTimelinePage">
               <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#708894]">
                 Curriculum Planning
               </p>

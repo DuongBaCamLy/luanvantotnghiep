@@ -100,15 +100,7 @@ export type StandardSyllabusSectionNumbers = {
   readings: string
 }
 
-export const WORD_V8_SECTION_NUMBERS: StandardSyllabusSectionNumbers = {
-  clos: "3",
-  content: "4",
-  matrix: "5",
-  examination: "7–8",
-  plannedActivities: "9",
-  assessment: "10",
-  readings: "12",
-}
+
 
 const LEGACY_PDF_SECTION_NUMBERS: StandardSyllabusSectionNumbers = {
   clos: "",
@@ -557,11 +549,11 @@ type Accent = "teal" | "blue" | "violet" | "amber" | "green" | "rose"
 const accents: Record<Accent, string> = { teal: "bg-[#007d84]", blue: "bg-[#3978b7]", violet: "bg-[#7668b5]", amber: "bg-[#c88928]", green: "bg-[#25866b]", rose: "bg-[#ad5268]" }
 
 function Section({ number, order, icon: Icon, title, description, accent, children }: { number: string; order?: number; icon: typeof BookOpen; title: string; description: string; accent: Accent; children: React.ReactNode }) {
-  return <section style={{ order }} className="overflow-hidden rounded-2xl border border-[#d8e4e7] bg-white shadow-[0_1px_2px_rgba(20,55,65,0.04)]"><header className="border-b bg-gradient-to-r from-[#f8fbfb] to-white px-5 py-5 sm:px-6"><div className="flex items-start gap-4">{number && <span className={`flex size-10 shrink-0 items-center justify-center rounded-xl text-sm font-bold text-white ${accents[accent]}`}>{number}</span>}<div><div className="flex items-center gap-2"><Icon className="size-4 text-[#58737d]" /><h2 className="font-bold text-[#17343d]">{title}</h2></div><p className="mt-1 text-xs leading-5 text-[#70858d]">{description}</p></div></div></header><div className="space-y-5 p-5 sm:p-6">{children}</div></section>
+  return <section data-admin-form-section style={{ order }} className="overflow-hidden rounded-2xl border border-[#d8e4e7] bg-white shadow-[0_1px_2px_rgba(20,55,65,0.04)]"><header className="border-b bg-gradient-to-r from-[#f8fbfb] to-white px-5 py-5 sm:px-6"><div className="flex items-start gap-4">{number && <span className={`flex size-10 shrink-0 items-center justify-center rounded-xl text-sm font-bold text-white ${accents[accent]}`}>{number}</span>}<div><div className="flex items-center gap-2"><Icon className="size-4 text-[#58737d]" /><h2 className="font-bold text-[#17343d]">{title}</h2></div><p className="mt-1 text-xs leading-5 text-[#70858d]">{description}</p></div></div></header><div className="space-y-5 p-5 sm:p-6">{children}</div></section>
 }
 
 function Subsection({ title, eyebrow, children }: { title: string; eyebrow: string; children: React.ReactNode }) {
-  return <section className="space-y-4 rounded-xl border border-slate-200 p-4 sm:p-5"><div><p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#007d84]">{eyebrow}</p><h3 className="mt-1 text-sm font-bold text-[#17343d]">{title}</h3></div>{children}</section>
+  return <section data-admin-form-section className="space-y-4 rounded-xl border border-slate-200 p-4 sm:p-5"><div><p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#007d84]">{eyebrow}</p><h3 className="mt-1 text-sm font-bold text-[#17343d]">{title}</h3></div>{children}</section>
 }
 
 function Field({ label, required = false, className = "", children }: { label: string; required?: boolean; className?: string; children: React.ReactNode }) {

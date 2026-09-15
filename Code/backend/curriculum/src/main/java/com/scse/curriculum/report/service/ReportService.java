@@ -12,4 +12,21 @@ public interface ReportService {
     PloCoverageReportData getPloCoverageReport(long programId, Integer cohortId, String academicYear, String semester, Integer courseTypeId);
     byte[] generatePloCoverageExcel(long programId, Integer cohortId, String academicYear, String semester, Integer courseTypeId);
     byte[] generatePloCoveragePdf(long programId, Integer cohortId, String academicYear, String semester, Integer courseTypeId);
+byte[] generateCloPloMatrixExcel(
+        long programId,
+        Integer cohortId,
+        String academicYear,
+        String semester,
+        Integer courseTypeId,
+        String search,
+        String status);
+
+byte[] generateCloPloMatrixPdf(
+        long programId,
+        Integer cohortId,
+        String academicYear,
+        String semester,
+        Integer courseTypeId,
+        String search,
+        String status);
 }

@@ -13,6 +13,8 @@ public class ApprovalHistoryResponse {
 
 
     private Integer id;
+    private Integer versionNumber;
+    private String versionLabel;
 
 
     private String step;

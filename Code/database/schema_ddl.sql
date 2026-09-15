@@ -279,7 +279,7 @@ CREATE TABLE syllabus (
   program_id     INT          NOT NULL                COMMENT 'Chương trình được chọn khi phân công',
   cohort_id      INT          NOT NULL                COMMENT 'Khóa tuyển sinh được chọn khi phân công',
   version_number INT          NOT NULL DEFAULT 1      COMMENT 'Số phiên bản (tăng tự động)',
-  version_label  VARCHAR(50)                          COMMENT 'Nhãn phiên bản, VD: v2023.1, v2024.2',
+  version_label  VARCHAR(50)                          COMMENT 'Nhãn phiên bản, VD: v1.0, v2.0',
   academic_year  VARCHAR(20)                          COMMENT 'Năm học áp dụng, VD: 2023-2024',
   status         ENUM(
                    'DRAFT',             -- Bản nháp (giảng viên đang soạn)

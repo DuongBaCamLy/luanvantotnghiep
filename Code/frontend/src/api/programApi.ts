@@ -1,15 +1,16 @@
 import { api } from "./axios"
 import type {
+  Program,
+  CreateProgramRequest,
+  UpdateProgramRequest,
+  ProgramArchiveValidation,
+  Major,
+  ProgramType,
+  ProgramDiffResponse,
+  ProgramCreditValidation,
   CloneProgramRequest,
   CloneProgramResponse,
-  CreateProgramRequest,
   CurriculumTimelineItem,
-  Major,
-  Program,
-  ProgramCreditValidation,
-  ProgramArchiveValidation,
-  ProgramType,
-  UpdateProgramRequest,
 } from "@/types/admin"
 
 export const programApi = {
@@ -17,36 +18,51 @@ export const programApi = {
     const response = await api.get<Program[]>("/api/programs")
     return response.data
   },
-  getById: async (id: number): Promise<Program> => {
-  const response = await api.get<Program>(
-    `/api/programs/${id}`
-  )
 
-  return response.data
-},
+  getById: async (id: number): Promise<Program> => {
+    const response = await api.get<Program>(
+      `/api/programs/${id}`
+    )
+
+    return response.data
+  },
 
   create: async (data: CreateProgramRequest): Promise<Program> => {
     const response = await api.post<Program>("/api/programs", data)
     return response.data
   },
 
-  update: async (id: number, data: UpdateProgramRequest): Promise<Program> => {
-    const response = await api.put<Program>(`/api/programs/${id}`, data)
+  update: async (
+    id: number,
+    data: UpdateProgramRequest
+  ): Promise<Program> => {
+    const response = await api.put<Program>(
+      `/api/programs/${id}`,
+      data
+    )
     return response.data
   },
 
-  validateArchive: async (id: number): Promise<ProgramArchiveValidation> => {
-    const response = await api.get<ProgramArchiveValidation>(`/api/programs/${id}/archive-validation`)
+  validateArchive: async (
+    id: number
+  ): Promise<ProgramArchiveValidation> => {
+    const response = await api.get<ProgramArchiveValidation>(
+      `/api/programs/${id}/archive-validation`
+    )
     return response.data
   },
 
   archive: async (id: number): Promise<Program> => {
-    const response = await api.post<Program>(`/api/programs/${id}/archive`)
+    const response = await api.post<Program>(
+      `/api/programs/${id}/archive`
+    )
     return response.data
   },
 
   reactivate: async (id: number): Promise<Program> => {
-    const response = await api.post<Program>(`/api/programs/${id}/reactivate`)
+    const response = await api.post<Program>(
+      `/api/programs/${id}/reactivate`
+    )
     return response.data
   },
 
@@ -56,47 +72,63 @@ export const programApi = {
   },
 
   getProgramTypes: async (): Promise<ProgramType[]> => {
-    const response = await api.get<ProgramType[]>("/api/program-types")
+    const response = await api.get<ProgramType[]>(
+      "/api/program-types"
+    )
     return response.data
   },
 
-  getDiff: async (id: number, oldCohortId: number, newCohortId: number): Promise<any> => {
-    const response = await api.get(`/api/programs/${id}/diff`, {
-      params: { oldCohortId, newCohortId }
-    })
+  getDiff: async (
+    id: number,
+    oldCohortId: number,
+    newCohortId: number
+  ): Promise<ProgramDiffResponse> => {
+    const response = await api.get<ProgramDiffResponse>(
+      `/api/programs/${id}/diff`,
+      {
+        params: {
+          oldCohortId,
+          newCohortId,
+        },
+      }
+    )
+
     return response.data
   },
 
-  validateCredits: async (id: number, cohortId: number): Promise<ProgramCreditValidation> => {
-    const response = await api.get<ProgramCreditValidation>(`/api/programs/${id}/credit-validation`, {
-      params: { cohortId },
-    })
+  validateCredits: async (
+    id: number,
+    cohortId: number
+  ): Promise<ProgramCreditValidation> => {
+    const response = await api.get<ProgramCreditValidation>(
+      `/api/programs/${id}/credit-validation`,
+      {
+        params: { cohortId },
+      }
+    )
+
     return response.data
   },
-
-
 
   cloneToCohort: async (
-  id: number,
-  data: CloneProgramRequest
-): Promise<CloneProgramResponse> => {
-  const response = await api.post<CloneProgramResponse>(
-    `/api/programs/${id}/clone-cohort`,
-    data
-  )
+    id: number,
+    data: CloneProgramRequest
+  ): Promise<CloneProgramResponse> => {
+    const response = await api.post<CloneProgramResponse>(
+      `/api/programs/${id}/clone-cohort`,
+      data
+    )
 
-  return response.data
-},
+    return response.data
+  },
 
-getCurriculumTimeline: async (
-  id: number
-): Promise<CurriculumTimelineItem[]> => {
-  const response = await api.get<
-    CurriculumTimelineItem[]
-  >(
-    `/api/programs/${id}/curriculum-timeline`
-  )
+  getCurriculumTimeline: async (
+    id: number
+  ): Promise<CurriculumTimelineItem[]> => {
+    const response = await api.get<CurriculumTimelineItem[]>(
+      `/api/programs/${id}/curriculum-timeline`
+    )
 
-  return response.data
-},
+    return response.data
+  },
 }

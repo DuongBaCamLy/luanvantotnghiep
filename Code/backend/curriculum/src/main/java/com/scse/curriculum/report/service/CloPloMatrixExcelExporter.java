@@ -65,15 +65,24 @@ final class CloPloMatrixExcelExporter {
         }
     }
 
-    private static void validateMatrix(DashboardHeatmapResponse matrix) {
-        if (matrix == null) {
-            throw new IllegalArgumentException("Dữ liệu ma trận CLO–PLO không được để trống.");
-        }
-        if (matrix.getProgramId() == null) {
-            throw new IllegalArgumentException("programId của ma trận là bắt buộc.");
-        }
+    private static void validateMatrix(
+        DashboardHeatmapResponse matrix) {
+
+    if (matrix == null) {
+        throw new IllegalArgumentException(
+                "Dữ liệu ma trận CLO–PLO không được để trống.");
     }
 
+    if (matrix.getProgramId() == null) {
+        throw new IllegalArgumentException(
+                "programId của ma trận là bắt buộc.");
+    }
+
+    if (matrix.getCohortId() == null) {
+        throw new IllegalArgumentException(
+                "cohortId của ma trận là bắt buộc.");
+    }
+}
   private static void configureWorkbook(
         XSSFWorkbook workbook,
         DashboardHeatmapResponse matrix) {

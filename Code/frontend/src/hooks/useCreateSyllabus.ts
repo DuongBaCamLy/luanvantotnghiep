@@ -10,6 +10,9 @@ export const useCreateSyllabus = () => {
       syllabusApi.create(payload),
 
     onSuccess: () => {
+      for (const key of ["faculty-dashboard", "depthead-courses", "my-active-assignments", "course-programs", "program-timeline"]) {
+        void queryClient.invalidateQueries({ queryKey: [key] })
+      }
       queryClient.invalidateQueries({
         queryKey: ["syllabuses"],
       })

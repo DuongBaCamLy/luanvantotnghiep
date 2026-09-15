@@ -14,6 +14,9 @@ public interface ApprovalRequestRepository
         extends JpaRepository<ApprovalRequest, Integer> {
 
 
+    boolean existsBySyllabus_Course_IdAndSyllabus_ProgramAndSyllabus_AcademicYearAndSyllabus_SemesterAndStatus(
+            Integer courseId, String program, String academicYear, String semester, ApprovalStatus status);
+
     List<ApprovalRequest> findBySyllabusId(
             Integer syllabusId);
 

@@ -25,7 +25,8 @@ import com.scse.curriculum.classsection.repository.ClassSectionRepository;
 import com.scse.curriculum.user.entity.UserAccount;
 import com.scse.curriculum.user.entity.UserRole;
 import com.scse.curriculum.user.repository.UserAccountRepository;
-
+import com.scse.curriculum.syllabus.dto.SyllabusResponse;
+import com.scse.curriculum.syllabus.service.SyllabusService;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -42,10 +43,11 @@ public class ApprovalRequestServiceImpl
     private final WorkflowNotificationService workflowNotificationService;
 
     private final SyllabusAccessService syllabusAccessService;
-
+private final SyllabusService syllabusService;
     private final CourseProgramRepository courseProgramRepository;
 
     private final ClassSectionRepository classSectionRepository;
+    private final com.scse.curriculum.syllabus.history.SyllabusHistoryService syllabusHistoryService;
 
     @Override
     @Transactional
@@ -112,6 +114,10 @@ public class ApprovalRequestServiceImpl
         }
 
         Syllabus syllabus = approval.getSyllabus();
+        syllabusRepository.lockWorkflow(syllabus.getId());
+        if (!java.util.Objects.equals(approval.getSyllabusVersionNumber(), syllabus.getVersionNumber())) {
+            throw new IllegalStateException("This approval belongs to an earlier syllabus revision.");
+        }
 
         if (currentStep == ApprovalStep.STEP1_DEPT_HEAD
                 && syllabus.getStatus() != SyllabusStatus.SUBMITTED) {
@@ -149,26 +155,43 @@ public class ApprovalRequestServiceImpl
          */
        if (isRejected) {
 
-    // Reject is also a workflow transition on the same syllabus/version.
-    syllabus.setStatus(SyllabusStatus.REVISION_REQUESTED);
-    syllabus.setUpdatedAt(LocalDateTime.now());
+    /*
+     * Keep the same syllabus rejected until the instructor explicitly starts a revision.
+     */
+    syllabus.setStatus(
+            SyllabusStatus.REJECTED);
 
-    syllabusRepository.saveAndFlush(syllabus);
+    syllabus.setUpdatedAt(
+            LocalDateTime.now());
 
-            List<UserAccount> departmentHeads =
-                    currentStep == ApprovalStep.STEP3_DEAN
-                            ? List.of(approval.getRequestedBy())
-                            : List.of();
+    syllabusRepository
+            .saveAndFlush(syllabus);
 
-            workflowNotificationService.notifyRevisionRequested(
+    /*
+     * Return the decision against the reviewed revision.
+     */
+    ApprovalResponse response =
+            map(savedApproval);
+
+    syllabusHistoryService.capture(syllabus, "REJECTED", reviewer.getUsername());
+
+    List<UserAccount> departmentHeads =
+            currentStep
+                    == ApprovalStep.STEP3_DEAN
+                    ? List.of(
+                            approval.getRequestedBy())
+                    : List.of();
+
+    workflowNotificationService
+            .notifyRevisionRequested(
                     syllabus,
                     reviewer,
                     request.getComment().trim(),
                     currentStep,
                     departmentHeads);
 
-            return map(savedApproval);
-        }
+    return response;
+}
 
         /*
      * Trưởng bộ môn duyệt:
@@ -187,6 +210,7 @@ public class ApprovalRequestServiceImpl
             ApprovalRequest deanRequest
                     = ApprovalRequest.builder()
                             .syllabus(syllabus)
+                            .syllabusVersionNumber(syllabus.getVersionNumber())
                             .step(ApprovalStep.STEP3_DEAN)
                             .status(ApprovalStatus.PENDING)
                             .requestedBy(reviewer)
@@ -197,6 +221,7 @@ public class ApprovalRequestServiceImpl
                             .build();
 
             repository.save(deanRequest);
+            syllabusHistoryService.capture(syllabus, "DEPT_HEAD_APPROVED", reviewer.getUsername());
 
             workflowNotificationService.notifyDepartmentHeadApproved(
                     syllabus,
@@ -212,19 +237,6 @@ public class ApprovalRequestServiceImpl
          */
         if (currentStep == ApprovalStep.STEP3_DEAN) {
 
-            syllabusRepository
-                    .findByCourseIdWithRelations(
-                            syllabus.getCourse().getId())
-                    .forEach(existing -> {
-
-                        if (!existing.getId()
-                                .equals(syllabus.getId())) {
-
-                            existing.setIsCurrent(false);
-                            syllabusRepository.save(existing);
-                        }
-                    });
-
             syllabus.setStatus(SyllabusStatus.APPROVED);
             syllabus.setApprovedBy(reviewer);
             syllabus.setApprovedAt(LocalDateTime.now());
@@ -233,6 +245,7 @@ public class ApprovalRequestServiceImpl
 
             syllabusRepository.save(syllabus);
 
+            syllabusHistoryService.capture(syllabus, "APPROVED", reviewer.getUsername());
             List<UserAccount> departmentHeads =
                     List.of(approval.getRequestedBy());
 
@@ -320,6 +333,8 @@ public List<ApprovalHistoryResponse> getApprovalHistory(
 
 
                     ApprovalHistoryResponse.builder()
+                    .versionNumber(approval.getSyllabusVersionNumber())
+                    .versionLabel(com.scse.curriculum.syllabus.entity.SyllabusVersion.format(approval.getSyllabusVersionNumber()))
 
                     .id(
                             approval.getId()
@@ -401,7 +416,7 @@ public List<ApprovalHistoryResponse> getApprovalHistory(
                 .toList();
     }
 
-    
+
    private ApprovalResponse map(
         ApprovalRequest approval) {
     Syllabus syllabus = approval.getSyllabus();
@@ -446,12 +461,10 @@ public List<ApprovalHistoryResponse> getApprovalHistory(
                     ? null : syllabus.getCourse().getDepartment().getName())
 
             .versionNumber(
-                    approval.getSyllabus()
-                            .getVersionNumber())
+                    approval.getSyllabusVersionNumber())
 
             .versionLabel(
-                    approval.getSyllabus()
-                            .getVersionLabel())
+                    com.scse.curriculum.syllabus.entity.SyllabusVersion.format(approval.getSyllabusVersionNumber()))
 
             .syllabusStatus(
                     approval.getSyllabus()
@@ -482,8 +495,7 @@ public List<ApprovalHistoryResponse> getApprovalHistory(
             .comment(approval.getComment())
 
             .submittedAt(
-                    approval.getSyllabus()
-                            .getSubmittedAt())
+                    approval.getCreatedAt())
 
             .createdAt(approval.getCreatedAt())
 

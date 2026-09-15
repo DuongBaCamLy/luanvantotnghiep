@@ -55,49 +55,160 @@ function OwnWorkspace() {
 }
 
 function sharedWorkspaceRoutes(root: string) {
-  return <>
-    <Route path={root} element={
-      root === "/instructor"
-        ? <FacultyDashboardPage />
-        : root === "/dean"
-          ? <DeanDashboardPage />
-        : root === "/dept-head"
-          ? <DeptHeadDashboardPage />
-          : <AdminDashboardPage />
-    } />
-    <Route path={`${root}/class-sections`} element={
-      root === "/instructor"
-        ? <InstructorAssignmentsPage />
-        : root === "/dept-head"
-          ? <DeptHeadCoursesPage />
-          : <ClassSectionManagementPage />
-    } />
-    <Route path={`${root}/programs`} element={<ProgramManagementPage />} />
-    <Route path={`${root}/plo`} element={<PloManagementPage />} />
-    <Route path={`${root}/clo-plo-heatmap`} element={<CloPloHeatmapPage />} />
-    <Route path={`${root}/syllabus`} element={<SyllabusListPage />} />
-    <Route path={`${root}/syllabus/diff`} element={<CohortSyllabusDiffPage />} />
-    <Route path={`${root}/syllabus/curriculum-map`} element={<SyllabusCurriculumMapPage />} />
-    <Route path={`${root}/syllabus/create`} element={<SyllabusCreatePage />} />
-    <Route path={`${root}/syllabus/:id`} element={<SyllabusDetailPage />} />
-    <Route path={`${root}/syllabus/:id/edit`} element={<SyllabusEditPage />} />
-    <Route path={`${root}/syllabus/:id/editor`} element={<SyllabusEditPage />} />
-    <Route path={`${root}/syllabus/:id/diff`} element={<SyllabusDiffPage />} />
-    <Route path={`${root}/programs/:id/diff`} element={<ProgramDiffPage />} />
-    <Route path={`${root}/programs/:id/curriculum`} element={<ProgramCurriculumPage />} />
-    <Route path={`${root}/programs/:id/timeline`} element={<ProgramTimelinePage />} />
-    <Route path={`${root}/programs/:id/history`} element={<CurriculumTimelinePage />} />
-    <Route path={`${root}/programs/:id`} element={<Navigate to={`${root}/programs`} replace />} />
-    <Route path={`${root}/curricula/create`} element={<CreateCurriculumPage />} />
-    <Route path={`${root}/email-outbox`} element={<EmailOutboxPage />} />
-    <Route path={`${root}/escalations`} element={<EscalationCenterPage />} />
-    <Route path={`${root}/settings`} element={<SystemSettingsPage />} />
-    {(root === "/dept-head" || root === "/dean") && (
-      <Route path={`${root}/approvals`} element={<DeptHeadApprovalPage />} />
-    )}
-  </>
-}
+  const isAdmin = root === "/admin"
+  const isDean = root === "/dean"
+  const isDeptHead = root === "/dept-head"
+  const isInstructor = root === "/instructor"
 
+  return (
+    <>
+      <Route
+        path={root}
+        element={
+          isInstructor
+            ? <FacultyDashboardPage />
+            : isDean
+              ? <DeanDashboardPage />
+              : isDeptHead
+                ? <DeptHeadDashboardPage />
+                : <AdminDashboardPage />
+        }
+      />
+      {(isAdmin || isInstructor || isDeptHead) && (
+        <Route
+          path={`${root}/class-sections`}
+          element={
+            isInstructor
+              ? <InstructorAssignmentsPage />
+              : isDeptHead
+                ? <DeptHeadCoursesPage />
+                : <ClassSectionManagementPage />
+          }
+        />
+      )}
+
+      <Route
+        path={`${root}/programs`}
+        element={<ProgramManagementPage />}
+      />
+
+      {(isAdmin || isDean) && (
+        <Route
+          path={`${root}/plo`}
+          element={<PloManagementPage />}
+        />
+      )}
+
+      {!isInstructor && (
+        <Route
+          path={`${root}/clo-plo-heatmap`}
+          element={<CloPloHeatmapPage />}
+        />
+      )}
+
+      <Route
+        path={`${root}/syllabus`}
+        element={<SyllabusListPage />}
+      />
+
+      <Route
+        path={`${root}/syllabus/diff`}
+        element={<CohortSyllabusDiffPage />}
+      />
+
+      <Route
+        path={`${root}/syllabus/curriculum-map`}
+        element={<SyllabusCurriculumMapPage />}
+      />
+
+      <Route
+        path={`${root}/syllabus/create`}
+        element={<SyllabusCreatePage />}
+      />
+
+      <Route
+        path={`${root}/syllabus/:id`}
+        element={<SyllabusDetailPage />}
+      />
+
+      <Route
+        path={`${root}/syllabus/:id/edit`}
+        element={<SyllabusEditPage />}
+      />
+
+      <Route
+        path={`${root}/syllabus/:id/editor`}
+        element={<SyllabusEditPage />}
+      />
+
+      <Route
+        path={`${root}/syllabus/:id/diff`}
+        element={<SyllabusDiffPage />}
+      />
+
+      <Route
+        path={`${root}/programs/:id/diff`}
+        element={<ProgramDiffPage />}
+      />
+
+      <Route
+        path={`${root}/programs/:id/curriculum`}
+        element={<ProgramCurriculumPage />}
+      />
+
+      <Route
+        path={`${root}/programs/:id/timeline`}
+        element={<ProgramTimelinePage />}
+      />
+
+      <Route
+        path={`${root}/programs/:id/history`}
+        element={<CurriculumTimelinePage />}
+      />
+
+      <Route
+        path={`${root}/programs/:id`}
+        element={
+          <Navigate
+            to={`${root}/programs`}
+            replace
+          />
+        }
+      />
+
+      {isAdmin && (
+        <>
+          <Route
+            path={`${root}/curricula/create`}
+            element={<CreateCurriculumPage />}
+          />
+
+          <Route
+            path={`${root}/email-outbox`}
+            element={<EmailOutboxPage />}
+          />
+
+          <Route
+            path={`${root}/escalations`}
+            element={<EscalationCenterPage />}
+          />
+
+          <Route
+            path={`${root}/settings`}
+            element={<SystemSettingsPage />}
+          />
+        </>
+      )}
+
+      {(isDeptHead || isDean) && (
+        <Route
+          path={`${root}/approvals`}
+          element={<DeptHeadApprovalPage />}
+        />
+      )}
+    </>
+  )
+}
 export default function App() {
   return <BrowserRouter><Routes>
     <Route path="/" element={<RootRedirect />} />
@@ -117,9 +228,33 @@ export default function App() {
         <Route element={<ProtectedRoute permission="MANAGE_USERS" />}>
           <Route path="/admin/users" element={<UserManagementPage />} />
         </Route>
-        <Route element={<ProtectedRoute permission="VIEW_REPORTS" />}>
-          <Route path="/admin/reports" element={<ReportManagementPage />} />
-        </Route>
+        <Route
+  element={
+    <ProtectedRoute
+      allowedRoles={["ADMIN"]}
+      permission="VIEW_REPORTS"
+    />
+  }
+>
+  <Route
+    path="/admin/reports"
+    element={<ReportManagementPage />}
+  />
+</Route>
+
+<Route
+  element={
+    <ProtectedRoute
+      allowedRoles={["DEAN"]}
+      permission="VIEW_REPORTS"
+    />
+  }
+>
+  <Route
+    path="/dean/reports"
+    element={<ReportManagementPage />}
+  />
+</Route>
         <Route element={<ProtectedRoute permission="VIEW_AUDIT" />}>
           <Route path="/admin/audit-log" element={<AuditLogPage />} />
         </Route>

@@ -126,6 +126,6 @@ public class DeadlineReminderDeliveryService {
     }
 
     private String semesterLabel(Integer semester) {
-        return "HK" + semester;
+        return "Semester " + semester;
     }
 }

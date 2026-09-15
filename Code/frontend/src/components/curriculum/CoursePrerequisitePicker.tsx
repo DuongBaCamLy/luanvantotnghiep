@@ -7,7 +7,7 @@ import { X } from "lucide-react"
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select"
-
+import axios from "axios"
 const RELATION_LABELS: Record<RelationType, string> = {
   PREREQUISITE: "Tiên quyết",
   COREQUISITE: "Song hành",
@@ -48,10 +48,15 @@ export function CoursePrerequisitePicker({ courseId, disabled }: Props) {
       queryClient.invalidateQueries({ queryKey: ["course-relationships", courseId] })
       queryClient.invalidateQueries({ queryKey: ["curriculum-map"] })
     },
-    onError: (err: any) => {
-      const msg = err?.response?.data?.message || "Không thể thêm ràng buộc học phần"
-      alert(msg)
-    },
+    onError: (err: unknown) => {
+  const msg =
+    axios.isAxiosError(err)
+      ? err.response?.data?.message ??
+        "Không thể thêm ràng buộc học phần"
+      : "Không thể thêm ràng buộc học phần"
+
+  alert(msg)
+},
   })
 
   const removeMutation = useMutation({

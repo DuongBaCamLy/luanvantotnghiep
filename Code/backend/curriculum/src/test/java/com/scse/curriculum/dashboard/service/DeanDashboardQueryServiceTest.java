@@ -217,6 +217,23 @@ class DeanDashboardQueryServiceTest {
                 .hasMessageContaining("không thuộc ngành");
     }
 
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.EnumSource(value = SyllabusStatus.class, names = {"SUBMITTED", "DRAFT"})
+    void explicitLinkWinsOverHistoricalApprovedVersion(SyllabusStatus status) {
+        stubDashboardClock();
+        Course course = course(1, "IT013IU", "Algorithms", 4, 0);
+        CourseProgram mapping = mapping(1, course, cs2021, null, 1);
+        mapping.setSyllabus(syllabus(20, course, 2, "v2.0", status, false, "2026-2027", "1"));
+        when(courseProgramRepository.findEffectiveByProgramIdAndCohortIdWithRelations(10, 100))
+                .thenReturn(List.of(mapping));
+        when(syllabusRepository.findDeanDashboardCandidates(List.of(1)))
+                .thenReturn(List.of(syllabus(10, course, 99, "v99.0", SyllabusStatus.APPROVED,
+                        true, "CS2021", "1")));
+        var item = service.getDashboard(1, 100, null).getCourses().getFirst();
+        assertThat(item.getSyllabusId()).isEqualTo(20);
+        assertThat(item.getStatus()).isEqualTo(status.name());
+    }
+
     private void stubDashboardClock() {
         when(deadlineReminderProperties.zoneId()).thenReturn(ZONE);
         when(timeProvider.now(ZONE)).thenReturn(ZonedDateTime.of(

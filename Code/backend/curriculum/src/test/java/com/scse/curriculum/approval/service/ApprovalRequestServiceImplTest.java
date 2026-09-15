@@ -34,7 +34,8 @@ import com.scse.curriculum.syllabus.service.SyllabusAccessService;
 import com.scse.curriculum.user.entity.UserAccount;
 import com.scse.curriculum.user.entity.UserRole;
 import com.scse.curriculum.user.repository.UserAccountRepository;
-
+import com.scse.curriculum.syllabus.dto.SyllabusResponse;
+import com.scse.curriculum.syllabus.service.SyllabusService;
 @ExtendWith(MockitoExtension.class)
 class ApprovalRequestServiceImplTest {
 
@@ -49,9 +50,13 @@ class ApprovalRequestServiceImplTest {
     @Mock
     private SyllabusAccessService syllabusAccessService;
     @Mock
+private SyllabusService syllabusService;
+    @Mock
     private CourseProgramRepository courseProgramRepository;
     @Mock
     private ClassSectionRepository classSectionRepository;
+    @Mock private com.scse.curriculum.syllabus.service.SyllabusIdentityService syllabusIdentityService;
+    @Mock private com.scse.curriculum.syllabus.history.SyllabusHistoryService syllabusHistoryService;
     @InjectMocks
     private ApprovalRequestServiceImpl service;
 
@@ -233,8 +238,9 @@ void deanRevisionNotifiesCreatorAndForwardingDepartmentHead() {
 
     var response = service.review(22, request);
 
-    assertThat(syllabus.getStatus())
-        .isEqualTo(SyllabusStatus.REVISION_REQUESTED);
+   assertThat(syllabus.getStatus())
+        .isEqualTo(
+                SyllabusStatus.REJECTED);
     verify(workflowNotificationService)
             .notifyRevisionRequested(
                     eq(syllabus),
@@ -242,12 +248,17 @@ void deanRevisionNotifiesCreatorAndForwardingDepartmentHead() {
                     eq("Bổ sung mapping CLO-PLO"),
                     eq(ApprovalStep.STEP3_DEAN),
                     eq(List.of(deptHead)));
+assertThat(
+        response.getRevisionDraftId())
+        .isNull();
 
-    assertThat(response.getRevisionDraftId())
-            .isNull();
+assertThat(
+        response.getRevisionDraftVersionLabel()).isNull();
 
-    assertThat(response.getRevisionDraftVersionLabel())
-            .isNull();
+verify(syllabusService, org.mockito.Mockito.never())
+        .createRevisionDraftFromRejected(
+                100);
+
 }
     private Syllabus syllabus(SyllabusStatus status) {
         return Syllabus.builder()
@@ -270,7 +281,7 @@ void deanRevisionNotifiesCreatorAndForwardingDepartmentHead() {
             UserAccount requester) {
         return ApprovalRequest.builder()
                 .id(id)
-                .syllabus(syllabus)
+                .syllabus(syllabus).syllabusVersionNumber(syllabus.getVersionNumber())
                 .step(step)
                 .status(ApprovalStatus.PENDING)
                 .requestedBy(requester)

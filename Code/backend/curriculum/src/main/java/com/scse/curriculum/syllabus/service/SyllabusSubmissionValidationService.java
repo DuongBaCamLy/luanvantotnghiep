@@ -244,7 +244,7 @@ public class SyllabusSubmissionValidationService {
                     "General Information",
                     1,
                     "semester",
-                    "Semester must be in the format HK1–HK8, Semester 1–8, or Summer.");
+                    "Semester must be in the format Semester 1-8, or Summer.");
         }
     }
 

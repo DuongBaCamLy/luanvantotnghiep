@@ -1,3 +1,4 @@
+import { formatVersionLabel } from "@/lib/syllabusVersion"
 import { useMemo, useState } from "react"
 import {
   CheckCircle2,
@@ -173,8 +174,7 @@ export default function ApprovalReviewDialog({
                 </p>
 
                 <p className="mt-1 font-semibold text-slate-900">
-                  {item.versionLabel
-                    || `v${item.versionNumber}`}
+                  {formatVersionLabel(item.versionNumber, item.versionLabel)}
                 </p>
               </div>
 

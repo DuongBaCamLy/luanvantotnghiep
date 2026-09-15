@@ -82,4 +82,25 @@ public interface CourseProgramRepository
 List<CourseProgram> findGeneralByProgramIdWithRelations(
         @Param("programId") Integer programId
 );
+@Query("""
+    SELECT cp
+    FROM CourseProgram cp
+    JOIN FETCH cp.course c
+    JOIN FETCH cp.program p
+    JOIN FETCH cp.cohort co
+    JOIN FETCH cp.syllabus s
+    WHERE c.id = :courseId
+      AND p.id = :programId
+      AND co.entryYear < :entryYear
+      AND cp.syllabus IS NOT NULL
+    ORDER BY
+      co.entryYear DESC,
+      s.versionNumber DESC,
+      s.id DESC
+""")
+List<CourseProgram> findPreviousComparableCandidates(
+        @Param("courseId") Integer courseId,
+        @Param("programId") Integer programId,
+        @Param("entryYear") Integer entryYear
+);
 }

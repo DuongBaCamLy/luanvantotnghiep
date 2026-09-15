@@ -1,5 +1,5 @@
 package com.scse.curriculum.auditlog.listener;
-
+import com.scse.curriculum.user.entity.UserRole;
 import com.scse.curriculum.user.entity.UserAccount;
 import com.scse.curriculum.user.repository.UserAccountRepository;
 import lombok.RequiredArgsConstructor;
@@ -33,10 +33,10 @@ public class AuditLogAsyncProcessor {
     private final JdbcTemplate jdbcTemplate;
     private final UserAccountRepository userAccountRepository;
 
-    @Value("${app.audit.system-username:system}")
-    private String systemUsername;
+    @Value("${app.audit.fallback-username:admin}")
+private String fallbackUsername;
 
-    private volatile Integer cachedSystemUserId;
+private volatile Integer cachedFallbackUserId;
 
     @Async
     @EventListener
@@ -44,15 +44,18 @@ public class AuditLogAsyncProcessor {
         try {
             Integer changedById = resolveActorId(event.getChangedByUsername());
             if (changedById == null) {
-                // changed_by là NOT NULL ở DB (xem database/fr01_7_audit_log_immutability.sql).
-                // Không có actor thật và cũng không tra được tài khoản SYSTEM dự phòng
-                // (rất có thể do chưa chạy migration) -> log rõ để không âm thầm ghi sai actor.
-                log.error("Không xác định được actor cho audit log (table={}, record={}). " +
-                                "Hãy chắc chắn đã chạy database/fr01_7_audit_log_immutability.sql " +
-                                "để tạo tài khoản SYSTEM dự phòng. Bỏ qua bản ghi này để tránh ghi sai actor.",
-                        event.getTableName(), event.getRecordId());
-                return;
-            }
+    log.error(
+            "Unable to resolve an audit actor "
+                    + "(table={}, record={}). "
+                    + "The configured fallback Administrator '{}' "
+                    + "is missing, inactive, or invalid. "
+                    + "The audit event will not be written.",
+            event.getTableName(),
+            event.getRecordId(),
+            fallbackUsername);
+
+    return;
+}
 
             String sql = "INSERT INTO audit_log (table_name, record_id, action, old_value, new_value, changed_by, changed_at, ip_address, user_agent) " +
                          "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
@@ -75,36 +78,71 @@ public class AuditLogAsyncProcessor {
         }
     }
 
-    /**
-     * Tra username (đăng nhập bằng username hoặc email đều được, giống CurrentUserService)
-     * ra user_account.id. Nếu không có username (job hệ thống) hoặc không tìm thấy tài khoản
-     * tương ứng, fallback về tài khoản SYSTEM chuyên dụng thay vì mạo danh Admin.
-     */
     private Integer resolveActorId(String username) {
-        if (username != null && !username.isBlank()) {
-            return userAccountRepository.findByUsernameIgnoreCaseOrEmailIgnoreCase(username, username)
-                    .map(UserAccount::getId)
-                    .orElseGet(() -> {
-                        log.warn("Audit actor username '{}' không tồn tại trong user_account, dùng tài khoản SYSTEM dự phòng.", username);
-                        return getSystemUserId();
-                    });
-        }
-        return getSystemUserId();
+
+    if (username != null
+            && !username.isBlank()) {
+
+        return userAccountRepository
+                .findByUsernameIgnoreCaseOrEmailIgnoreCase(
+                        username,
+                        username)
+                .map(UserAccount::getId)
+                .orElseGet(() -> {
+
+                    log.warn(
+                            "Audit actor '{}' was not found. "
+                                    + "Falling back to Administrator '{}'.",
+                            username,
+                            fallbackUsername);
+
+                    return getFallbackAdminId();
+                });
     }
 
-    private Integer getSystemUserId() {
-        Integer id = cachedSystemUserId;
-        if (id == null) {
-            id = userAccountRepository.findByUsernameIgnoreCaseOrEmailIgnoreCase(systemUsername, systemUsername)
-                    .map(UserAccount::getId)
-                    .orElse(null);
-            if (id == null) {
-                log.error("Không tìm thấy tài khoản SYSTEM ('{}') trong user_account. " +
-                        "Hãy chạy database/fr01_7_audit_log_immutability.sql.", systemUsername);
-            } else {
-                cachedSystemUserId = id;
-            }
-        }
+    /*
+     * SRS model:
+     * background/system jobs are attributed to the single
+     * Administrator account because SYSTEM is not a business actor.
+     */
+    return getFallbackAdminId();
+}
+
+private Integer getFallbackAdminId() {
+
+    Integer id =
+            cachedFallbackUserId;
+
+    if (id != null) {
         return id;
     }
+
+    id = userAccountRepository
+            .findByUsernameIgnoreCaseOrEmailIgnoreCase(
+                    fallbackUsername,
+                    fallbackUsername)
+            .filter(user ->
+                    user.getRole()
+                            == UserRole.ADMIN)
+            .filter(user ->
+                    Boolean.TRUE.equals(
+                            user.getIsActive()))
+            .map(UserAccount::getId)
+            .orElse(null);
+
+    if (id == null) {
+
+        log.error(
+                "Fallback Administrator '{}' was not found "
+                        + "or is inactive. Audit event will not be written.",
+                fallbackUsername);
+
+        return null;
+    }
+
+    cachedFallbackUserId = id;
+
+    return id;
+}
+
 }

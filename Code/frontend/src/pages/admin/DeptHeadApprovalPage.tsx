@@ -1,3 +1,4 @@
+import { formatVersionLabel } from "@/lib/syllabusVersion"
 import type { ReactNode } from "react"
 import { useMemo, useState } from "react"
 import {
@@ -304,6 +305,9 @@ export default function DeptHeadApprovalPage() {
 
       onSuccess: async () => {
         await Promise.all([
+          ...["my-active-assignments", "program-timeline", "syllabus", "faculty-dashboard", "depthead-courses", "course-programs", "curriculum-map", "clo-plo-heatmap"].map((key) =>
+            queryClient.invalidateQueries({ queryKey: [key] }),
+          ),
           queryClient
             .invalidateQueries({
               queryKey: [
@@ -464,9 +468,8 @@ export default function DeptHeadApprovalPage() {
                 ? "Syllabus approved successfully. This version is now the official current syllabus."
                 : "Department review completed. The syllabus has been forwarded to the Dean for final review."
           } else {
-            message =
-              "The same syllabus version was returned to the instructor for revision."
-          }
+  message = "Syllabus rejected. The instructor can review the feedback and start a revision."
+}
 
           setFeedback({
             type: "success",
@@ -867,8 +870,7 @@ export default function DeptHeadApprovalPage() {
                           variant="outline"
                           className="border-slate-200 bg-white text-slate-700"
                         >
-                          {item.versionLabel
-                            || `v${item.versionNumber}`}
+                          {formatVersionLabel(item.versionNumber, item.versionLabel)}
                         </Badge>
                       </TableCell>
 

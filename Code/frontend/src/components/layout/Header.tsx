@@ -65,8 +65,7 @@ export default function Header() {
       false,
   })
 
-  const notifications =
-    notificationQuery.data ?? []
+  const notifications = useMemo(() => notificationQuery.data ?? [], [notificationQuery.data])
 
   const sortedNotifications =
     useMemo(
@@ -180,7 +179,11 @@ export default function Header() {
 
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-[#dce7e9] bg-white/95 px-4 shadow-[0_1px_8px_rgba(15,23,42,0.04)] backdrop-blur md:px-6">
-      <div />
+      <div className="admin-header-context">
+        <span>SCSE</span>
+        <span aria-hidden="true">/</span>
+        <span>Administration</span>
+      </div>
 
       <div className="flex items-center gap-3 md:gap-5">
         <DropdownMenu>

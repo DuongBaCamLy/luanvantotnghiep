@@ -37,7 +37,9 @@ public class SyllabusListItemResponse {
      * Column:
      * Version
      */
-    private String version;
+    private String version; // Compatibility alias of versionLabel.
+    private Integer versionNumber;
+    private String versionLabel;
 
 
 

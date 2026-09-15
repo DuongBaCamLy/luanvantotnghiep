@@ -54,7 +54,7 @@ export const syllabusImportApi = {
         headers: { "Content-Type": "multipart/form-data" },
         // A programme specification can contain hundreds of PDF pages.
         // Keep the request alive while the backend separates every syllabus.
-        timeout: 180_000,
+        timeout: 600_000,
       },
     )
     return response.data

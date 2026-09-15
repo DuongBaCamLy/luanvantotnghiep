@@ -1,3 +1,4 @@
+import { formatVersionLabel } from "@/lib/syllabusVersion"
 import { useEffect, useMemo, useState } from "react"
 import {
   useLocation,
@@ -97,14 +98,8 @@ const getCourseLabel = (course: Course) => {
   return name ? `${course.courseCode} — ${name}` : course.courseCode
 }
 
-const getVersionBaseLabel = (syllabus: Syllabus) => {
-  return (
-    normalize(syllabus.versionLabel)
-    || (syllabus.versionNumber
-      ? `v${syllabus.versionNumber}`
-      : `Version ${syllabus.id}`)
-  )
-}
+const getVersionBaseLabel = (syllabus: Syllabus) =>
+  formatVersionLabel(syllabus.versionNumber, syllabus.versionLabel)
 
 const getVersionLabel = (syllabus: Syllabus) => {
   const parts = [
@@ -226,6 +221,12 @@ export default function CohortSyllabusDiffPage() {
 
   const basePath = getSyllabusBasePath(location.pathname)
 
+  const [initialSelection] = useState(() => ({
+    courseId: searchParams.get("courseId"),
+    oldSyllabusId: searchParams.get("oldSyllabusId"),
+    newSyllabusId: searchParams.get("newSyllabusId"),
+  }))
+
   const [courses, setCourses] = useState<Course[]>([])
   const [syllabusVersions, setSyllabusVersions] = useState<Syllabus[]>([])
 
@@ -241,14 +242,12 @@ export default function CohortSyllabusDiffPage() {
 
   const [syllabusDiff, setSyllabusDiff] = useState<SyllabusDiffResponse | null>(null)
   const [isLoadingCourses, setIsLoadingCourses] = useState(true)
-  const [isLoadingVersions, setIsLoadingVersions] = useState(false)
+  const [isLoadingVersions, setIsLoadingVersions] = useState(Boolean(selectedCourseId))
   const [isComparing, setIsComparing] = useState(false)
   const [errorMessage, setErrorMessage] = useState("")
 
   useEffect(() => {
     let isMounted = true
-
-    setIsLoadingCourses(true)
 
     courseApi
       .getAll()
@@ -263,24 +262,14 @@ export default function CohortSyllabusDiffPage() {
 
         setCourses(nextCourses)
 
-        const queryCourseId = searchParams.get("courseId")
+        const queryCourseId = initialSelection.courseId
         const queryCourseExists = Boolean(
           queryCourseId
           && nextCourses.some((course) => String(course.id) === queryCourseId)
         )
 
-        if (
-          !selectedCourseId
-          || !nextCourses.some((course) => String(course.id) === selectedCourseId)
-        ) {
-          setSelectedCourseId(
-            queryCourseExists
-              ? String(queryCourseId)
-              : nextCourses[0]
-                ? String(nextCourses[0].id)
-                : ""
-          )
-        }
+        setSelectedCourseId((current) => nextCourses.some((course) => String(course.id) === current)
+          ? current : queryCourseExists ? String(queryCourseId) : nextCourses[0] ? String(nextCourses[0].id) : "")
       })
       .catch((error) => {
         if (isMounted) {
@@ -295,22 +284,22 @@ export default function CohortSyllabusDiffPage() {
     return () => {
       isMounted = false
     }
-  }, [])
+  }, [initialSelection])
+
+  const [loadedCourseId, setLoadedCourseId] = useState(selectedCourseId)
+  if (loadedCourseId !== selectedCourseId) {
+    setLoadedCourseId(selectedCourseId)
+    setSyllabusVersions([])
+    setSourceVersionId("")
+    setTargetVersionId("")
+    setSyllabusDiff(null)
+    setIsLoadingVersions(Boolean(selectedCourseId))
+    setErrorMessage("")
+  }
 
   useEffect(() => {
-    if (!selectedCourseId) {
-      setSyllabusVersions([])
-      setSourceVersionId("")
-      setTargetVersionId("")
-      setSyllabusDiff(null)
-      return
-    }
-
+    if (!selectedCourseId) return
     let isMounted = true
-
-    setIsLoadingVersions(true)
-    setErrorMessage("")
-    setSyllabusDiff(null)
 
     syllabusApi
       .getByCourse(Number(selectedCourseId))
@@ -323,8 +312,8 @@ export default function CohortSyllabusDiffPage() {
 
         setSyllabusVersions(versions)
 
-        const requestedSourceId = searchParams.get("oldSyllabusId")
-        const requestedTargetId = searchParams.get("newSyllabusId")
+        const requestedSourceId = initialSelection.oldSyllabusId
+        const requestedTargetId = initialSelection.newSyllabusId
 
         const validRequestedSource = Boolean(
           requestedSourceId
@@ -365,7 +354,7 @@ export default function CohortSyllabusDiffPage() {
     return () => {
       isMounted = false
     }
-  }, [selectedCourseId])
+  }, [selectedCourseId, initialSelection])
 
   useEffect(() => {
     const params = new URLSearchParams()
@@ -496,7 +485,7 @@ export default function CohortSyllabusDiffPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-[1500px] space-y-5 pb-10">
+    <div data-admin-page="CohortSyllabusDiffPage" className="mx-auto w-full max-w-[1500px] space-y-5 pb-10">
       <section className="relative overflow-hidden rounded-2xl border border-[#d7e5e8] bg-white shadow-sm">
         <div className="absolute inset-x-0 top-0 h-[3px] bg-gradient-to-r from-[#007d84] via-[#15949a] to-[#f0a72f]" />
 
@@ -506,7 +495,7 @@ export default function CohortSyllabusDiffPage() {
               <GitCompareArrows className="size-6" />
             </div>
 
-            <div>
+            <div data-admin-page-header="CohortSyllabusDiffPage">
               <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#708894]">
                 FR-03.7 · Syllabus Version Comparison
               </p>
@@ -558,7 +547,7 @@ export default function CohortSyllabusDiffPage() {
           )}
         </div>
 
-        <div className="grid gap-4 xl:grid-cols-[1.35fr_1fr_auto_1fr_auto] xl:items-end">
+        <div data-admin-filter className="grid gap-4 xl:grid-cols-[1.35fr_1fr_auto_1fr_auto] xl:items-end">
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-slate-700">
               Course

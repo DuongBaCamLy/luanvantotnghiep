@@ -14,7 +14,7 @@ export default function DashboardHero({
   actions,
 }: DashboardHeroProps) {
   return (
-    <section className="relative min-h-[250px] overflow-hidden rounded-2xl border border-slate-200 bg-slate-900 shadow-sm">
+    <section data-admin-hero className="relative min-h-[250px] overflow-hidden rounded-2xl border border-slate-200 bg-slate-900 shadow-sm">
       <img
         src="/images/iu-campus.png"
         alt="International University campus"

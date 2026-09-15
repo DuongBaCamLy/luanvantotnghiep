@@ -18,6 +18,8 @@ import java.io.InputStream;
 import java.text.Normalizer;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -31,7 +33,10 @@ import java.util.regex.Pattern;
  */
 @Component
 public class SyllabusDocxParser implements SyllabusFileParser {
-    private static final Pattern COURSE_CODE = Pattern.compile("(?i)Course\\s*Code\\s*:\\s*([A-Z]{2,}\\d+[A-Z]*)");
+    private static final Pattern COURSE_CODE =
+        Pattern.compile(
+                "(?i)(?:Course|Module)\\s*Code\\s*:\\s*([A-Z]{2,}\\d+[A-Z]*)"
+        );
     private static final Pattern WEIGHT = Pattern.compile("\\((\\d+(?:\\.\\d+)?)%\\)");
     private static final Pattern YEAR = Pattern.compile("(?<!\\d)(19|20)\\d{2}(?!\\d)");
 
@@ -61,6 +66,17 @@ public class SyllabusDocxParser implements SyllabusFileParser {
             parseAssessments(body, data);
             parseReadingList(body, data);
             parseRevisionDate(body, data);
+
+            /*
+             * Preserve the actual uploaded DOCX template shape for later
+             * cohort comparison. This records recognized section/field
+             * order; it does not change extracted syllabus content.
+             */
+            data.setTemplateSections(
+                    SyllabusTemplateSectionDetector.fromDocx(
+                            body,
+                            data));
+
             validate(data, issues);
             return data;
     }
@@ -73,45 +89,187 @@ public class SyllabusDocxParser implements SyllabusFileParser {
             Matcher matcher = COURSE_CODE.matcher(paragraphText);
             if (matcher.find()) {
                 data.setSourceCourseCode(matcher.group(1).toUpperCase(Locale.ROOT));
-                if (previousParagraph != null && previousParagraph.matches("(?is).*Course\\s*Name\\s*:.*")) {
-                    data.setSourceCourseName(previousParagraph.replaceFirst(
-                            "(?i)^\\s*(?:\\d+\\.\\s*)?Course\\s*Name\\s*:\\s*", ""));
-                }
+                if (previousParagraph != null
+        && previousParagraph.matches(
+                "(?is).*(?:Course|Module)\\s*Name\\s*:.*")) {
+
+    data.setSourceCourseName(
+            previousParagraph.replaceFirst(
+                    "(?i)^\\s*(?:\\d+\\.\\s*)?"
+                            + "(?:Course|Module)\\s*Name\\s*:\\s*",
+                    ""
+            )
+    );
+}
                 return;
             }
             if (!paragraphText.isBlank()) previousParagraph = paragraphText;
         }
     }
 
-    private void parseGeneralInformation(List<XWPFTable> tables, SyllabusImportData data) {
-        for (XWPFTable table : tables) {
-            for (XWPFTableRow row : table.getRows()) {
-                if (row.getTableCells().size() < 2) continue;
-                String label = normalized(cell(row, 0));
-                String value = clean(cell(row, 1));
-                if (matches(label, "course name", "ten hoc phan") && data.getSourceCourseName() == null) data.setSourceCourseName(value);
-                else if (matches(label, "course designation", "mo ta hoc phan")) data.setCourseDesignation(value);
-                else if (matches(label, "course type", "loai hoc phan")) data.setCourseTypes(value);
-                else if (matches(label, "semester", "hoc ky giang day")) data.setSemester(normalizeSemester(value));
-                else if (matches(label, "person responsible", "nguoi phu trach")) data.setPersonResponsible(value);
-                else if (matches(label, "language", "ngon ngu giang day")) data.setLanguage(value);
-                else if (matches(label, "relation to curriculum", "quan he voi chuong trinh")) data.setRelation(value);
-                else if (matches(label, "teaching methods", "phuong phap giang day")) data.setTeachingMethods(value);
-                else if (matches(label, "workload", "khoi luong hoc tap")) parseWorkload(value, data);
-                else if (matches(label, "credit points", "so tin chi")) parseCredits(value, data);
-                else if (matches(label, "prerequisites", "dieu kien tien quyet")) data.setPrerequisites(value);
+    private void parseGeneralInformation(
+        List<XWPFTable> tables,
+        SyllabusImportData data) {
+
+    for (XWPFTable table : tables) {
+
+        for (XWPFTableRow row : table.getRows()) {
+
+            if (row.getTableCells().size() < 2) {
+                continue;
+            }
+
+            String label =
+                    normalized(
+                            cell(row, 0)
+                    );
+
+            String value =
+                    clean(
+                            cell(row, 1)
+                    );
+
+            if (matches(
+                    label,
+                    "course name",
+                    "module name",
+                    "ten hoc phan")) {
+
+                if (data.getSourceCourseName() == null) {
+                    data.setSourceCourseName(value);
+                }
+
+            } else if (matches(
+                    label,
+                    "course designation",
+                    "course classification",
+                    "course category",
+                    "mo ta hoc phan")) {
+
+                data.setCourseDesignation(value);
+
+            } else if (matches(
+                    label,
+                    "course type",
+                    "loai hoc phan")) {
+
+                data.setCourseTypes(value);
+
+            } else if (matches(
+                    label,
+                    "semester",
+                    "semester in which the course is taught",
+                    "hoc ky giang day")) {
+
+                data.setSemester(
+                        normalizeSemester(value)
+                );
+
+            } else if (matches(
+                    label,
+                    "person responsible",
+                    "course coordinator",
+                    "instructor in charge",
+                    "course instructor",
+                    "nguoi phu trach")) {
+
+                data.setPersonResponsible(value);
+
+            } else if (matches(
+                    label,
+                    "language",
+                    "medium of instruction",
+                    "language of instruction",
+                    "instruction language",
+                    "ngon ngu giang day")) {
+
+                data.setLanguage(value);
+
+            } else if (matches(
+                    label,
+                    "relation to curriculum",
+                    "relation to the curriculum",
+                    "curriculum relation",
+                    "quan he voi chuong trinh")) {
+
+                data.setRelation(value);
+
+            } else if (matches(
+                    label,
+                    "teaching methods",
+                    "instructional methods",
+                    "teaching methodology",
+                    "teaching and learning methods",
+                    "methods of instruction",
+                    "phuong phap giang day")) {
+
+                data.setTeachingMethods(value);
+
+            } else if (matches(
+                    label,
+                    "workload",
+                    "study load",
+                    "study workload",
+                    "student workload",
+                    "khoi luong hoc tap")) {
+
+                parseWorkload(
+                        value,
+                        data
+                );
+
+            } else if (matches(
+                    label,
+                    "credit points",
+                    "number of credits",
+                    "credits",
+                    "so tin chi")) {
+
+                parseCredits(
+                        value,
+                        data
+                );
+
+            } else if (matches(
+                    label,
+                    "prerequisites",
+                    "required prerequisites",
+                    "recommended prerequisites",
+                    "dieu kien tien quyet")) {
+
+                data.setPrerequisites(value);
             }
         }
     }
+}
+    
+    private void parseObjectives(
+        List<IBodyElement> body,
+        SyllabusImportData data) {
 
-    private void parseObjectives(List<IBodyElement> body, SyllabusImportData data) {
-        data.setObjectives(sectionParagraphs(body,
-                List.of("course objectives", "muc tieu hoc phan"),
-                List.of("course learning outcomes", "chuan dau ra hoc phan")));
-    }
-
+    data.setObjectives(
+            sectionParagraphs(
+                    body,
+                    List.of(
+                            "course objectives",
+                            "course aims",
+                            "muc tieu hoc phan"
+                    ),
+                    List.of(
+                            "course learning outcomes",
+                            "chuan dau ra hoc phan"
+                    )
+            )
+    );
+}
     private void parseClos(List<IBodyElement> body, SyllabusImportData data) {
-        XWPFTable table = tableAfterHeading(body, "course learning outcomes", "chuan dau ra hoc phan");
+        XWPFTable table =
+        tableAfterHeading(
+                body,
+                "course learning outcomes",
+                "learning outcomes",
+                "chuan dau ra hoc phan"
+        );
         if (table == null) {
             parseLearningOutcomeMatrix(body, data);
             return;
@@ -140,7 +298,15 @@ public class SyllabusDocxParser implements SyllabusFileParser {
     }
 
     private void parseLearningOutcomeMatrix(List<IBodyElement> body, SyllabusImportData data) {
-        XWPFTable table=tableAfterHeading(body,"learning outcomes matrix","ma tran chuan dau ra");
+        XWPFTable table =
+        tableAfterHeading(
+                body,
+                "learning outcomes matrix",
+                "clo-plo mapping matrix",
+                "clo plo mapping matrix",
+                "clo-plo matrix",
+                "ma tran chuan dau ra"
+        );
         if(table==null||table.getNumberOfRows()<2) return;
         List<CloImportData> clos=new ArrayList<>();
         List<SyllabusImportData.CloPloMappingItem> mappings=new ArrayList<>();
@@ -164,7 +330,13 @@ public class SyllabusDocxParser implements SyllabusFileParser {
     }
 
     private void parseTopics(List<IBodyElement> body, SyllabusImportData data) {
-        XWPFTable table = tableAfterHeading(body, "course content", "noi dung hoc phan");
+        XWPFTable table =
+        tableAfterHeading(
+                body,
+                "course content",
+                "course topics",
+                "noi dung hoc phan"
+        );
         if(table==null) table=tableAfterHeading(body,"planned learning activities","ke hoach giang day");
         if (table == null) return;
         List<TopicImportData> topics = new ArrayList<>();
@@ -197,7 +369,14 @@ public class SyllabusDocxParser implements SyllabusFileParser {
     }
 
     private void parseWeeklyPlan(List<IBodyElement> body, SyllabusImportData data) {
-        XWPFTable table = tableAfterHeading(body, "planned learning activities", "ke hoach giang day");
+        XWPFTable table =
+        tableAfterHeading(
+                body,
+                "planned learning activities",
+                "teaching and learning activities",
+                "learning activities",
+                "ke hoach giang day"
+        );
         if (table == null) return;
         List<SyllabusImportData.WeeklyActivityItem> weekly = new ArrayList<>();
         for (int rowIndex = 1; rowIndex < table.getNumberOfRows(); rowIndex++) {
@@ -215,7 +394,15 @@ public class SyllabusDocxParser implements SyllabusFileParser {
     }
 
     private void parseAssessments(List<IBodyElement> body, SyllabusImportData data) {
-        XWPFTable table = tableAfterHeading(body, "assessment plan", "ke hoach danh gia");
+        XWPFTable table =
+        tableAfterHeading(
+                body,
+                "assessment plan",
+                "assessment scheme",
+                "assessment methods",
+                "assessment strategy",
+                "ke hoach danh gia"
+        );
         if (table == null) return;
         List<AssessmentImportData> assessments = new ArrayList<>();
         List<SyllabusImportData.AssessmentCloMappingItem> mappings = new ArrayList<>();
@@ -244,8 +431,23 @@ public class SyllabusDocxParser implements SyllabusFileParser {
     }
 
     private void parseReadingList(List<IBodyElement> body, SyllabusImportData data) {
-        String section = sectionParagraphs(body, List.of("reading list", "tai lieu tham khao"),
-                List.of("date revised", "ngay cap nhat", "lecturer", "giang vien"));
+        String section = sectionParagraphs(
+        body,
+        List.of(
+                "reading list",
+                "references",
+                "bibliography",
+                "tai lieu tham khao"
+        ),
+        List.of(
+                "date revised",
+                "last revised",
+                "revision date",
+                "ngay cap nhat",
+                "lecturer",
+                "giang vien"
+        )
+);
         List<SyllabusImportData.ReadingItem> readings = new ArrayList<>();
         for (String item : section.split("(?=\\[\\d+])")) {
             String value = clean(item).replaceFirst("^\\[\\d+]\\s*", "");
@@ -257,19 +459,83 @@ public class SyllabusDocxParser implements SyllabusFileParser {
         data.setReadings(readings);
     }
 
-    private void parseRevisionDate(List<IBodyElement> body, SyllabusImportData data) {
-        Pattern pattern = Pattern.compile("(?i)(?:Date revised|Ngay cap nhat)\\s*:\\s*(\\d{1,2}/\\d{1,2}/\\d{4})");
-        for (IBodyElement element : body) {
-            if (!(element instanceof XWPFParagraph paragraph)) continue;
-            String ascii = ascii(paragraph.getText());
-            Matcher matcher = pattern.matcher(ascii);
-            if (matcher.find()) {
-                data.setDateRevised(LocalDate.parse(matcher.group(1), DateTimeFormatter.ofPattern("d/M/uuuu")).toString());
-                return;
+    private void parseRevisionDate(
+        List<IBodyElement> body,
+        SyllabusImportData data) {
+
+    Pattern pattern =
+            Pattern.compile(
+                    "(?i)"
+                            + "(?:"
+                            + "Date\\s+revised"
+                            + "|Last\\s+revised"
+                            + "|Revision\\s+date"
+                            + "|Ngay\\s+cap\\s+nhat"
+                            + ")"
+                            + "\\s*:\\s*"
+                            + "("
+                            + "\\d{4}-\\d{1,2}-\\d{1,2}"
+                            + "|\\d{1,2}/\\d{1,2}/\\d{4}"
+                            + ")"
+            );
+
+    for (IBodyElement element : body) {
+
+        if (!(element instanceof XWPFParagraph paragraph)) {
+            continue;
+        }
+
+        String paragraphText =
+                ascii(
+                        paragraph.getText()
+                );
+
+        Matcher matcher =
+                pattern.matcher(
+                        paragraphText
+                );
+
+        if (!matcher.find()) {
+            continue;
+        }
+
+        String rawDate =
+                matcher.group(1);
+
+        try {
+
+            LocalDate parsedDate;
+
+            if (rawDate.contains("-")) {
+                parsedDate =
+                        LocalDate.parse(
+                                rawDate,
+                                DateTimeFormatter.ISO_LOCAL_DATE
+                        );
+            } else {
+                parsedDate =
+                        LocalDate.parse(
+                                rawDate,
+                                DateTimeFormatter.ofPattern(
+                                        "d/M/uuuu"
+                                )
+                        );
             }
+
+            data.setDateRevised(
+                    parsedDate.toString()
+            );
+
+            return;
+
+        } catch (DateTimeParseException ignored) {
+            /*
+             * Keep searching instead of failing the whole
+             * DOCX import because of one malformed date.
+             */
         }
     }
-
+}
     private String sectionParagraphs(List<IBodyElement> body, List<String> starts, List<String> ends) {
         boolean active = false;
         List<String> values = new ArrayList<>();

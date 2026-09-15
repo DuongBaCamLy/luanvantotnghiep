@@ -1,3 +1,7 @@
+export type CourseLevel =
+  | "UNDERGRADUATE"
+  | "GRADUATE"
+
 export interface Course {
   id: number
   courseCode: string
@@ -9,7 +13,7 @@ export interface Course {
   creditTheory: number
   creditLab: number
   totalCredits: number
-  courseLevel: string
+  courseLevel: CourseLevel
   description: string | null
   isActive: boolean
 }
@@ -21,7 +25,6 @@ export interface CreateCourseRequest {
   departmentId: number
   creditTheory: number
   creditLab: number
-  courseLevel: string // e.g. INTRODUCTORY, INTERMEDIATE, ADVANCED
+  courseLevel: CourseLevel
   description?: string
 }
-

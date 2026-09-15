@@ -149,9 +149,9 @@ export default function EmailOutboxPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div data-admin-page="EmailOutboxPage" className="space-y-6">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <div>
+        <div data-admin-page-header="EmailOutboxPage">
           <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-blue-700">
             <MailCheck className="h-4 w-4" />
             FR-05.4 · Email Notification

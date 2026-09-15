@@ -1,5 +1,4 @@
 import {
-  useEffect,
   useMemo,
   useState,
 } from "react"
@@ -14,7 +13,6 @@ import {
   type CreateClassSectionRequest,
 } from "@/api/classSectionApi"
 import { courseApi } from "@/api/courseApi"
-import { programApi } from "@/api/programApi"
 import { cohortApi } from "@/api/cohortApi"
 import { courseProgramApi } from "@/api/courseProgramApi"
 import { instructorApi } from "@/api/instructorApi"
@@ -89,30 +87,101 @@ export default function ClassSectionFormDialog({
     queryFn: courseApi.getAll,
     enabled: open,
   })
-
-  const { data: programs = [] } = useQuery({
-    queryKey: ["programs", "teaching-assignment"],
-    queryFn: programApi.getAll,
-    enabled: open,
-  })
-
   const { data: cohorts = [] } = useQuery({
-    queryKey: ["cohorts", "teaching-assignment"],
+    queryKey: ["cohorts"],
     queryFn: cohortApi.getAll,
     enabled: open,
   })
 
-  const { data: curriculumItems = [] } = useQuery({
-    queryKey: ["course-programs", "curriculum", programId, cohortId],
-    queryFn: () => courseProgramApi.getCurriculum(Number(programId), Number(cohortId)),
-    enabled: open && Boolean(programId && cohortId),
+  const availableCohorts = useMemo(
+    () =>
+      cohorts
+        .filter(
+          (cohort) =>
+            cohort.isActive
+            || cohort.id === initialData?.cohortId,
+        )
+        .slice()
+        .sort(
+          (left, right) =>
+            right.entryYear - left.entryYear
+            || left.name.localeCompare(
+              right.name,
+              "en",
+              { numeric: true },
+            ),
+        ),
+    [
+      cohorts,
+      initialData?.cohortId,
+    ],
+  )
+
+  /*
+   * Cohort is the source of truth.
+   * Its Program is resolved automatically.
+   */
+  const selectedCohortRecord = useMemo(
+    () =>
+      cohorts.find(
+        (cohort) =>
+          String(cohort.id) === cohortId,
+      ),
+    [
+      cohorts,
+      cohortId,
+    ],
+  )
+
+  const resolvedProgramId =
+    selectedCohortRecord?.programId
+      ? String(selectedCohortRecord.programId)
+      : programId
+
+  /*
+   * IMPORTANT:
+   * Use the SAME effective curriculum source used by
+   * curriculum management.
+   *
+   * This includes:
+   * - shared baseline courses
+   * - cohort-specific overrides
+   */
+  const { data: curriculumItems = [] } = useQuery<
+    Array<{ courseId: number }>
+  >({
+    queryKey: [
+      "course-programs",
+      "curriculum",
+      resolvedProgramId,
+      cohortId,
+    ],
+
+    queryFn: async () =>
+      (await courseProgramApi.getCurriculum(
+        Number(resolvedProgramId),
+        Number(cohortId),
+      )) as Array<{ courseId: number }>,
+
+    enabled:
+      open
+      && Boolean(resolvedProgramId)
+      && Boolean(cohortId),
   })
 
-  const availableCohorts = cohorts.filter(
-    (cohort) => String(cohort.programId) === programId,
-  )
-  const curriculumCourseIds = new Set(curriculumItems.map((item) => item.courseId))
-  const courses = allCourses.filter((course) => curriculumCourseIds.has(course.id))
+  const curriculumCourseIds =
+    new Set(
+      curriculumItems.map(
+        (item) => item.courseId,
+      ),
+    )
+
+  const courses =
+    allCourses.filter(
+      (course) =>
+        curriculumCourseIds.has(course.id),
+    )
+
 
   const {
     data: instructors = [],
@@ -150,10 +219,10 @@ export default function ClassSectionFormDialog({
       initialData?.syllabusId,
     )
 
-  useEffect(() => {
-    if (!open) {
-      return
-    }
+  const [formContext, setFormContext] = useState<{ open: boolean; initialData: typeof initialData }>({ open: false, initialData: undefined })
+  if (formContext.open !== open || formContext.initialData !== initialData) {
+    setFormContext({ open, initialData })
+    if (open) {
 
     if (initialData) {
       setProgramId(initialData.programId ? String(initialData.programId) : "")
@@ -194,10 +263,8 @@ export default function ClassSectionFormDialog({
     }
 
     setValidationError("")
-  }, [
-    initialData,
-    open,
-  ])
+    }
+  }
 
   const handleSubmit = (
     event: React.FormEvent,
@@ -206,12 +273,12 @@ export default function ClassSectionFormDialog({
 
     if (
       !courseId
-      || !programId
+      || !resolvedProgramId
       || !cohortId
       || !instructorId
     ) {
       setValidationError(
-        "Program, Cohort, Course, and Instructor are required.",
+        "Cohort, Course, and Instructor are required.",
       )
       return
     }
@@ -219,7 +286,7 @@ export default function ClassSectionFormDialog({
     setValidationError("")
 
     onSubmit({
-      programId: Number(programId),
+      programId: Number(resolvedProgramId),
       cohortId: Number(cohortId),
       courseId:
         Number(courseId),
@@ -284,7 +351,7 @@ export default function ClassSectionFormDialog({
             <DialogDescription>
               {initialData
                 ? "Update the Program, Cohort, Course, and Instructor assignment."
-                : "Select the curriculum context and assign an Instructor to its Course."}
+                : "Select a Cohort and assign an Instructor to one of its curriculum Courses."}
             </DialogDescription>
           </DialogHeader>
         </div>
@@ -325,46 +392,56 @@ export default function ClassSectionFormDialog({
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <Label>Program *</Label>
-                <Select
-                  value={programId}
-                  onValueChange={(value) => {
-                    setProgramId(value)
-                    setCohortId("")
-                    setCourseId("")
-                    setValidationError("")
-                  }}
-                  disabled={isLoading || hasLinkedSyllabus}
-                >
-                  <SelectTrigger><SelectValue placeholder="Select Program" /></SelectTrigger>
-                  <SelectContent>
-                    {programs.filter((program) => program.isActive || program.id === initialData?.programId).map((program) => (
-                      <SelectItem key={program.id} value={String(program.id)}>
-                        {program.code} — {program.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-1.5">
                 <Label>Cohort *</Label>
+
                 <Select
                   value={cohortId}
                   onValueChange={(value) => {
+                    const selectedCohort =
+                      cohorts.find(
+                        (cohort) =>
+                          String(cohort.id) === value,
+                      )
+
                     setCohortId(value)
+
+                    setProgramId(
+                      selectedCohort?.programId
+                        ? String(
+                            selectedCohort.programId,
+                          )
+                        : "",
+                    )
+
                     setCourseId("")
                     setValidationError("")
                   }}
-                  disabled={isLoading || hasLinkedSyllabus || !programId}
+                  disabled={
+                    isLoading
+                    || hasLinkedSyllabus
+                  }
                 >
-                  <SelectTrigger><SelectValue placeholder={programId ? "Select Cohort" : "Select Program first"} /></SelectTrigger>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select Cohort" />
+                  </SelectTrigger>
+
                   <SelectContent>
-                    {availableCohorts.filter((cohort) => cohort.isActive || cohort.id === initialData?.cohortId).map((cohort) => (
-                      <SelectItem key={cohort.id} value={String(cohort.id)}>{cohort.name}</SelectItem>
-                    ))}
+                    {availableCohorts.map(
+                      (cohort) => (
+                        <SelectItem
+                          key={cohort.id}
+                          value={String(cohort.id)}
+                        >
+                          {cohort.name}
+                        </SelectItem>
+                      ),
+                    )}
                   </SelectContent>
                 </Select>
+
+                <p className="text-xs text-slate-500">
+                  Cohorts are synchronized from Curriculum Programs.
+                </p>
               </div>
 
               <div className="space-y-1.5">
@@ -390,7 +467,7 @@ export default function ClassSectionFormDialog({
 
                   <SelectContent>
                     {courses.map(
-                      (course: any) => (
+                      (course) => (
                         <SelectItem
                           key={course.id}
                           value={String(course.id)}

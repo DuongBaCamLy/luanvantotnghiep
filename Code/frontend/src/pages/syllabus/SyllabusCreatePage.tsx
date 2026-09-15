@@ -1,3 +1,4 @@
+import { formatVersionLabel } from "@/lib/syllabusVersion"
 import {
   useLocation,
   useNavigate,
@@ -431,7 +432,7 @@ export default function SyllabusCreatePage() {
         <div className="flex items-start gap-3">
           <ShieldCheck className="mt-0.5 size-5 shrink-0" />
 
-          <div>
+          <div data-admin-page-header="SyllabusCreatePage">
             <h1 className="font-semibold">
               Syllabus creation is not available for this role
             </h1>
@@ -463,7 +464,7 @@ export default function SyllabusCreatePage() {
       <div className="mx-auto max-w-3xl rounded-2xl border border-amber-200 bg-amber-50 p-6 text-amber-900">
         <div className="flex items-start gap-3">
           <AlertTriangle className="mt-0.5 size-5 shrink-0" />
-          <div>
+          <div data-admin-page-header="SyllabusCreatePage">
             <h1 className="font-semibold">Cohort is required</h1>
             <p className="mt-1 text-sm leading-6">Return to Syllabus Catalog and select a Cohort before importing or creating a syllabus. This prevents Major and Cohort from being saved as N/A.</p>
             <Button type="button" size="sm" variant="outline" className="mt-4 bg-white" onClick={() => navigate(`${basePath}/syllabus`)}>
@@ -489,7 +490,7 @@ export default function SyllabusCreatePage() {
       <div className="mx-auto max-w-3xl rounded-2xl border border-rose-200 bg-rose-50 p-6 text-rose-800">
         <div className="flex items-start gap-3">
           <AlertTriangle className="mt-0.5 size-5 shrink-0" />
-          <div>
+          <div data-admin-page-header="SyllabusCreatePage">
             <h1 className="font-semibold">Cannot load the selected course</h1>
             <p className="mt-1 text-sm leading-6">The form was not opened, so imported data cannot be attached to the wrong course or version.</p>
             <div className="mt-4 flex flex-wrap gap-2">
@@ -507,7 +508,7 @@ export default function SyllabusCreatePage() {
       <div className="mx-auto max-w-3xl rounded-2xl border border-amber-200 bg-amber-50 p-6 text-amber-900">
         <div className="flex items-start gap-3">
           <AlertTriangle className="mt-0.5 size-5 shrink-0" />
-          <div>
+          <div data-admin-page-header="SyllabusCreatePage">
             <h1 className="font-semibold">Imported PDF data is unavailable</h1>
             <p className="mt-1 text-sm leading-6">The preview expired, is incomplete, or belongs to another course. Return to the catalog and import the PDF again; no syllabus has been saved.</p>
             <Button type="button" size="sm" variant="outline" className="mt-4 bg-white" onClick={() => navigate(-1)}>
@@ -538,7 +539,7 @@ export default function SyllabusCreatePage() {
       <div className="mx-auto max-w-3xl rounded-2xl border border-rose-200 bg-rose-50 p-6 text-rose-800">
         <div className="flex items-start gap-3">
           <AlertTriangle className="mt-0.5 size-5 shrink-0" />
-          <div>
+          <div data-admin-page-header="SyllabusCreatePage">
             <h1 className="font-semibold">The imported PDF belongs to another course</h1>
             <p className="mt-1 text-sm leading-6">PDF course {importPreview?.data.sourceCourseCode} does not match selected course {requestedCourseContext?.course.courseCode}. Nothing has been saved.</p>
             <Button type="button" size="sm" variant="outline" className="mt-4 bg-white" onClick={() => navigate(-1)}>
@@ -564,7 +565,7 @@ export default function SyllabusCreatePage() {
 
   if (Number.isFinite(requestedCourseId) && requestedCourseId > 0) {
     const selectedCourseProgramId = automaticallyResolvedCourseProgramId
-    const nextVersionNumber = (requestedCourseContext?.latestSyllabus?.versionNumber ?? 0) + 1
+    const nextVersionNumber = 1
 
     initialData = importPreview
       ? buildImportedSyllabusInitialData(importPreview, {
@@ -576,7 +577,7 @@ export default function SyllabusCreatePage() {
       courseId: requestedCourseId,
       courseProgramId: selectedCourseProgramId,
       versionNumber: nextVersionNumber,
-      versionLabel: `v${nextVersionNumber}.0`,
+      versionLabel: formatVersionLabel(nextVersionNumber),
       academicYear: "",
       semester: "",
       changeSummary: "Initial Draft",
@@ -610,7 +611,7 @@ export default function SyllabusCreatePage() {
   }
 
   if (sourceSyllabus) {
-    const nextVersion = (requestedCourseContext?.latestSyllabus?.versionNumber ?? sourceSyllabus.versionNumber ?? 0) + 1
+    const nextVersion = 1
     initialData = {
       courseProgramId: courseProgramId > 0
         ? courseProgramId
@@ -621,7 +622,7 @@ export default function SyllabusCreatePage() {
         ? requestedCourseId
         : sourceSyllabus.courseId,
       versionNumber: nextVersion,
-      versionLabel: `v${nextVersion}.0`,
+      versionLabel: formatVersionLabel(nextVersion),
       academicYear: sourceSyllabus.academicYear ?? "",
       semester: sourceSyllabus.semester ?? "",
       courseDesignation: sourceSyllabus.courseDesignation ?? "",
@@ -637,7 +638,7 @@ export default function SyllabusCreatePage() {
       examForms: sourceSyllabus.examForms ?? "",
       examRequirements: sourceSyllabus.examRequirements ?? "",
       major: sourceSyllabus.major ?? "",
-      changeSummary: `Imported from ${sourceSyllabus.versionLabel || `v${sourceSyllabus.versionNumber}`}`,
+      changeSummary: `Imported from ${formatVersionLabel(sourceSyllabus.versionNumber, sourceSyllabus.versionLabel)}`,
       notes: sourceSyllabus.notes ?? "",
       clos: sourceSyllabus.clos ?? [],
       topics: sourceSyllabus.topics ?? [],
@@ -645,12 +646,12 @@ export default function SyllabusCreatePage() {
     }
   }
   return (
-    <div className="mx-auto w-full max-w-[1200px] space-y-6 pb-10">
+    <div data-admin-page="SyllabusCreatePage" className="mx-auto w-full max-w-[1200px] space-y-6 pb-10">
       <section className="relative overflow-hidden rounded-2xl border border-[#d7e5e8] bg-white shadow-sm">
         <div className="absolute inset-x-0 top-0 h-[3px] bg-gradient-to-r from-[#007d84] via-[#15949a] to-[#f0a72f]" />
 
         <div className="flex flex-col gap-5 px-6 py-6 lg:flex-row lg:items-center lg:justify-between">
-          <div>
+          <div data-admin-page-header="SyllabusCreatePage">
             <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#708894]">
               New Syllabus
             </span>
@@ -729,7 +730,7 @@ export default function SyllabusCreatePage() {
                       syllabus.id,
                     )}
                   >
-                    {syllabus.courseCode} — {syllabus.versionLabel || `v${syllabus.versionNumber}`} — {syllabus.academicYear}
+                    {syllabus.courseCode} — {formatVersionLabel(syllabus.versionNumber, syllabus.versionLabel)} — {syllabus.academicYear}
                   </SelectItem>
                 ),
               )}

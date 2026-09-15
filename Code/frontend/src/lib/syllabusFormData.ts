@@ -1,3 +1,4 @@
+import { formatVersionLabel } from "@/lib/syllabusVersion"
 import type {
   CreateSyllabusRequest,
   Syllabus,
@@ -24,7 +25,7 @@ export const toSyllabusFormData = (
   cohortId: syllabus.cohortId,
   courseId: syllabus.courseId,
   versionNumber: syllabus.versionNumber,
-  versionLabel: syllabus.versionLabel,
+  versionLabel: formatVersionLabel(syllabus.versionNumber, syllabus.versionLabel),
   academicYear: syllabus.academicYear,
   courseDesignation: syllabus.courseDesignation ?? "",
   courseTypes: syllabus.courseTypes ?? "",

@@ -49,12 +49,12 @@ public class DashboardController {
         return ResponseEntity.ok(dashboardService.getFacultyDashboard(userId));
     }
 
-    @GetMapping("/admin")
-// TEMPORARY: Instructor reuses the Admin dashboard for UI testing.
-@PreAuthorize("hasAnyRole('ADMIN', 'INSTRUCTOR')")
+ @GetMapping("/admin")
+@PreAuthorize("hasRole('ADMIN')")
 public ResponseEntity<DashboardAdminResponse> getAdminDashboard(
         @RequestParam(required = false) String academicYear,
         @RequestParam(required = false) Integer semester,
+        @RequestParam(required = false) Integer majorId,
         @RequestParam(required = false) Integer programId,
         @RequestParam(required = false) Integer cohortId) {
 
@@ -62,11 +62,14 @@ public ResponseEntity<DashboardAdminResponse> getAdminDashboard(
             dashboardService.getAdminDashboard(
                     academicYear,
                     semester,
+                    majorId,
                     programId,
                     cohortId));
 }
+
+
 @GetMapping("/admin/terms")
-@PreAuthorize("hasAnyRole('ADMIN', 'INSTRUCTOR')")
+@PreAuthorize("hasRole('ADMIN')")
 public ResponseEntity<List<DashboardAdminResponse.TermOption>>
 getAdminTermOptions() {
 

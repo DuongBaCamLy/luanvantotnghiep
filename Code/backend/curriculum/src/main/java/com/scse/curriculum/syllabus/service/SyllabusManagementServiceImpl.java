@@ -173,9 +173,9 @@ public class SyllabusManagementServiceImpl
                 )
 
 
-                .version(
-                        syllabus.getVersionLabel()
-                )
+                .version(syllabus.getVersionLabel())
+                .versionNumber(syllabus.getVersionNumber())
+                .versionLabel(syllabus.getVersionLabel())
 
 
                 .program(
@@ -342,9 +342,9 @@ public class SyllabusManagementServiceImpl
                 )
 
 
-                .version(
-                        syllabus.getVersionLabel()
-                )
+                .version(syllabus.getVersionLabel())
+                .versionNumber(syllabus.getVersionNumber())
+                .versionLabel(syllabus.getVersionLabel())
 
 
                 .program(

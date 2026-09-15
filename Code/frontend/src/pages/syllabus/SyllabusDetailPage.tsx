@@ -1,3 +1,6 @@
+import SyllabusRevisionHistory from "@/components/syllabus/SyllabusRevisionHistory"
+import { syllabusHistoryApi } from "@/api/syllabusHistoryApi"
+import { formatVersionLabel } from "@/lib/syllabusVersion"
 import { useEffect, useMemo, useState } from "react"
 import axios from "axios"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
@@ -9,7 +12,6 @@ import {
   Edit3,
   FileSearch2,
   GitCompareArrows,
-  History,
   LoaderCircle,
   ShieldCheck,
   XCircle,
@@ -21,13 +23,10 @@ import { syllabusApi } from "@/api/syllabusApi"
 import { syllabusPdfApi } from "@/api/syllabusPdfApi"
 import { approvalRequestApi } from "@/api/approvalRequestApi"
 import SyllabusForm from "@/components/syllabus/SyllabusForm"
-import SyllabusDiffDetails from "@/components/syllabus/SyllabusDiffDetails"
 import SyllabusPdfPreviewDialog from "@/components/syllabus/SyllabusPdfPreviewDialog"
 import ApprovalReviewDialog, { type ReviewDecision } from "@/components/approval/ApprovalReviewDialog"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { useSyllabusDiff } from "@/hooks/useSyllabusDiff"
 import { useSyllabus } from "@/hooks/useSyllabus"
 import { getSyllabusBasePath } from "@/lib/programContext"
 import { toSyllabusFormData } from "@/lib/syllabusFormData"
@@ -78,12 +77,7 @@ const statusClass = (status: unknown) => {
   }
 }
 
-const versionLabel = (syllabus: Syllabus) => syllabus.versionLabel || `v${syllabus.versionNumber}.0`
-
-const compareVersionAscending = (left: Syllabus, right: Syllabus) => {
-  const versionDifference = Number(left.versionNumber ?? 0) - Number(right.versionNumber ?? 0)
-  return versionDifference || left.id - right.id
-}
+const versionLabel = (syllabus: Syllabus) => formatVersionLabel(syllabus.versionNumber, syllabus.versionLabel)
 
 const formatDate = (value?: string | null) => {
   if (!value) return "—"
@@ -153,35 +147,49 @@ export default function SyllabusDetailPage() {
     isLoading,
   } = useSyllabus(validId ? syllabusId : null)
 
-  const { data: courseVersions = [], isLoading: versionsLoading } = useQuery({
-    queryKey: ["syllabuses-course", syllabus?.courseId],
-    queryFn: () => syllabusApi.getByCourse(syllabus!.courseId),
-    enabled: Boolean(syllabus?.courseId),
-  })
+  const currentStatus = normalizeStatus(syllabus?.status)
+  const isApproved = currentStatus === "APPROVED"
 
-  const sortedVersions = useMemo(
-    () => courseVersions.slice().sort(compareVersionAscending),
-    [courseVersions],
-  )
-  const currentVersionIndex = sortedVersions.findIndex((version) => version.id === syllabus?.id)
-  const previousVersion = currentVersionIndex > 0
-    ? sortedVersions[currentVersionIndex - 1]
-    : undefined
-  const versionsNewestFirst = useMemo(
-    () => sortedVersions.slice().reverse(),
-    [sortedVersions],
-  )
+  const {
+  data: previousComparable,
+  isLoading: previousComparableLoading,
+} = useQuery({
+  queryKey: [
+    "syllabus-previous-comparable",
+    syllabusId,
+  ],
+
+  queryFn: () =>
+    syllabusApi.getPreviousComparable(
+      syllabusId,
+    ),
+
+  enabled:
+    validId
+    && Boolean(syllabus)
+    && isApproved,
+})
+  
+  
   const formData = useMemo(
     () => syllabus ? toSyllabusFormData(syllabus) : undefined,
     [syllabus],
   )
 
-  const currentStatus = normalizeStatus(syllabus?.status)
+  const revisionMutation = useMutation({
+    mutationFn: () => syllabusHistoryApi.startRevision(syllabusId),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries()
+      toast.success("Revision draft created")
+      navigate(`${syllabusBasePath}/${syllabusId}/edit`)
+    },
+    onError: (error) => toast.error(axios.isAxiosError(error) ? error.response?.data?.message || error.message : "Unable to start revision"),
+  })
+
   const isAdmin = role === "ADMIN"
   // A successful Instructor GET already passed the backend assignment scope.
   const canEditDraft = ["DRAFT", "REVISION_REQUESTED"].includes(currentStatus)
     && (isAdmin || role === "INSTRUCTOR")
-  const isApproved = currentStatus === "APPROVED"
   const needsReviewerAction = (
     role === "DEPT_HEAD" && currentStatus === "SUBMITTED"
   ) || (
@@ -207,6 +215,8 @@ export default function SyllabusDetailPage() {
       setReviewDecision(null)
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["syllabus", syllabusId] }),
+        queryClient.invalidateQueries({ queryKey: ["syllabus-revision-history", syllabusId] }),
+        queryClient.invalidateQueries({ queryKey: ["approval-history", syllabusId] }),
         queryClient.invalidateQueries({ queryKey: ["syllabuses"] }),
         queryClient.invalidateQueries({ queryKey: ["approval-requests"] }),
         queryClient.invalidateQueries({ queryKey: ["depthead-courses"] }),
@@ -267,11 +277,11 @@ export default function SyllabusDetailPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-[1500px] space-y-6 pb-12">
+    <div data-admin-page="SyllabusDetailPage" className="mx-auto w-full max-w-[1500px] space-y-6 pb-12">
       <section className="relative overflow-hidden rounded-2xl border border-[#d7e5e8] bg-white shadow-sm">
         <div className="absolute inset-x-0 top-0 h-[3px] bg-gradient-to-r from-[#007d84] via-[#15949a] to-[#f0a72f]" />
         <div className="flex flex-col gap-5 px-6 py-5 xl:flex-row xl:items-start xl:justify-between">
-          <div className="min-w-0">
+          <div data-admin-page-header="SyllabusDetailPage" className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#708894]">
                 SCSE / Syllabus Detail
@@ -312,15 +322,30 @@ export default function SyllabusDetailPage() {
                 Official PDF
               </Button>
             )}
-            {previousVersion && (
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => document.getElementById("version-comparison")?.scrollIntoView({ behavior: "smooth", block: "start" })}
-              >
-                <GitCompareArrows className="size-4" />Compare Previous
-              </Button>
-            )}
+            {isApproved && previousComparableLoading && (
+  <Button
+    type="button"
+    variant="outline"
+    disabled
+  >
+    <LoaderCircle className="size-4 animate-spin" />
+    Finding Previous Cohort...
+  </Button>
+)}
+            {isApproved && previousComparable && (
+  <Button
+    type="button"
+    variant="outline"
+    onClick={() =>
+      navigate(
+        `${syllabusBasePath}/${syllabus.id}/diff?compareWith=${previousComparable.id}`,
+      )
+    }
+  >
+    <GitCompareArrows className="size-4" />
+    Compare Previous Cohort
+  </Button>
+)}
             {(role === "DEPT_HEAD" || role === "DEAN") && pendingReviewRequest && (
               <>
                 <Button
@@ -392,7 +417,12 @@ export default function SyllabusDetailPage() {
           <AlertTriangle className="mt-0.5 size-5 shrink-0" />
           <div>
             <p className="font-semibold">Reviewer feedback requires revision</p>
-            <p className="mt-1 text-sm leading-6">Review the approval history below for the comments attached to this version.</p>
+            <p className="mt-1 text-sm leading-6">Review the approval history below for the comments attached to this revision.</p>
+            {currentStatus === "REJECTED" && (isAdmin || role === "INSTRUCTOR") && (
+              <Button className="mt-3" disabled={revisionMutation.isPending} onClick={() => revisionMutation.mutate()}>
+                {revisionMutation.isPending ? "Starting revision…" : "Start revision"}
+              </Button>
+            )}
           </div>
         </section>
       )}
@@ -415,17 +445,7 @@ export default function SyllabusDetailPage() {
         />
       </section>
 
-      <EmbeddedVersionComparison versions={versionsNewestFirst} />
-
-      <VersionHistory
-        current={syllabus}
-        loading={versionsLoading}
-        versions={versionsNewestFirst}
-        basePath={syllabusBasePath}
-        navigate={navigate}
-        role={role}
-        showReviews={Boolean(user)}
-      />
+      <SyllabusRevisionHistory syllabusId={syllabus.id} />
 
       <SyllabusPdfPreviewDialog
         open={previewOpen}
@@ -458,190 +478,12 @@ function MessageState({
   title: string
 }) {
   return (
-    <div className="mx-auto max-w-3xl rounded-xl border border-rose-200 bg-rose-50 p-6 text-rose-800">
+    <div data-admin-page-header="SyllabusDetailPage" className="mx-auto max-w-3xl rounded-xl border border-rose-200 bg-rose-50 p-6 text-rose-800">
       <h1 className="font-bold">{title}</h1>
       <p className="mt-1 text-sm">{description}</p>
       <Button type="button" variant="outline" className="mt-4 bg-white" onClick={onBack}>
         <ArrowLeft className="size-4" />Back to Catalog
       </Button>
     </div>
-  )
-}
-
-function EmbeddedVersionComparison({ versions }: { versions: Syllabus[] }) {
-  const ordered = useMemo(
-    () => versions.slice().sort((a, b) => (b.versionNumber ?? 0) - (a.versionNumber ?? 0)),
-    [versions],
-  )
-  const [olderId, setOlderId] = useState(() => ordered[1]?.id ?? 0)
-  const [newerId, setNewerId] = useState(() => ordered[0]?.id ?? 0)
-
-  useEffect(() => {
-    const ids = new Set(ordered.map((item) => item.id))
-    if (!ids.has(newerId)) setNewerId(ordered[0]?.id ?? 0)
-    if (!ids.has(olderId) || olderId === newerId) setOlderId(ordered.find((item) => item.id !== (ids.has(newerId) ? newerId : ordered[0]?.id))?.id ?? 0)
-  }, [newerId, olderId, ordered])
-
-  const { data: diff, isLoading, isError } = useSyllabusDiff(newerId, olderId)
-
-  return (
-    <section id="version-comparison" className="scroll-mt-24 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-      <div className="border-b border-slate-100 px-5 py-4">
-        <div className="flex items-start gap-2">
-          <GitCompareArrows className="mt-0.5 size-5 text-[#007d84]" />
-          <div>
-            <h2 className="font-semibold text-slate-900">Syllabus Version Comparison</h2>
-            <p className="mt-1 text-xs leading-5 text-slate-500">Compare two saved versions of this course without leaving the syllabus form.</p>
-          </div>
-        </div>
-      </div>
-
-      {ordered.length < 2 ? (
-        <div className="px-5 py-10 text-center text-sm text-slate-500">
-          Version comparison becomes available after a second version is saved.
-        </div>
-      ) : (
-        <div className="space-y-5 p-5">
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Previous version</label>
-              <Select value={String(olderId)} onValueChange={(value) => setOlderId(Number(value))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>{ordered.filter((item) => item.id !== newerId).map((item) => <SelectItem key={item.id} value={String(item.id)}>{versionLabel(item)} · {item.academicYear} · {item.semester}</SelectItem>)}</SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">New version</label>
-              <Select value={String(newerId)} onValueChange={(value) => setNewerId(Number(value))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>{ordered.filter((item) => item.id !== olderId).map((item) => <SelectItem key={item.id} value={String(item.id)}>{versionLabel(item)} · {item.academicYear} · {item.semester}</SelectItem>)}</SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {isLoading && <div className="flex items-center justify-center gap-2 py-10 text-sm text-slate-500"><LoaderCircle className="size-4 animate-spin" />Comparing saved versions...</div>}
-          {isError && <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">Unable to compare these versions.</div>}
-          {diff && !isLoading && <SyllabusDiffDetails diff={diff} />}
-        </div>
-      )}
-    </section>
-  )
-}
-
-function VersionHistory({
-  basePath,
-  current,
-  loading,
-  navigate,
-  role,
-  showReviews,
-  versions,
-}: {
-  basePath: string
-  current: Syllabus
-  loading: boolean
-  navigate: ReturnType<typeof useNavigate>
-  role: string
-  showReviews: boolean
-  versions: Syllabus[]
-}) {
-  const { data: reviews = [], isLoading: reviewsLoading } = useQuery({
-    queryKey: ["approval-history", current.id],
-    queryFn: () => approvalRequestApi.getApprovalHistory(current.id),
-    enabled: showReviews,
-  })
-
-  const reviewLevelLabel = (step: string | null) => ({
-    STEP1_DEPT_HEAD: "Department Head",
-    STEP2_PROG_COORDINATOR: "Program Coordinator",
-    STEP3_DEAN: "Dean",
-  }[step || ""] || "Review")
-
-  return (
-    <section id="approval-history" className="scroll-mt-24 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-      <div className="flex items-start gap-2 border-b border-slate-100 px-5 py-4">
-        <History className="mt-0.5 size-5 text-[#007d84]" />
-        <div>
-          <h2 className="font-semibold text-slate-900">Syllabus History</h2>
-          <p className="mt-1 text-xs leading-5 text-slate-500">
-            Preserved versions, review decisions, comments, and timestamps for {current.courseCode}.
-          </p>
-        </div>
-      </div>
-
-      {loading || reviewsLoading ? (
-        <div className="flex items-center justify-center gap-2 px-5 py-10 text-sm text-slate-500">
-          <LoaderCircle className="size-4 animate-spin" />Loading syllabus history...
-        </div>
-      ) : versions.length === 0 ? (
-        <div className="px-5 py-8 text-center text-sm text-slate-500">No version history is available.</div>
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[760px] text-left text-sm">
-            <thead className="border-b bg-slate-50 text-[10px] uppercase tracking-[0.1em] text-slate-500">
-              <tr>
-                <th className="px-5 py-3">Event</th>
-                <th className="px-5 py-3">Version / Review level</th>
-                <th className="px-5 py-3">Context / Comment</th>
-                <th className="px-5 py-3">Status</th>
-                <th className="px-5 py-3">Performed by</th>
-                <th className="px-5 py-3">Time</th>
-                <th className="px-5 py-3 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {versions.map((version, index) => {
-                const compareTarget = versions[index + 1]
-                return (
-                  <tr key={version.id} className={version.id === current.id ? "bg-[#f2fbfb]" : "hover:bg-slate-50"}>
-                    <td className="px-5 py-3"><Badge variant="outline">Version</Badge></td>
-                    <td className="px-5 py-3 font-semibold text-slate-800">
-                      {versionLabel(version)}
-                      {version.id === current.id && <span className="ml-2 text-[10px] uppercase text-[#007d84]">Viewing</span>}
-                    </td>
-                    <td className="px-5 py-3 text-slate-600">{version.academicYear} · {version.semester || "—"}</td>
-                    <td className="px-5 py-3"><Badge variant="outline" className={statusClass(version.status)}>{statusLabel(version.status, role)}</Badge></td>
-                    <td className="px-5 py-3 text-slate-600">{version.createdByUsername || "—"}</td>
-                    <td className="px-5 py-3 text-slate-500">{formatDate(version.updatedAt)}</td>
-                    <td className="px-5 py-3">
-                      <div className="flex justify-end gap-2">
-                        {version.id !== current.id && (
-                          <Button type="button" variant="outline" size="sm" onClick={() => navigate(`${basePath}/${version.id}`)}>
-                            View
-                          </Button>
-                        )}
-                        {compareTarget && (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => navigate(`${basePath}/${version.id}/diff?compareWith=${compareTarget.id}`)}
-                          >
-                            <GitCompareArrows className="size-3.5" />Compare
-                          </Button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                )
-              })}
-              {reviews.map((review) => (
-                <tr key={`review-${review.id}`} className="align-top hover:bg-slate-50">
-                  <td className="px-5 py-3"><Badge variant="outline" className="border-blue-200 bg-blue-50 text-blue-700">Review</Badge></td>
-                  <td className="px-5 py-3 font-medium text-slate-800">{versionLabel(current)} · {reviewLevelLabel(review.step)}</td>
-                  <td className="max-w-md px-5 py-3 text-slate-600">
-                    {review.comment?.trim() ? <span className="whitespace-pre-wrap">{review.comment}</span> : <span className="italic text-slate-400">No comment</span>}
-                  </td>
-                  <td className="px-5 py-3"><Badge variant="outline" className={statusClass(review.status)}>{statusLabel(review.status, role)}</Badge></td>
-                  <td className="px-5 py-3 text-slate-600">{review.reviewedByUsername || review.requestedByUsername || "—"}</td>
-                  <td className="px-5 py-3 whitespace-nowrap text-slate-500">{formatDate(review.resolvedAt || review.createdAt)}</td>
-                  <td className="px-5 py-3 text-right text-slate-400">—</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </section>
   )
 }

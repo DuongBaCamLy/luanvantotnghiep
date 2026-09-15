@@ -120,7 +120,9 @@ class SyllabusImportPdfFullFormTest {
                 () -> "Unexpected parser errors: " + issues);
     }
 
-    private static void assertClos(JsonNode clos) {
+
+
+private static void assertClos(JsonNode clos) {
         assertEquals(3, clos.size());
         Map<String, JsonNode> byCode = byTextProperty(clos, "code");
 
@@ -230,10 +232,13 @@ class SyllabusImportPdfFullFormTest {
         assertEquals(1, readings.size());
         JsonNode reading = readings.get(0);
         assertAll("reading list",
-                () -> assertEquals("C How to Program 8th", text(reading, "title")),
-                () -> assertEquals("Paul Deitel", text(reading, "author")),
-                () -> assertEquals(2016, reading.path("year").asInt())
-        );
+        () -> assertEquals("C How to Program 8th", text(reading, "title")),
+        () -> assertEquals("Paul Deitel", text(reading, "author")),
+        () -> assertEquals(2016, reading.path("year").asInt()),
+        () -> assertTrue(
+                text(reading, "publisher").isBlank(),
+                "PDF page number must not be imported as publisher")
+);
     }
 
     private static void assertRubrics(JsonNode rubrics) {

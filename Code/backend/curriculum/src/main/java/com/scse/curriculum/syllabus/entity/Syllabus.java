@@ -34,6 +34,10 @@ public class Syllabus {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
+    @Version
+@Column(name = "lock_version", nullable = false)
+private Long lockVersion;
+
 
 
     /*
@@ -192,17 +196,17 @@ public class Syllabus {
 
 
 
-    @Column(name = "workload_total")
+    @Column(name = "workload_total", columnDefinition = "TEXT")
     private String workloadTotal;
 
 
 
-    @Column(name = "workload_contact")
+    @Column(name = "workload_contact", columnDefinition = "TEXT")
     private String workloadContact;
 
 
 
-    @Column(name = "workload_private")
+    @Column(name = "workload_private", columnDefinition = "TEXT")
     private String workloadPrivate;
 
 
@@ -453,8 +457,21 @@ private List<SyllabusBook> references =
     private LocalDateTime updatedAt;
 
 
+    /** Every response/export mapper reads the same canonical identity. */
+    public String getVersionLabel() {
+        return SyllabusVersion.display(versionNumber, versionLabel);
+    }
+
+    private void validateVersionIdentity() {
+        if (versionLabel == null) {
+            versionLabel = SyllabusVersion.format(versionNumber);
+        }
+        SyllabusVersion.requireCanonical(versionNumber, versionLabel);
+    }
+
     @PrePersist
     private void initializeAuditTimestamps() {
+        validateVersionIdentity();
         LocalDateTime now = LocalDateTime.now();
         if (isCurrent == null) {
             isCurrent = Boolean.FALSE;
@@ -478,6 +495,7 @@ private List<SyllabusBook> references =
 
     @PreUpdate
     private void refreshUpdatedAt() {
+        validateVersionIdentity();
         updatedAt = LocalDateTime.now();
     }
 

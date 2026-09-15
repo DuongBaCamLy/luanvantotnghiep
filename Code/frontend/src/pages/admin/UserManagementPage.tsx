@@ -8,6 +8,7 @@ import {
   Clock3,
   KeyRound,
   Link2,
+  Trash2,
   MoreHorizontal,
   Plus,
   Search,
@@ -23,6 +24,7 @@ import {
 } from "@/api/userApi"
 import { instructorApi } from "@/api/instructorApi"
 import UserFormDialog from "@/components/UserFormDialog"
+import DeleteUserDialog from "@/components/DeleteUserDialog"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -147,6 +149,11 @@ export default function UserManagementPage() {
   const [formOpen, setFormOpen] = useState(false)
   const [editingUser, setEditingUser] =
     useState<UserAccountResponse | null>(null)
+    const [deletingUser, setDeletingUser] =
+  useState<UserAccountResponse | null>(null)
+
+const [deleteOpen, setDeleteOpen] =
+  useState(false)
   const [notice, setNotice] =
     useState<
       | {
@@ -289,6 +296,14 @@ export default function UserManagementPage() {
     setNotice(null)
   }
 
+  const openDelete = (
+  user: UserAccountResponse,
+) => {
+  setDeletingUser(user)
+  setDeleteOpen(true)
+  setNotice(null)
+}
+
   const handleToggle = (user: UserAccountResponse) => {
     if (
       user.id === currentUserId
@@ -323,12 +338,12 @@ export default function UserManagementPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-[1500px] space-y-5 pb-10">
+    <div data-admin-page="UserManagementPage" className="mx-auto w-full max-w-[1500px] space-y-5 pb-10">
       <section className="relative overflow-hidden rounded-2xl border border-[#d7e5e8] bg-white shadow-sm">
         <div className="absolute inset-x-0 top-0 h-[3px] bg-gradient-to-r from-[#007d84] via-[#15949a] to-[#f0a72f]" />
 
         <div className="flex flex-col gap-4 px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
-          <div>
+          <div data-admin-page-header="UserManagementPage">
             <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#708894]">
               FR-01.1 / FR-01.2 · Account Administration
             </p>
@@ -412,7 +427,7 @@ export default function UserManagementPage() {
               </p>
             </div>
 
-            <div className="grid w-full gap-3 md:grid-cols-[minmax(260px,1fr)_210px_190px_auto] xl:max-w-[980px]">
+            <div data-admin-filter className="grid w-full gap-3 md:grid-cols-[minmax(260px,1fr)_210px_190px_auto] xl:max-w-[980px]">
               <div className="relative">
                 <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
 
@@ -542,6 +557,10 @@ export default function UserManagementPage() {
 
                   const isSelf = user.id === currentUserId
 
+                 
+
+const isAdministrator =
+  user.role === "ADMIN"
                   return (
                     <TableRow
                       key={user.id}
@@ -646,53 +665,74 @@ export default function UserManagementPage() {
                       </TableCell>
 
                       <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              aria-label={`Actions for ${user.username}`}
-                            >
-                              <MoreHorizontal className="size-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
+  <DropdownMenu>
+    <DropdownMenuTrigger asChild>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        aria-label={`Actions for ${user.username}`}
+      >
+        <MoreHorizontal className="size-4" />
+      </Button>
+    </DropdownMenuTrigger>
 
-                          <DropdownMenuContent
-                            align="end"
-                            className="w-56"
-                          >
-                            <DropdownMenuItem
-                              onClick={() => openEdit(user)}
-                            >
-                              <KeyRound className="mr-2 size-4" />
-                              Edit / Reset Password
-                            </DropdownMenuItem>
+    <DropdownMenuContent
+      align="end"
+      className="w-56"
+    >
+      <DropdownMenuItem
+        onClick={() =>
+          openEdit(user)
+        }
+      >
+        <KeyRound className="mr-2 size-4" />
+        Edit / Reset Password
+      </DropdownMenuItem>
 
-                            <DropdownMenuSeparator />
+      {!isAdministrator && (
+        <>
+          <DropdownMenuSeparator />
 
-                            <DropdownMenuItem
-                              disabled={
-                                toggleMutation.isPending
-                                || (
-                                  isSelf
-                                  && user.isActive
-                                )
-                              }
-                              className={
-                                user.isActive
-                                  ? "text-rose-700"
-                                  : "text-emerald-700"
-                              }
-                              onClick={() => handleToggle(user)}
-                            >
-                              {user.isActive
-                                ? "Deactivate Account"
-                                : "Activate Account"}
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
+          <DropdownMenuItem
+            disabled={
+              toggleMutation.isPending
+            }
+            className={
+              user.isActive
+                ? "text-rose-700"
+                : "text-emerald-700"
+            }
+            onClick={() =>
+              handleToggle(user)
+            }
+          >
+            {user.isActive
+              ? "Deactivate Account"
+              : "Activate Account"}
+          </DropdownMenuItem>
+
+          {!user.isActive && (
+            <>
+              <DropdownMenuSeparator />
+
+              <DropdownMenuItem
+                className="text-rose-700 focus:bg-rose-50 focus:text-rose-700"
+                onClick={() =>
+                  openDelete(user)
+                }
+              >
+                <Trash2 className="mr-2 size-4" />
+                Delete User
+              </DropdownMenuItem>
+            </>
+          )}
+        </>
+      )}
+    </DropdownMenuContent>
+  </DropdownMenu>
+</TableCell>
+                      
                     </TableRow>
                   )
                 })
@@ -707,6 +747,17 @@ export default function UserManagementPage() {
         onOpenChange={setFormOpen}
         editingUser={editingUser}
       />
+      <DeleteUserDialog
+  open={deleteOpen}
+  onOpenChange={(open) => {
+    setDeleteOpen(open)
+
+    if (!open) {
+      setDeletingUser(null)
+    }
+  }}
+  user={deletingUser}
+/>
     </div>
   )
 }

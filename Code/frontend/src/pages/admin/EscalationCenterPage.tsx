@@ -138,12 +138,12 @@ export default function EscalationCenterPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div data-admin-page="EscalationCenterPage" className="space-y-6">
       <section className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-950 text-white shadow-sm">
         <div className="relative px-6 py-7 md:px-8">
           <div className="absolute inset-y-0 right-0 w-2/5 bg-[radial-gradient(circle_at_center,rgba(190,24,93,0.28),transparent_65%)]" />
           <div className="relative flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-            <div className="max-w-3xl">
+            <div data-admin-page-header="EscalationCenterPage" className="max-w-3xl">
               <div className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.22em] text-blue-200">
                 <ShieldAlert className="size-4" /> FR-05.7 · Governance Control
               </div>

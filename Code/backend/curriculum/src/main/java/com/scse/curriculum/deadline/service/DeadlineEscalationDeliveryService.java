@@ -151,7 +151,7 @@ public class DeadlineEscalationDeliveryService {
     }
 
     private String semesterLabel(Integer semester) {
-        return "HK" + semester;
+        return "Semester " + semester;
     }
 
     private String actualDaysOverdueText(int days) {

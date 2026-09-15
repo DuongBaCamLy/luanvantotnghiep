@@ -14,6 +14,7 @@ public interface DashboardService {
     DashboardAdminResponse getAdminDashboard(
         String academicYear,
         Integer semester,
+        Integer majorId,
         Integer programId,
         Integer cohortId);
     DashboardHeatmapResponse getHeatmapCoverage(long programId, Integer cohortId, String academicYear, String semester, Integer courseTypeId);

@@ -1,4 +1,4 @@
-import { useState } from "react"
+
 import {
   Table,
   TableBody,
@@ -11,14 +11,12 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Link } from "react-router-dom"
 import { Eye, Pencil, Trash2, Check } from "lucide-react"
-
+import axios from "axios"
 import { useDeleteSyllabus } from "@/hooks/useDeleteSyllabus"
 import { useSubmitSyllabus } from "@/hooks/useSubmitSyllabus"
-import { useValidateSyllabusSubmission } from "@/hooks/useValidateSyllabusSubmission"
-import SubmissionValidationDialog from "@/components/syllabus/SubmissionValidationDialog"
 import { getSyllabusMetadata } from "@/lib/syllabusHelper"
 
-import type { Syllabus, SubmissionValidationResponse } from "@/types/syllabus"
+import type { Syllabus } from "@/types/syllabus"
 
 interface Props {
   data: Syllabus[]
@@ -48,10 +46,8 @@ export default function SyllabusTable({
 }: Props) {
   const deleteMutation = useDeleteSyllabus()
   const submitMutation = useSubmitSyllabus()
-  const validationMutation = useValidateSyllabusSubmission()
-  const [validation, setValidation] = useState<SubmissionValidationResponse | null>(null)
-  const [validationOpen, setValidationOpen] = useState(false)
-  const [selectedSyllabusId, setSelectedSyllabusId] = useState<number | null>(null)
+
+  
 
   const handleDelete = (id: number) => {
     if (window.confirm("Are you sure you want to delete this syllabus?")) {
@@ -59,38 +55,41 @@ export default function SyllabusTable({
     }
   }
 
-  const handleSubmit = (id: number) => {
-    setSelectedSyllabusId(id)
-    validationMutation.mutate(id, {
-      onSuccess: (result) => {
-        setValidation(result)
-        setValidationOpen(true)
-      },
-      onError: (error: any) => {
-        alert(error?.response?.data?.message ?? "Unable to validate the syllabus submission requirements.")
-      },
-    })
+  const handleSubmit = (
+  id: number,
+) => {
+  if (
+    !window.confirm(
+      "Submit this syllabus for Department review?",
+    )
+  ) {
+    return
   }
 
-  const handleConfirmSubmit = () => {
-    if (!selectedSyllabusId) return
+  submitMutation.mutate(id, {
+    onSuccess: () => {
+      alert(
+        "Syllabus submitted successfully!",
+      )
+    },
 
-    submitMutation.mutate(selectedSyllabusId, {
-      onSuccess: () => {
-        setValidationOpen(false)
-        alert("Syllabus submitted successfully!")
-      },
-      onError: (error: any) => {
-        const response = error?.response?.data as SubmissionValidationResponse | undefined
-        if (response?.issues) {
-          setValidation(response)
-          setValidationOpen(true)
-          return
-        }
-        alert(error?.response?.data?.message ?? "Unable to submit the syllabus.")
-      },
-    })
-  }
+    onError: (error: unknown) => {
+      const message =
+        axios.isAxiosError<{
+          message?: string
+        }>(error)
+          ? error.response?.data?.message
+          : undefined
+
+      alert(
+        message
+          || "Unable to submit the syllabus.",
+      )
+    },
+  })
+}
+
+
 
   const getStatusBadge = (status: string) => {
     switch (status.toUpperCase()) {
@@ -239,7 +238,7 @@ export default function SyllabusTable({
                         variant="ghost"
                         title="Submit Syllabus"
                         onClick={() => handleSubmit(item.id)}
-                        disabled={validationMutation.isPending || submitMutation.isPending}
+                        disabled={submitMutation.isPending}
                         className="h-8 w-8 p-0 text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/20 dark:hover:text-emerald-400"
                       >
                         <Check className="size-4" />
@@ -265,14 +264,6 @@ export default function SyllabusTable({
         )}
       </TableBody>
     </Table>
-
-    <SubmissionValidationDialog
-      open={validationOpen}
-      validation={validation}
-      submitting={submitMutation.isPending}
-      onOpenChange={setValidationOpen}
-      onSubmit={handleConfirmSubmit}
-    />
     </>
   )
 }

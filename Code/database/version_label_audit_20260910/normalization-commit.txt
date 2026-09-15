@@ -1,0 +1,121 @@
+id
+2993
+2994
+2995
+2996
+2997
+2998
+2999
+3000
+3001
+3002
+3003
+3004
+3005
+3006
+3007
+3008
+3009
+3010
+3011
+3012
+3013
+3014
+3015
+3016
+3017
+3018
+3019
+3020
+3021
+3022
+3023
+3024
+3025
+3026
+3027
+3028
+3029
+3030
+3031
+3032
+3033
+3034
+3035
+3036
+3037
+3038
+3039
+3040
+3041
+3042
+3043
+3044
+3045
+3046
+3047
+3051
+3052
+3053
+3054
+3055
+id	version_number	before_label	after_label	status
+2993	1	Version 1	v1.0	DRAFT
+2994	1	Version 1	v1.0	DRAFT
+2995	1	Version 1	v1.0	DRAFT
+2996	1	Version 1	v1.0	DRAFT
+2997	1	Version 1	v1.0	DRAFT
+2998	1	Version 1	v1.0	DRAFT
+2999	1	Version 1	v1.0	DRAFT
+3000	1	Version 1	v1.0	DRAFT
+3001	1	Version 1	v1.0	DRAFT
+3002	1	Version 1	v1.0	DRAFT
+3003	1	Version 1	v1.0	DRAFT
+3004	1	Version 1	v1.0	DRAFT
+3005	1	Version 1	v1.0	DRAFT
+3006	1	Version 1	v1.0	DRAFT
+3007	1	Version 1	v1.0	DRAFT
+3008	1	Version 1	v1.0	DRAFT
+3009	1	Version 1	v1.0	DRAFT
+3010	1	Version 1	v1.0	DRAFT
+3011	1	Version 1	v1.0	DRAFT
+3012	1	Version 1	v1.0	DRAFT
+3014	1	Version 1	v1.0	DRAFT
+3015	1	Version 1	v1.0	DRAFT
+3016	1	Version 1	v1.0	DRAFT
+3017	1	Version 1	v1.0	DRAFT
+3018	1	Version 1	v1.0	DRAFT
+3019	1	Version 1	v1.0	DRAFT
+3020	1	Version 1	v1.0	DRAFT
+3021	1	Version 1	v1.0	DRAFT
+3022	1	Version 1	v1.0	DRAFT
+3023	1	Version 1	v1.0	DRAFT
+3024	1	Version 1	v1.0	DRAFT
+3025	1	Version 1	v1.0	DRAFT
+3026	1	Version 1	v1.0	DRAFT
+3027	1	Version 1	v1.0	DRAFT
+3028	1	Version 1	v1.0	DRAFT
+3029	1	Version 1	v1.0	DRAFT
+3030	1	Version 1	v1.0	DRAFT
+3031	1	Version 1	v1.0	DRAFT
+3032	1	Version 1	v1.0	DRAFT
+3033	1	Version 1	v1.0	DRAFT
+3034	1	Version 1	v1.0	DRAFT
+3035	1	Version 1	v1.0	DRAFT
+3036	1	Version 1	v1.0	DRAFT
+3037	1	Version 1	v1.0	DRAFT
+3038	1	Version 1	v1.0	ARCHIVED
+3039	1	Version 1	v1.0	DRAFT
+3040	1	Version 1	v1.0	DRAFT
+3041	1	Version 1	v1.0	DRAFT
+3042	1	Version 1	v1.0	DRAFT
+3043	1	Version 1	v1.0	DRAFT
+3044	1	Version 1	v1.0	DRAFT
+3045	1	Version 1	v1.0	DRAFT
+3046	1	Version 1	v1.0	ARCHIVED
+3047	1	Version 1	v1.0	ARCHIVED
+3054	2	Version 2	v2.0	ARCHIVED
+normalized_rows
+55
+result
+COMMITTED: label-only verification passed

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react"
+import { useMemo, useState } from "react"
 import { useMutation, useQuery } from "@tanstack/react-query"
 import { useLocation, useNavigate, useParams } from "react-router-dom"
 import {
@@ -155,8 +155,8 @@ export default function ProgramDiffPage() {
     Number.isInteger(programId)
     && programId > 0
 
-  const [oldCohortId, setOldCohortId] = useState("")
-  const [newCohortId, setNewCohortId] = useState("")
+  const [selectedOldCohortId, setOldCohortId] = useState("")
+  const [selectedNewCohortId, setNewCohortId] = useState("")
   const [diff, setDiff] = useState<ProgramDiffResponse | null>(
     null
   )
@@ -206,16 +206,9 @@ export default function ProgramDiffPage() {
     [cohorts]
   )
 
-  useEffect(() => {
-    if (cohortOptions.length < 2) return
-    if (oldCohortId || newCohortId) return
-
-    const newest = cohortOptions[cohortOptions.length - 1]
-    const previous = cohortOptions[cohortOptions.length - 2]
-
-    setOldCohortId(String(previous.id))
-    setNewCohortId(String(newest.id))
-  }, [cohortOptions, oldCohortId, newCohortId])
+  const hasDefaultCohorts = cohortOptions.length >= 2
+  const oldCohortId = selectedOldCohortId || (hasDefaultCohorts ? String(cohortOptions[cohortOptions.length - 2].id) : "")
+  const newCohortId = selectedNewCohortId || (hasDefaultCohorts ? String(cohortOptions[cohortOptions.length - 1].id) : "")
 
   const oldCohort = cohortOptions.find(
     (cohort) => String(cohort.id) === oldCohortId
@@ -257,9 +250,9 @@ export default function ProgramDiffPage() {
     },
   })
 
-  const added = diff?.courseDiff?.added ?? []
-  const removed = diff?.courseDiff?.removed ?? []
-  const modified = diff?.courseDiff?.modified ?? []
+  const added = useMemo(() => diff?.courseDiff?.added ?? [], [diff])
+  const removed = useMemo(() => diff?.courseDiff?.removed ?? [], [diff])
+  const modified = useMemo(() => diff?.courseDiff?.modified ?? [], [diff])
 
   const rows = useMemo<DiffRow[]>(
     () => [
@@ -324,7 +317,7 @@ export default function ProgramDiffPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-[1450px] space-y-5 pb-10">
+    <div data-admin-page="ProgramDiffPage" className="mx-auto w-full max-w-[1450px] space-y-5 pb-10">
       <section className="relative overflow-hidden rounded-2xl border border-[#d7e5e8] bg-white shadow-sm">
         <div className="absolute inset-x-0 top-0 h-[3px] bg-gradient-to-r from-[#007d84] via-[#15949a] to-[#f0a72f]" />
 
@@ -334,7 +327,7 @@ export default function ProgramDiffPage() {
               <GitCompareArrows className="size-5" />
             </div>
 
-            <div>
+            <div data-admin-page-header="ProgramDiffPage">
               <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#708894]">
                 Curriculum Comparison
               </p>
@@ -380,7 +373,7 @@ export default function ProgramDiffPage() {
           </p>
         </div>
 
-        <div className="grid gap-4 lg:grid-cols-[1fr_auto_1fr_auto] lg:items-end">
+        <div data-admin-filter className="grid gap-4 lg:grid-cols-[1fr_auto_1fr_auto] lg:items-end">
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-slate-700">
               From Cohort

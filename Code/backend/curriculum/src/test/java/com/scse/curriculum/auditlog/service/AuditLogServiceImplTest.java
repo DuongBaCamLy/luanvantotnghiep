@@ -7,6 +7,7 @@ import com.scse.curriculum.auditlog.repository.AuditLogRepository;
 import com.scse.curriculum.common.exception.ResourceNotFoundException;
 import com.scse.curriculum.user.entity.UserAccount;
 import com.scse.curriculum.user.entity.UserRole;
+import com.scse.curriculum.auditlog.entity.AuditActorSnapshot;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -31,18 +32,19 @@ class AuditLogServiceImplTest {
     @InjectMocks
     private AuditLogServiceImpl service;
 
-    private UserAccount instructor;
+    private AuditActorSnapshot instructorActor;
 
     @BeforeEach
-    void setUp() {
-        instructor = UserAccount.builder()
-                .id(42)
-                .username("nvminh")
-                .email("nvminh@iu.edu.vn")
-                .role(UserRole.INSTRUCTOR)
-                .isActive(true)
-                .build();
-    }
+void setUp() {
+    instructorActor =
+            AuditActorSnapshot.builder()
+                    .id(42)
+                    .username("nvminh")
+                    .role("INSTRUCTOR")
+                    .actorType("BUSINESS_USER")
+                    .capturedAt(LocalDateTime.now())
+                    .build();
+}
 
     @Test
     void getById_shouldMapActorCorrectly_whenActorPresent() {
@@ -53,7 +55,7 @@ class AuditLogServiceImplTest {
                 .action(AuditAction.UPDATE)
                 .oldValue("{\"status\":\"DRAFT\"}")
                 .newValue("{\"status\":\"SUBMITTED\"}")
-                .changedBy(instructor)
+                .changedBy(instructorActor)
                 .changedAt(LocalDateTime.now())
                 .ipAddress("127.0.0.1")
                 .userAgent("JUnit")
@@ -72,24 +74,40 @@ class AuditLogServiceImplTest {
     }
 
     @Test
-    void getById_shouldNotThrow_whenActorIsSystemJob() {
-        AuditLog systemLog = AuditLog.builder()
-                .id(2L)
-                .tableName("syllabus")
-                .recordId(11)
-                .action(AuditAction.STATUS_CHANGE)
-                .changedBy(null) // truong hop phong ve, thuc te DB la NOT NULL nen luon la tai khoan SYSTEM
-                .changedAt(LocalDateTime.now())
-                .build();
+void getById_shouldPreserveLegacySystemActorFromSnapshot() {
 
-        when(repository.findById(2L)).thenReturn(Optional.of(systemLog));
+    AuditActorSnapshot legacySystemActor =
+            AuditActorSnapshot.builder()
+                    .id(20)
+                    .username("system")
+                    .role("ADMIN")
+                    .actorType("LEGACY_SYSTEM")
+                    .capturedAt(LocalDateTime.now())
+                    .build();
 
-        AuditLogResponse response = service.getById(2L);
+    AuditLog systemLog =
+            AuditLog.builder()
+                    .id(2L)
+                    .tableName("syllabus")
+                    .recordId(11)
+                    .action(AuditAction.STATUS_CHANGE)
+                    .changedBy(legacySystemActor)
+                    .changedAt(LocalDateTime.now())
+                    .build();
 
-        assertThat(response.getChangedById()).isNull();
-        assertThat(response.getChangedByUsername()).isEqualTo("Hệ thống");
-    }
+    when(repository.findById(2L))
+            .thenReturn(
+                    Optional.of(systemLog));
 
+    AuditLogResponse response =
+            service.getById(2L);
+
+    assertThat(response.getChangedById())
+            .isEqualTo(20);
+
+    assertThat(response.getChangedByUsername())
+            .isEqualTo("system");
+}
     @Test
     void getById_shouldThrow_whenNotFound() {
         when(repository.findById(99L)).thenReturn(Optional.empty());
@@ -102,7 +120,7 @@ class AuditLogServiceImplTest {
     void getAll_shouldReturnMappedList() {
         AuditLog log = AuditLog.builder()
                 .id(1L).tableName("course").recordId(5)
-                .action(AuditAction.CREATE).changedBy(instructor)
+                .action(AuditAction.CREATE).changedBy(instructorActor)
                 .changedAt(LocalDateTime.now()).build();
 
         when(repository.findAll()).thenReturn(List.of(log));

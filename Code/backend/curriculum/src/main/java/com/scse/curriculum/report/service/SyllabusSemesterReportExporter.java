@@ -1,5 +1,7 @@
 package com.scse.curriculum.report.service;
 
+import com.scse.curriculum.syllabus.entity.SyllabusVersion;
+
 import java.awt.Color;
 import java.io.ByteArrayOutputStream;
 import java.time.LocalDateTime;
@@ -90,7 +92,7 @@ final class SyllabusSemesterReportExporter {
                 set(x, c++, no++, body);
                 set(x, c++, row.getCourseCode(), body);
                 set(x, c++, text(row.getCourseNameVn(), row.getCourseName()), body);
-                set(x, c++, text(row.getVersionLabel(), row.getVersionNumber() == null ? "" : String.valueOf(row.getVersionNumber())), body);
+                set(x, c++, SyllabusVersion.display(row.getVersionNumber(), row.getVersionLabel()), body);
                 set(x, c++, row.getStatus(), body);
                 set(x, c++, row.getInstructorFullName(), body);
                 set(x, c++, row.getInstructorUsername(), body);
@@ -237,9 +239,7 @@ final class SyllabusSemesterReportExporter {
 
             cell(
                     table,
-                    text(
-                            row.getVersionLabel(),
-                            ""),
+                    SyllabusVersion.display(row.getVersionNumber(), row.getVersionLabel()),
                     bodyFont,
                     false);
 

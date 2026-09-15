@@ -3,7 +3,11 @@ import { NavLink, useLocation } from "react-router-dom"
 import { ChevronDown, ChevronRight, LogOut, UserRound } from "lucide-react"
 
 import { cn } from "@/lib/utils"
-import { getRoleNav, ROLE_LABEL } from "@/config/navConfig"
+import {
+  getRoleNav,
+  prefixFor,
+  ROLE_LABEL,
+} from "@/config/navConfig"
 import { useAuthStore } from "@/store/authStore"
 import { t } from "@/i18n"
 import logoImg from "@/assets/logo.jpg"
@@ -18,6 +22,62 @@ export default function Sidebar() {
 
   const groups = getRoleNav(user.role)
 
+  const roleRoot = prefixFor(user.role)
+
+const withCurriculumScope = (
+  path: string,
+) => {
+  /*
+   * Dashboard and Syllabus Catalog share the same
+   * curriculum filter contract.
+   *
+   * Do not carry search/status/history because those
+   * belong only to the Catalog.
+   */
+  const carriesScope =
+    path === roleRoot
+    || path === `${roleRoot}/syllabus`
+
+  if (!carriesScope) {
+    return path
+  }
+
+  const current =
+    new URLSearchParams(
+      location.search,
+    )
+
+  const next =
+    new URLSearchParams()
+
+  const sharedKeys = [
+    "majorId",
+    "majorCode",
+    "programId",
+    "programCode",
+    "cohortId",
+    "semester",
+  ]
+
+  sharedKeys.forEach((key) => {
+    const value =
+      current.get(key)
+
+    if (value) {
+      next.set(
+        key,
+        value,
+      )
+    }
+  })
+
+  const query =
+    next.toString()
+
+  return query
+    ? `${path}?${query}`
+    : path
+}
   const toggleMenu = (path: string) => {
     setExpandedMenus((previous) => ({
       ...previous,
@@ -88,6 +148,8 @@ export default function Sidebar() {
                 <button
                   type="button"
                   onClick={() => toggleMenu(item.path)}
+                  aria-expanded={isExpanded}
+                  data-active={active ? "true" : undefined}
                   className={cn(
                     "flex h-[38px] w-full items-center justify-between rounded-[2px] px-3 text-[13px] transition-colors",
                     active
@@ -112,7 +174,7 @@ export default function Sidebar() {
                     {item.children?.map((child) => (
                       <NavLink
                         key={child.path}
-                        to={child.path}
+                        to={withCurriculumScope(child.path)}
                         end
                         className={({ isActive }) =>
                           cn(
@@ -134,8 +196,8 @@ export default function Sidebar() {
 
           return (
             <NavLink
-              key={item.path}
-              to={item.path}
+  key={item.path}
+  to={withCurriculumScope(item.path)}
               end={item.path === `/${item.path.split("/")[1]}`}
               className={({ isActive }) =>
                 cn(
@@ -163,7 +225,7 @@ export default function Sidebar() {
             <p className="truncate text-xs font-semibold">{user.username}</p>
             <p className="truncate text-[9px] uppercase tracking-wide text-white/60">{ROLE_LABEL[user.role]}</p>
           </div>
-          <button type="button" onClick={logout} title="Sign out" className="rounded p-1.5 text-white/70 hover:bg-white/10 hover:text-white"><LogOut className="size-4" /></button>
+          <button type="button" onClick={logout} title="Sign out" aria-label="Sign out" className="rounded p-1.5 text-white/70 hover:bg-white/10 hover:text-white"><LogOut className="size-4" /></button>
         </div>
       </div>
     </aside>

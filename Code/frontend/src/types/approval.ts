@@ -43,6 +43,8 @@ export interface ApprovalRequestItem {
  * Một bản ghi trong lịch sử review/comment của syllabus.
  */
 export interface ApprovalHistoryItem {
+  versionNumber: number
+  versionLabel: string
   id: number
   step: ApprovalStep | null
   status: ApprovalStatus | null

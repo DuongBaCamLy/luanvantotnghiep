@@ -18,7 +18,7 @@ import java.nio.charset.StandardCharsets;
 
 @RestController
 @RequestMapping("/api/reports")
-@PreAuthorize("@phaseRoleGuard.isAdmin(authentication)")
+@PreAuthorize("@phaseRoleGuard.isAdminOrDean(authentication)")
 public class ReportController {
 
     private final ReportService reportService;
@@ -40,7 +40,15 @@ public class ReportController {
             @RequestParam(required = false) Integer courseTypeId,
             @RequestParam(required = false) String search,
             @RequestParam(required = false) String status) {
-        byte[] data = reportService.generateCloPloMatrixExcel(programId, cohortId, semester, search, status);
+        byte[] data =
+        reportService.generateCloPloMatrixExcel(
+                programId,
+                cohortId,
+                academicYear,
+                semester,
+                courseTypeId,
+                search,
+                status);
         String filename = matrixFilename("xlsx", programId, cohortId, academicYear, semester, courseTypeId);
         ContentDisposition disposition = ContentDisposition.attachment()
                 .filename(filename, StandardCharsets.UTF_8)
@@ -62,7 +70,15 @@ public class ReportController {
             @RequestParam(required = false) Integer courseTypeId,
             @RequestParam(required = false) String search,
             @RequestParam(required = false) String status) {
-        byte[] data = reportService.generateCloPloMatrixPdf(programId, cohortId, semester, search, status);
+        byte[] data =
+        reportService.generateCloPloMatrixPdf(
+                programId,
+                cohortId,
+                academicYear,
+                semester,
+                courseTypeId,
+                search,
+                status);
         String filename = matrixFilename("pdf", programId, cohortId, academicYear, semester, courseTypeId);
         ContentDisposition disposition = ContentDisposition.attachment()
                 .filename(filename, StandardCharsets.UTF_8)
@@ -83,7 +99,7 @@ public class ReportController {
             @RequestParam(required = false) Integer cohortId,
             @RequestParam(defaultValue = "ALL") String status) {
         byte[] data = reportService.generateSyllabusListExcel(academicYear, semester, programId, cohortId, status);
-        String filename = "Syllabus_List_" + sanitizeFilenamePart(academicYear, "year") + "_HK" + sanitizeFilenamePart(semester, "term") + ".xlsx";
+        String filename = "Syllabus_List_" + sanitizeFilenamePart(academicYear, "year") + "_Semester_" + sanitizeFilenamePart(semester, "term") + ".xlsx";
         return ResponseEntity.ok().contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
                 .cacheControl(CacheControl.noStore().mustRevalidate())
                 .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment().filename(filename, StandardCharsets.UTF_8).build().toString())
@@ -98,7 +114,7 @@ public class ReportController {
             @RequestParam(required = false) Integer cohortId,
             @RequestParam(defaultValue = "ALL") String status) {
         byte[] data = reportService.generateSyllabusListPdf(academicYear, semester, programId, cohortId, status);
-        String filename = "Syllabus_List_" + sanitizeFilenamePart(academicYear, "year") + "_HK" + sanitizeFilenamePart(semester, "term") + ".pdf";
+        String filename = "Syllabus_List_" + sanitizeFilenamePart(academicYear, "year") + "_Semester_" + sanitizeFilenamePart(semester, "term") + ".pdf";
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_PDF)
                 .cacheControl(CacheControl.noStore().mustRevalidate())
                 .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment().filename(filename, StandardCharsets.UTF_8).build().toString())
@@ -193,7 +209,7 @@ public class ReportController {
         return "PLO_Coverage_P" + programId
                 + "_C" + (cohortId == null ? "unknown" : cohortId)
                 + "_" + sanitizeFilenamePart(academicYear, "unknown-year")
-                + "_HK" + sanitizeFilenamePart(semester, "unknown-semester")
+                + "_Semester_" + sanitizeFilenamePart(semester, "unknown-semester")
                 + "_" + (courseTypeId == null ? "ALL" : "GROUP-" + courseTypeId)
                 + "." + extension;
     }

@@ -85,6 +85,10 @@ export interface DeanCourseProgress {
   courseCode: string
   courseName: string
   courseNameVn?: string | null
+  courseTypeId?: number | null
+courseTypeCode?: string | null
+courseTypeName?: string | null
+courseTypeNameVn?: string | null
   semester: number | null
   semesterLabel: string
   yearSuggest?: number | null
@@ -248,6 +252,7 @@ export interface DashboardFacultyResponse {
 export interface AdminDashboardQuery {
   academicYear?: string
   semester?: number
+  majorId?: number
   programId?: number
   cohortId?: number
 }
@@ -403,6 +408,8 @@ export interface HeatmapWarning {
 
 export interface HeatmapQuery {
   cohortId?: number
+  academicYear?: string
+  courseTypeId?: number
   search?: string
   semester?: string
   status?: string

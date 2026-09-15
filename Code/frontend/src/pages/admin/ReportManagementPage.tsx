@@ -770,11 +770,11 @@ export default function ReportManagementPage() {
     }
 
   return (
-    <div className="mx-auto w-full max-w-[1500px] space-y-6 pb-10">
+    <div data-admin-page="ReportManagementPage" className="mx-auto w-full max-w-[1500px] space-y-6 pb-10">
       <section className="relative overflow-hidden rounded-2xl border border-[#d7e5e8] bg-white shadow-sm">
         <div className="absolute inset-x-0 top-0 h-[3px] bg-gradient-to-r from-[#007d84] via-[#15949a] to-[#f0a72f]" />
 
-        <div className="px-6 py-5">
+        <div data-admin-page-header="ReportManagementPage" className="px-6 py-5">
           <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#708894]">
             Quality Assurance Reporting
           </p>
@@ -853,7 +853,7 @@ export default function ReportManagementPage() {
               </SelectContent>
             </Select>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div data-admin-filter className="grid grid-cols-2 gap-3">
               <FieldLabel label="Academic Year">
                 <Select
                   value={matrixAcademicYear}

@@ -1,6 +1,6 @@
 package com.scse.curriculum.auditlog.entity;
 
-import com.scse.curriculum.user.entity.UserAccount;
+
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -36,8 +36,11 @@ public class AuditLog {
     private String newValue;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "changed_by")
-    private UserAccount changedBy;
+@JoinColumn(
+        name = "changed_by",
+        referencedColumnName = "user_id",
+        nullable = false)
+private AuditActorSnapshot changedBy;
 
     @Column(name = "changed_at")
     private LocalDateTime changedAt;

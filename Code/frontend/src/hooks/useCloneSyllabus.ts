@@ -14,10 +14,10 @@ export const useCloneSyllabus = () => {
       request: CloneSyllabusRequest;
     }) => syllabusApi.clone(id, request),
     onSuccess: () => {
+      for (const key of ["faculty-dashboard", "depthead-courses", "my-active-assignments", "course-programs", "program-timeline"]) {
+        void queryClient.invalidateQueries({ queryKey: [key] })
+      }
       queryClient.invalidateQueries({ queryKey: ["syllabuses"] });
-    },
-    onError: (error: any) => {
-      console.error("Lỗi nhân bản đề cương:", error);
     },
   });
 };

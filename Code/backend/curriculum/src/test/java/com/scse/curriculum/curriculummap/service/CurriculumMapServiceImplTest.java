@@ -65,7 +65,7 @@ class CurriculumMapServiceImplTest {
 
         assertThat(courseCount(result)).isEqualTo(2);
         assertThat(result.getSemesters()).flatExtracting(group -> group.getCourses())
-                .extracting(node -> node.getSyllabusVersion()).contains("v2");
+                .extracting(node -> node.getSyllabusVersion()).contains("v2.0");
     }
 
     @Test
@@ -132,6 +132,17 @@ class CurriculumMapServiceImplTest {
         assertThat(result.getRelations()).isEmpty();
     }
 
+    @Test
+    void versionTenIsNewerThanVersionNineWithinTheSameCohort() {
+        Course course = course(101, "IT101");
+        Syllabus nine = syllabus(9, course, "Semester 1", SyllabusStatus.DRAFT, 9);
+        Syllabus ten = syllabus(10, course, "Semester 1", SyllabusStatus.DRAFT, 10);
+        stubScope(List.of(ten, nine));
+        var result = service.generate(1, 21, null, null);
+        assertThat(result.getSemesters()).flatExtracting(group -> group.getCourses())
+                .extracting(node -> node.getSyllabusVersion()).containsExactly("v10.0");
+    }
+
     private void stubScope(List<Syllabus> source) {
         when(syllabuses.findCatalogScope(1, 21)).thenReturn(source);
         when(mappings.findByProgramIdAndCohortIdWithRelations(1, 21)).thenReturn(
@@ -146,7 +157,7 @@ class CurriculumMapServiceImplTest {
 
     private Syllabus syllabus(int id, Course course, String semester, SyllabusStatus status, int version) {
         return Syllabus.builder().id(id).course(course).semester(semester).status(status)
-                .versionNumber(version).versionLabel("v" + version).isCurrent(version > 1).build();
+                .versionNumber(version).versionLabel(com.scse.curriculum.syllabus.entity.SyllabusVersion.format(version)).isCurrent(version > 1).build();
     }
 
     private long courseCount(com.scse.curriculum.curriculummap.dto.CurriculumMapResponse response) {

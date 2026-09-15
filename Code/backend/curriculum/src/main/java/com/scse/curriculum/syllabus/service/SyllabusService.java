@@ -6,6 +6,7 @@ import com.scse.curriculum.syllabus.dto.SyllabusDiffResponse;
 import com.scse.curriculum.syllabus.dto.SyllabusResponse;
 import com.scse.curriculum.syllabus.dto.SyllabusCreateContextResponse;
 import com.scse.curriculum.syllabus.dto.SubmissionValidationResponse;
+import com.scse.curriculum.syllabus.comparison.dto.SemanticSyllabusDiffResponse;
 
 import java.util.List;
 
@@ -26,7 +27,8 @@ public interface SyllabusService {
 
     List<SyllabusResponse> getByCourse(
             Integer courseId);
-
+SyllabusResponse getPreviousComparable(
+        Integer id);
     SyllabusResponse update(
             Integer id,
             CreateSyllabusRequest request);
@@ -34,14 +36,13 @@ public interface SyllabusService {
     void delete(
             Integer id);
 
-    int deleteAll();
-
     SubmissionValidationResponse validateForSubmit(
             Integer id);
 
     SyllabusResponse submit(
             Integer id);
-
+SyllabusResponse createRevisionDraftFromRejected(
+        Integer sourceId);
     List<SyllabusResponse> getByStatus(
             String status);
 
@@ -49,6 +50,9 @@ public interface SyllabusService {
             Integer oldId,
             Integer newId);
 
+            SemanticSyllabusDiffResponse getSemanticDiff(
+        Integer oldId,
+        Integer newId);
     SyllabusResponse clone(
             Integer id,
             CloneSyllabusRequest request);

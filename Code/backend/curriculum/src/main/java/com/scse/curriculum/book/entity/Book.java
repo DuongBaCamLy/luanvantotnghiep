@@ -16,13 +16,13 @@ public class Book {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
-    @Column(nullable = false, length = 500)
+    @Column(nullable = false, columnDefinition = "TEXT")
     private String title;
 
-    @Column(length = 500)
+    @Column(columnDefinition = "TEXT")
     private String author;
 
-    @Column(length = 255)
+    @Column(columnDefinition = "TEXT")
     private String publisher;
 
     private Integer year;
@@ -31,7 +31,7 @@ public class Book {
 
     private String isbn;
 
-    @Column(length = 1000)
+    @Column(columnDefinition = "TEXT")
     private String url;
 
     @Enumerated(EnumType.STRING)

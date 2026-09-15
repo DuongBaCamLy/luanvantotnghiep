@@ -1,5 +1,7 @@
 package com.scse.curriculum.syllabus.importer.service;
 
+import com.scse.curriculum.syllabus.entity.SyllabusVersion;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -93,6 +95,7 @@ public class SyllabusImportServiceImpl
         implements SyllabusImportService {
 
     private final SyllabusRepository syllabusRepository;
+    private final com.scse.curriculum.syllabus.service.SyllabusIdentityService syllabusIdentityService;
 
     private final BookRepository bookRepository;
     private final CourseRepository courseRepository;
@@ -133,7 +136,7 @@ public class SyllabusImportServiceImpl
                     .filter(candidate -> candidate.supports(file.getOriginalFilename(), file.getContentType()))
                     .findFirst()
                     .orElseThrow(() -> new IllegalArgumentException(
-                            "Unsupported syllabus file. Upload a DOCX or PDF file."));
+                            "Unsupported syllabus file. Upload a DOCX, XLSX, or PDF file."));
             SyllabusImportData data = parser.parse(file.getInputStream(), issues);
 
             return SyllabusImportPreviewResponse.builder()
@@ -210,7 +213,7 @@ public class SyllabusImportServiceImpl
             MultipartFile file, Integer programId, Integer cohortId) {
         try {
             if (file == null || file.isEmpty()) throw new IllegalArgumentException("The program document is empty.");
-            if (file.getSize() > 50L * 1024 * 1024) throw new IllegalArgumentException("The program document exceeds 50 MB.");
+            if (file.getSize() > 200L * 1024 * 1024) throw new IllegalArgumentException("The program document exceeds 200 MB.");
             var program = programRepository.findById(programId)
                     .orElseThrow(() -> new IllegalArgumentException("Program not found"));
             var cohort = cohortRepository.findById(cohortId)
@@ -224,11 +227,90 @@ public class SyllabusImportServiceImpl
                             "Only genuine PDF or DOCX program documents are supported."));
             var parsed=parser.parse(content);
             String sourceType=parser.getClass().getSimpleName().startsWith("Docx") ? "DOCX" : "PDF";
+
+            /*
+             * Programme dossiers can contain extra/legacy syllabus appendices that are
+             * not actually part of the selected curriculum.  For PDF programme
+             * documents, derive the official course-code scope from the curriculum
+             * course-list tables near the beginning of the document and keep only
+             * syllabus sections that belong to that scope.
+             *
+             * Fail-open rule: if a supported curriculum table cannot be identified,
+             * preserve the previous behaviour and return every detected syllabus.
+             */
+            List<ProgramDocumentParser.ParsedItem> parsedItems = parsed.items();
+            if ("PDF".equals(sourceType)) {
+                Set<String> curriculumScope =
+                        ProgramCurriculumScopeExtractor.extractNormalizedCourseCodes(content);
+
+                if (curriculumScope.size() >= 10) {
+                    Set<String> rawDetectedCodes = parsedItems.stream()
+                            .filter(item -> item.data() != null)
+                            .flatMap(item -> rawNormalizedCourseCodeCandidates(
+                                    item.data().getSourceCourseCode()).stream())
+                            .collect(Collectors.toCollection(LinkedHashSet::new));
+
+                    List<ProgramDocumentParser.ParsedItem> scopedItems = parsedItems.stream()
+                            .filter(item -> item.data() != null
+                                    && isOfficialCurriculumSyllabus(
+                                            item.data().getSourceCourseCode(),
+                                            curriculumScope,
+                                            rawDetectedCodes))
+                            .toList();
+
+                    if (scopedItems.size() != parsedItems.size()) {
+                        log.info(
+                                "Bulk programme import scope filter kept {} of {} detected syllabuses for Program {} / Cohort {}.",
+                                scopedItems.size(),
+                                parsedItems.size(),
+                                programId,
+                                cohortId);
+                    }
+
+                    /*
+                     * Some programme dossiers repeat the same detailed syllabus
+                     * verbatim in two appendix locations.  Importing both creates
+                     * two Syllabus rows for one CourseProgram and the second link
+                     * overwrites the first.  Keep exactly one best section per
+                     * canonical course code before the UI ever confirms items.
+                     */
+                    scopedItems = deduplicateParsedSyllabiByCourseCode(scopedItems);
+
+                    /*
+                     * A recognized programme dossier is also authoritative evidence
+                     * that its listed syllabus belongs to the selected Program/Cohort.
+                     *
+                     * If the Course already exists in the global Course Catalog but
+                     * the exact CourseProgram row is missing, reconcile that mapping
+                     * here before confirm.  This prevents repeated
+                     * "not part of the selected Program/Cohort" failures for later
+                     * cohorts that reuse an existing course.
+                     *
+                     * Safety boundaries:
+                     * - runs only after a reliable official curriculum scope was found;
+                     * - creates CourseProgram only for an already-existing unique Course;
+                     * - never creates a Course from syllabus text;
+                     * - never updates/deletes existing CourseProgram rows;
+                     * - unknown/ambiguous catalog codes are left untouched and still
+                     *   fail explicitly during confirm.
+                     */
+                    reconcileExistingCatalogMappingsForOfficialScope(
+                            scopedItems,
+                            programId,
+                            cohortId);
+
+                    parsedItems = scopedItems;
+                } else {
+                    log.info(
+                            "Bulk programme import scope filter skipped because no reliable curriculum course-list table was found.");
+                }
+            }
+
             SourceDocument source=sourceDocumentRepository.save(SourceDocument.builder()
                     .originalFilename(filename).contentType(file.getContentType()).fileSize(file.getSize())
                     .sha256(sha256(content)).uploadedAt(LocalDateTime.now()).uploadedBy(currentUserService.getCurrentUser())
                     .program(program).cohort(cohort).content(content).build());
-            List<BulkSyllabusImportItem> items = parsed.items().stream().map(section -> {
+            List<BulkSyllabusImportItem> items = parsedItems.stream().map(section -> {
                 List<SyllabusImportIssue> issues = section.issues();
                 int errors = (int) issues.stream()
                         .filter(issue -> "ERROR".equalsIgnoreCase(issue.getSeverity())).count();
@@ -294,13 +376,33 @@ public class SyllabusImportServiceImpl
                 syllabusAccessService.authorizeImport(
                         request.getAssignmentId(), requestedCourse,
                         request.getProgramId(), request.getCohortId());
-        assertImportedCourseMatches(request.getData(), authorization.course(), authorization.creator());
 
-        Integer nextVersion = syllabusRepository
-                .findMaxVersionNumberByCourseId(
-                        request.getCourseId())
-                + 1;
         UserAccount currentUser = authorization.creator();
+
+        /*
+         * For administrator/reviewer bulk imports, the selected Program/Cohort
+         * curriculum is the authoritative source of Course identity.  Resolve
+         * the Course again from that scope using the imported code instead of
+         * relying on a client-selected course id or a second independent match.
+         *
+         * Instructor security is unchanged: instructors must still use the
+         * Course derived from their authorized ClassSection.
+         */
+        Course effectiveCourse = currentUser.getRole() == UserRole.INSTRUCTOR
+                ? authorization.course()
+                : resolveImportedCourseInSelectedCurriculum(
+                        request.getData(),
+                        request.getProgramId(),
+                        request.getCohortId());
+
+        assertImportedCourseMatches(
+                request.getData(),
+                effectiveCourse,
+                currentUser,
+                request.getProgramId(),
+                request.getCohortId());
+
+        Integer nextVersion = 1;
         Syllabus syllabus = Syllabus.builder()
 
 .createdBy(currentUser)
@@ -308,12 +410,12 @@ public class SyllabusImportServiceImpl
 .versionNumber(nextVersion)
 
         .versionLabel(
-                "Version " + nextVersion
+                SyllabusVersion.format(nextVersion)
         )
 
         .sourceType(
                 detectSourceType(
-                        request.getOriginalFileType()
+                        request.getOriginalFileType(), request.getOriginalFileName()
                 )
         )
 
@@ -334,17 +436,13 @@ public class SyllabusImportServiceImpl
 .build();
 
         // THÊM ĐOẠN NÀY Ở ĐÂY
-        syllabus.setCourse(authorization.course());
+        syllabus.setCourse(effectiveCourse);
 
         SyllabusImportData data = request.getData();
-        boolean instructorImport = currentUser.getRole() == UserRole.INSTRUCTOR;
-        syllabus.setAcademicYear(instructorImport
-                ? authorization.academicYear()
-                : cohortRepository.findById(request.getCohortId())
+        syllabus.setAcademicYear(cohortRepository.findById(request.getCohortId())
                         .orElseThrow(() -> new RuntimeException("Cohort not found")).getName());
         syllabus.setProgram(programRepository.findById(request.getProgramId())
                 .orElseThrow(() -> new RuntimeException("Program not found")).getCode());
-        syllabusRepository.save(syllabus);
         updateGeneralInformation(
                 syllabus,
                 data);
@@ -374,6 +472,110 @@ public class SyllabusImportServiceImpl
          * Only replace when requested
          */
 
+CourseProgram requestedSelection =
+        request.getCourseProgramId() == null
+                ? null
+                : courseProgramRepository
+                        .findById(request.getCourseProgramId())
+                        .orElse(null);
+
+/*
+ * The exact Program/Cohort mapping is the authoritative
+ * curriculum fallback when the imported file does not
+ * expose a semester.
+ *
+ * This also supports imports where the client does not send
+ * courseProgramId, but an exact CourseProgram already exists.
+ */
+CourseProgram scoped =
+        courseProgramRepository
+                .findByCourse_IdAndProgram_IdAndCohort_Id(
+                        effectiveCourse.getId(),
+                        request.getProgramId(),
+                        request.getCohortId())
+                .orElse(null);
+
+/*
+ * Semester resolution order:
+ *
+ * 1. Semester from imported file.
+ * 2. Exact Program/Cohort CourseProgram placement.
+ * 3. Requested/effective CourseProgram placement.
+ * 4. Stable temporary Semester 4-8.
+ */
+CourseProgram semesterContext =
+        scoped != null
+                ? scoped
+                : requestedSelection;
+
+Integer curriculumSemester =
+        resolveCurriculumSemester(
+                semesterContext,
+                request.getProgramId(),
+                request.getCohortId(),
+                data.getSemester());
+
+syllabus.setSemester(
+        curriculumSemester == null
+                ? null
+                : "Semester " + curriculumSemester);
+
+if (scoped == null) {
+
+    scoped =
+            CourseProgram.builder()
+                    .course(syllabus.getCourse())
+                    .program(
+                            programRepository.getReferenceById(
+                                    request.getProgramId()))
+                    .cohort(
+                            cohortRepository.getReferenceById(
+                                    request.getCohortId()))
+                    .courseType(
+                            requestedSelection == null
+                                    ? courseTypeRepository
+                                            .findByCode(
+                                                    resolveCourseTypeCode(
+                                                            data.getCourseTypes()))
+                                            .orElseThrow(
+                                                    () ->
+                                                            new RuntimeException(
+                                                                    "Default course type not found"))
+                                    : requestedSelection.getCourseType())
+                    .termCode(
+                            requestedSelection != null
+                                            && requestedSelection.getTermCode() != null
+                                    ? requestedSelection.getTermCode()
+                                    : curriculumSemester == null
+                                            ? null
+                                            : CurriculumTerm.valueOf(
+                                                    "HK" + curriculumSemester))
+                    .semesterSuggest(
+                            curriculumSemester)
+                    .yearSuggest(
+                            requestedSelection == null
+                                    ? null
+                                    : requestedSelection.getYearSuggest())
+                    .required(
+                            requestedSelection == null
+                                    ? Boolean.TRUE
+                                    : requestedSelection.getRequired())
+                    .build();
+}
+
+synchronizeCurriculumSemester(
+        scoped,
+        curriculumSemester);
+
+
+
+if (scoped.getCohort() != null && scoped.getProgram() != null) {
+    syllabus.setAcademicYear(scoped.getCohort().getName());
+    syllabus.setProgram(scoped.getProgram().getCode());
+    syllabus.setSemester(scoped.getSemesterSuggest() == null ? null : "Semester " + scoped.getSemesterSuggest());
+}
+syllabusIdentityService.assertAvailable(syllabus.getCourse(), syllabus.getProgram(), syllabus.getAcademicYear(), syllabus.getSemester(), null);
+syllabusRepository.saveAndFlush(syllabus);
         importClos(
                 syllabus,
                 data);
@@ -397,43 +599,7 @@ public class SyllabusImportServiceImpl
 );
 
 
-syllabusRepository.save(
-        syllabus);
 
-CourseProgram selected = request.getCourseProgramId() == null
-        ? null
-        : courseProgramRepository.findById(request.getCourseProgramId()).orElse(null);
-Integer curriculumSemester = resolveCurriculumSemester(
-        selected,
-        request.getProgramId(),
-        request.getCohortId(),
-        data.getSemester());
-syllabus.setSemester(curriculumSemester == null
-        ? null
-        : "Semester " + curriculumSemester);
-if (instructorImport) {
-    syllabus.setSemester(authorization.semester());
-}
-CourseProgram scoped = courseProgramRepository
-        .findByCourse_IdAndProgram_IdAndCohort_Id(
-                request.getCourseId(), request.getProgramId(), request.getCohortId())
-        .orElseGet(() -> CourseProgram.builder()
-                .course(syllabus.getCourse())
-                .program(programRepository.getReferenceById(request.getProgramId()))
-                .cohort(cohortRepository.getReferenceById(request.getCohortId()))
-                .courseType(selected == null
-                        ? courseTypeRepository.findByCode(resolveCourseTypeCode(data.getCourseTypes()))
-                                .orElseThrow(() -> new RuntimeException("Default course type not found"))
-                        : selected.getCourseType())
-                .termCode(selected != null && selected.getTermCode() != null
-                        ? selected.getTermCode()
-                        : curriculumSemester == null
-                                ? null
-                                : CurriculumTerm.valueOf("HK" + curriculumSemester))
-                .semesterSuggest(curriculumSemester)
-                .yearSuggest(selected == null ? null : selected.getYearSuggest())
-                .required(selected == null ? Boolean.TRUE : selected.getRequired())
-                .build());
 scoped.setSyllabus(syllabus);
 courseProgramRepository.save(scoped);
 syllabusRepository.saveAndFlush(syllabus);
@@ -472,14 +638,14 @@ return mapToResponse(
                     "The imported syllabus does not contain a course code.");
         }
 
-        String normalizedCode = normalizeCourseCode(importedCode);
         List<CourseProgram> matches = courseProgramRepository
                 .findEffectiveByProgramIdAndCohortIdWithRelations(
                         request.getProgramId(), request.getCohortId())
                 .stream()
                 .filter(mapping -> mapping.getCourse() != null
-                        && normalizeCourseCode(mapping.getCourse().getCourseCode())
-                                .equals(normalizedCode))
+                        && courseCodesEquivalent(
+                                mapping.getCourse().getCourseCode(),
+                                importedCode))
                 .sorted((left, right) -> Boolean.compare(
                         Objects.equals(right.getCohort() == null ? null : right.getCohort().getId(),
                                 request.getCohortId()),
@@ -496,9 +662,17 @@ return mapToResponse(
                             + " is ambiguous in the selected Program/Cohort.");
         }
         if (matches.isEmpty()) {
+            matches = findUniqueCourseNameAliasInSelectedCurriculum(
+                    request.getData(),
+                    request.getProgramId(),
+                    request.getCohortId());
+        }
+
+        if (matches.isEmpty()) {
             boolean existsInCatalog = courseRepository.findAll().stream()
-                    .anyMatch(course -> normalizeCourseCode(course.getCourseCode())
-                            .equals(normalizedCode));
+                    .anyMatch(course -> courseCodesEquivalent(
+                            course.getCourseCode(),
+                            importedCode));
             throw new IllegalArgumentException(existsInCatalog
                     ? "Course " + importedCode
                             + " is not part of the selected Program/Cohort."
@@ -524,7 +698,7 @@ return mapToResponse(
             if(snapshot.getSyllabus()!=null) throw new IllegalArgumentException("Source snapshot is already linked to a syllabus");
             if(!Objects.equals(snapshot.getSourceDocument().getProgram().getId(),request.getProgramId())
                     || !Objects.equals(snapshot.getSourceDocument().getCohort().getId(),request.getCohortId())
-                    || !normalizeCourseCode(snapshot.getCourseCode()).equals(normalizeCourseCode(importedCode)))
+                    || !courseCodesEquivalent(snapshot.getCourseCode(), importedCode))
                 throw new IllegalArgumentException("Source snapshot does not match the imported Program/Cohort/course");
             if(snapshot.getContent()==null||snapshot.getContent().length==0) {
                 DocxProgramDocumentParser docxParser=programDocumentParsers.stream()
@@ -549,19 +723,620 @@ return mapToResponse(
     private void assertImportedCourseMatches(
             SyllabusImportData data,
             Course requestedCourse,
-            UserAccount currentUser) {
+            UserAccount currentUser,
+            Integer programId,
+            Integer cohortId) {
         String importedCode = data == null ? null : data.getSourceCourseCode();
         if (importedCode == null || importedCode.isBlank()) {
             return;
         }
-        String expected = normalizeCourseCode(requestedCourse.getCourseCode());
-        String actual = normalizeCourseCode(importedCode);
-        if (!expected.equals(actual)) {
-            String message = currentUser.getRole() == UserRole.INSTRUCTOR
-                    ? "You are not assigned to this course and cannot create or import its syllabus."
-                    : "The imported course code does not match the selected course.";
-            throw new com.scse.curriculum.common.exception.ForbiddenOperationException(message);
+        if (courseCodesEquivalent(
+                requestedCourse.getCourseCode(),
+                importedCode)) {
+            return;
         }
+
+        /*
+         * Some official programme specifications contain a course-code typo or
+         * legacy alias in the detailed syllabus while the curriculum table uses
+         * the canonical code.  Accept that mismatch only when the imported course
+         * name resolves to exactly one course in the selected Program/Cohort and
+         * that unique course is the requested course.  This is intentionally
+         * scoped and conservative: no global name matching and no new course is
+         * created from a name alone.
+         */
+        List<CourseProgram> nameAliases = findUniqueCourseNameAliasInSelectedCurriculum(
+                data,
+                programId,
+                cohortId);
+        boolean requestedCourseIsUniqueAlias = nameAliases.size() == 1
+                && nameAliases.get(0).getCourse() != null
+                && Objects.equals(
+                        nameAliases.get(0).getCourse().getId(),
+                        requestedCourse.getId());
+        if (requestedCourseIsUniqueAlias) {
+            log.warn(
+                    "Program-document course-code alias resolved: importedCode={} canonicalCode={} programId={} cohortId={}",
+                    importedCode,
+                    requestedCourse.getCourseCode(),
+                    programId,
+                    cohortId);
+            return;
+        }
+
+        String message = currentUser.getRole() == UserRole.INSTRUCTOR
+                ? "You are not assigned to this course and cannot create or import its syllabus."
+                : "The imported course code does not match the selected course.";
+        throw new com.scse.curriculum.common.exception.ForbiddenOperationException(message);
+    }
+
+    private List<CourseProgram> findUniqueCourseNameAliasInSelectedCurriculum(
+            SyllabusImportData data,
+            Integer programId,
+            Integer cohortId) {
+        String importedName = data == null ? null : data.getSourceCourseName();
+        String normalizedImportedName = normalizeCourseNameForMatching(importedName);
+        if (normalizedImportedName.isBlank()) {
+            return List.of();
+        }
+
+        List<CourseProgram> candidates = courseProgramRepository
+                .findEffectiveByProgramIdAndCohortIdWithRelations(programId, cohortId)
+                .stream()
+                .filter(mapping -> mapping.getCourse() != null)
+                .filter(mapping -> normalizeCourseNameForMatching(
+                        mapping.getCourse().getName())
+                        .equals(normalizedImportedName))
+                .sorted((left, right) -> Boolean.compare(
+                        Objects.equals(right.getCohort() == null ? null : right.getCohort().getId(), cohortId),
+                        Objects.equals(left.getCohort() == null ? null : left.getCohort().getId(), cohortId)))
+                .toList();
+
+        Set<Integer> courseIds = candidates.stream()
+                .map(mapping -> mapping.getCourse().getId())
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        if (courseIds.size() > 1) {
+            throw new IllegalArgumentException(
+                    "Course name " + importedName
+                            + " is ambiguous in the selected Program/Cohort.");
+        }
+        if (courseIds.isEmpty()) {
+            return List.of();
+        }
+        Integer resolvedCourseId = courseIds.iterator().next();
+        return candidates.stream()
+                .filter(mapping -> Objects.equals(mapping.getCourse().getId(), resolvedCourseId))
+                .toList();
+    }
+
+    private String normalizeCourseNameForMatching(String value) {
+        if (value == null) {
+            return "";
+        }
+        String normalized = java.text.Normalizer.normalize(
+                value,
+                java.text.Normalizer.Form.NFD)
+                .replaceAll("\\p{M}+", "")
+                .toUpperCase(Locale.ROOT)
+                .replace('&', ' ')
+                .replaceAll("[^A-Z0-9]+", " ")
+                .replaceAll("\\s+", " ")
+                .trim();
+
+        /*
+         * The CS2021 programme table uses "Chemistry for Engineer" while the
+         * detailed syllabus says "Chemistry for Engineers". Normalise only a
+         * simple plural on the final word; uniqueness is still enforced inside
+         * the selected Program/Cohort before an alias is accepted.
+         */
+        String[] words = normalized.split(" ");
+        if (words.length > 0) {
+            int last = words.length - 1;
+            String finalWord = words[last];
+            if (finalWord.length() > 4
+                    && finalWord.endsWith("S")
+                    && !finalWord.endsWith("SS")
+                    && !finalWord.endsWith("ICS")) {
+                words[last] = finalWord.substring(0, finalWord.length() - 1);
+                normalized = String.join(" ", words);
+            }
+        }
+        return normalized;
+    }
+
+    /**
+     * Insert-only reconciliation for a recognized official programme scope.
+     *
+     * This solves the common case where a later cohort reuses an existing
+     * Course Catalog course but its exact CourseProgram row has not yet been
+     * seeded.  New/unknown courses are deliberately NOT auto-created here.
+     */
+    private void reconcileExistingCatalogMappingsForOfficialScope(
+            List<ProgramDocumentParser.ParsedItem> items,
+            Integer programId,
+            Integer cohortId) {
+
+        if (items == null || items.isEmpty()) {
+            return;
+        }
+
+        for (ProgramDocumentParser.ParsedItem item : items) {
+            if (item == null || item.data() == null) {
+                continue;
+            }
+
+            SyllabusImportData data = item.data();
+            String importedCode = data.getSourceCourseCode();
+            if (importedCode == null || importedCode.isBlank()) {
+                continue;
+            }
+
+            List<Course> catalogMatches = courseRepository.findAll().stream()
+                    .filter(course -> courseCodesEquivalent(
+                            course.getCourseCode(),
+                            importedCode))
+                    .toList();
+
+            Set<Integer> catalogCourseIds = catalogMatches.stream()
+                    .map(Course::getId)
+                    .collect(Collectors.toCollection(LinkedHashSet::new));
+
+            if (catalogCourseIds.isEmpty()) {
+                // A genuinely new Course must still be reconciled from the
+                // official curriculum data before syllabus confirmation.
+                continue;
+            }
+
+            if (catalogCourseIds.size() > 1) {
+                log.warn(
+                        "Official-scope auto-reconciliation skipped for importedCode={} because the Course Catalog is ambiguous.",
+                        importedCode);
+                continue;
+            }
+
+            Course course = catalogMatches.get(0);
+
+            boolean exactMappingExists = courseProgramRepository
+                    .findByCourse_IdAndProgram_IdAndCohort_Id(
+                            course.getId(),
+                            programId,
+                            cohortId)
+                    .isPresent();
+
+            if (exactMappingExists) {
+                continue;
+            }
+
+            String courseTypeCode =
+                    resolveAutoReconciledCourseTypeCode(
+                            course,
+                            data);
+
+            Integer semester =
+                    resolveAutoReconciledSemester(
+                            data,
+                            courseTypeCode);
+
+            Integer year = semester == null
+                    ? null
+                    : ((semester + 1) / 2);
+
+            CourseProgram reconciled = CourseProgram.builder()
+                    .course(course)
+                    .program(programRepository.getReferenceById(programId))
+                    .cohort(cohortRepository.getReferenceById(cohortId))
+                    .courseType(
+                            courseTypeRepository.findByCode(courseTypeCode)
+                                    .orElseThrow(() -> new IllegalStateException(
+                                            "Course type " + courseTypeCode
+                                                    + " is unavailable.")))
+                    .termCode(
+                            semester == null
+                                    ? null
+                                    : CurriculumTerm.valueOf(
+                                            "HK" + semester))
+                    .semesterSuggest(semester)
+                    .yearSuggest(year)
+                    .required(!"ELECTIVE".equals(courseTypeCode))
+                    .build();
+
+            courseProgramRepository.save(reconciled);
+
+            log.info(
+                    "Official programme scope auto-reconciled missing CourseProgram: courseCode={} programId={} cohortId={} type={} semester={}.",
+                    course.getCourseCode(),
+                    programId,
+                    cohortId,
+                    courseTypeCode,
+                    semester);
+        }
+    }
+
+    /**
+     * Resolve the active CourseType for an auto-created exact cohort mapping.
+     *
+     * Relation-to-curriculum is preferred for ELECTIVE/COMPULSORY because it
+     * describes the course inside this programme.  GENERAL is preserved when a
+     * known general-education Course already has a GENERAL mapping elsewhere.
+     */
+    private String resolveAutoReconciledCourseTypeCode(
+            Course course,
+            SyllabusImportData data) {
+
+        String relation = normalizeCourseNameForMatching(
+                data == null ? null : data.getRelation());
+
+        if (relation.contains("ELECTIVE")
+                || relation.contains("OPTIONAL")
+                || relation.contains("TU CHON")) {
+            return "ELECTIVE";
+        }
+
+        if (relation.contains("COMPULSORY")
+                || relation.contains("REQUIRED")
+                || relation.contains("BAT BUOC")) {
+
+            boolean knownGeneralCourse = courseProgramRepository
+                    .findByCourse_Id(course.getId())
+                    .stream()
+                    .anyMatch(mapping -> mapping.getCourseType() != null
+                            && "GENERAL".equalsIgnoreCase(
+                                    mapping.getCourseType().getCode()));
+
+            return knownGeneralCourse
+                    ? "GENERAL"
+                    : "COMPULSORY";
+        }
+
+        return resolveCourseTypeCode(
+                data == null ? null : data.getCourseTypes());
+    }
+
+    /**
+     * Semester is only auto-populated when the syllabus exposes one unambiguous
+     * semester.  Elective-pool courses deliberately remain unplaced.
+     */
+    private Integer resolveAutoReconciledSemester(
+        SyllabusImportData data,
+        String courseTypeCode) {
+
+    Set<Integer> semesters =
+            parseImportedSemesters(
+                    data == null
+                            ? null
+                            : data.getSemester());
+
+    /*
+     * Course type does not decide whether a course has a
+     * semester.
+     *
+     * If the imported syllabus explicitly provides a valid
+     * semester, preserve it even for ELECTIVE courses.
+     */
+    if (!semesters.isEmpty()) {
+        return semesters
+                .iterator()
+                .next();
+    }
+
+    /*
+     * Missing / N/A semester:
+     * assign a deterministic temporary Semester 4-8.
+     *
+     * This rule is generic and is not tied to a specific
+     * Program, Cohort, or course.
+     */
+    return resolveTemporarySemester(
+            data == null
+                    ? null
+                    : data.getSourceCourseCode());
+}
+
+
+
+private Integer resolveTemporarySemester(
+        String courseCode) {
+
+    String normalized =
+            normalizeCourseCode(courseCode);
+
+    /*
+     * Same course code -> same temporary semester.
+     *
+     * The temporary placement can still be edited later.
+     */
+    if (normalized == null
+            || normalized.isBlank()) {
+        return 4;
+    }
+
+    return 4
+            + Math.floorMod(
+                    normalized.hashCode(),
+                    5);
+}
+
+    /**
+     * Resolve one and only one Course inside the selected Program/Cohort.
+     * This is the authoritative resolver for non-instructor imports.
+     */
+    private Course resolveImportedCourseInSelectedCurriculum(
+            SyllabusImportData data,
+            Integer programId,
+            Integer cohortId) {
+
+        String importedCode = data == null ? null : data.getSourceCourseCode();
+        if (importedCode == null || importedCode.isBlank()) {
+            throw new IllegalArgumentException(
+                    "The imported syllabus does not contain a course code.");
+        }
+
+        List<CourseProgram> matches = courseProgramRepository
+                .findEffectiveByProgramIdAndCohortIdWithRelations(programId, cohortId)
+                .stream()
+                .filter(mapping -> mapping.getCourse() != null
+                        && courseCodesEquivalent(
+                                mapping.getCourse().getCourseCode(),
+                                importedCode))
+                .toList();
+
+        Set<Integer> courseIds = matches.stream()
+                .map(mapping -> mapping.getCourse().getId())
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+
+        if (courseIds.size() > 1) {
+            throw new IllegalArgumentException(
+                    "Course code " + importedCode
+                            + " is ambiguous in the selected Program/Cohort.");
+        }
+
+        if (courseIds.size() == 1) {
+            return matches.stream()
+                    .map(CourseProgram::getCourse)
+                    .filter(Objects::nonNull)
+                    .findFirst()
+                    .orElseThrow();
+        }
+
+        List<CourseProgram> aliases =
+                findUniqueCourseNameAliasInSelectedCurriculum(
+                        data,
+                        programId,
+                        cohortId);
+
+        if (aliases.size() == 1 && aliases.get(0).getCourse() != null) {
+            return aliases.get(0).getCourse();
+        }
+
+        boolean existsInCatalog = courseRepository.findAll().stream()
+                .anyMatch(course -> courseCodesEquivalent(
+                        course.getCourseCode(),
+                        importedCode));
+
+        throw new IllegalArgumentException(
+                existsInCatalog
+                        ? "Course " + importedCode
+                                + " is not part of the selected Program/Cohort."
+                        : "Course " + importedCode
+                                + " was not found in the course catalog.");
+    }
+
+    /**
+     * Deterministically remove duplicate detailed syllabus sections for the
+     * same canonical course code.  Prefer the section with fewer parser errors;
+     * on a tie keep the first occurrence in the source document.
+     */
+    private List<ProgramDocumentParser.ParsedItem>
+            deduplicateParsedSyllabiByCourseCode(
+                    List<ProgramDocumentParser.ParsedItem> items) {
+
+        if (items == null || items.isEmpty()) {
+            return List.of();
+        }
+
+        Map<String, ProgramDocumentParser.ParsedItem> unique =
+                new LinkedHashMap<>();
+        List<ProgramDocumentParser.ParsedItem> withoutCode =
+                new ArrayList<>();
+
+        for (ProgramDocumentParser.ParsedItem item : items) {
+            if (item == null || item.data() == null) {
+                continue;
+            }
+
+            Set<String> candidates =
+                    normalizedCourseCodeCandidates(
+                            item.data().getSourceCourseCode());
+
+            if (candidates.isEmpty()) {
+                withoutCode.add(item);
+                continue;
+            }
+
+            String key = candidates.stream()
+                    .sorted()
+                    .collect(Collectors.joining("|"));
+
+            ProgramDocumentParser.ParsedItem existing =
+                    unique.get(key);
+
+            if (existing == null) {
+                unique.put(key, item);
+                continue;
+            }
+
+            int existingErrors = countParserErrors(existing);
+            int incomingErrors = countParserErrors(item);
+
+            if (incomingErrors < existingErrors) {
+                unique.put(key, item);
+                log.warn(
+                        "Duplicate syllabus section for courseCode={} replaced pages {}-{} with cleaner pages {}-{}.",
+                        item.data().getSourceCourseCode(),
+                        existing.startBoundary(),
+                        existing.endBoundary(),
+                        item.startBoundary(),
+                        item.endBoundary());
+            } else {
+                log.warn(
+                        "Duplicate syllabus section for courseCode={} ignored at pages {}-{}; keeping pages {}-{}.",
+                        item.data().getSourceCourseCode(),
+                        item.startBoundary(),
+                        item.endBoundary(),
+                        existing.startBoundary(),
+                        existing.endBoundary());
+            }
+        }
+
+        List<ProgramDocumentParser.ParsedItem> result =
+                new ArrayList<>(unique.values());
+        result.addAll(withoutCode);
+        return List.copyOf(result);
+    }
+
+    private int countParserErrors(
+            ProgramDocumentParser.ParsedItem item) {
+
+        return item == null || item.issues() == null
+                ? 0
+                : (int) item.issues().stream()
+                        .filter(issue -> issue != null
+                                && "ERROR".equalsIgnoreCase(
+                                        issue.getSeverity()))
+                        .count();
+    }
+
+    /**
+     * Raw normalized candidates do not apply known aliases.
+     * They are used when comparing a detailed-syllabus appendix against the
+     * official curriculum table extracted from the same programme document.
+     */
+    private Set<String> rawNormalizedCourseCodeCandidates(String value) {
+        if (value == null || value.isBlank()) {
+            return Set.of();
+        }
+
+        return java.util.Arrays.stream(value.split("\\s*[/;,|]\\s*"))
+                .map(String::trim)
+                .filter(candidate -> !candidate.isBlank())
+                .map(this::normalizeCourseCode)
+                .filter(candidate -> !candidate.isBlank())
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+    }
+
+    /**
+     * Include a syllabus when its raw code is explicitly listed by the
+     * programme curriculum table.
+     *
+     * A verified legacy alias is accepted only when the canonical syllabus is
+     * NOT already present elsewhere in the same document.  This preserves the
+     * CS2021 CHE011IU -> CH011IU case while preventing duplicate import of
+     * IT2026 IT155IU when the canonical IT163IU syllabus is already included.
+     */
+    private boolean isOfficialCurriculumSyllabus(
+            String importedCode,
+            Set<String> curriculumScope,
+            Set<String> rawDetectedCodes) {
+
+        Set<String> rawCandidates = rawNormalizedCourseCodeCandidates(importedCode);
+        if (rawCandidates.stream().anyMatch(curriculumScope::contains)) {
+            return true;
+        }
+
+        Set<String> canonicalCandidates = normalizedCourseCodeCandidates(importedCode);
+        for (String canonical : canonicalCandidates) {
+            if (curriculumScope.contains(canonical)
+                    && !rawDetectedCodes.contains(canonical)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Course-code fields can legitimately contain alternatives, for example:
+     *
+     * PE008IU/PE008WE
+     *
+     * Treat each alternative as a candidate and compare candidate sets.
+     * This preserves the existing IU-normalization behaviour while avoiding
+     * the previous incorrect normalization PE008IUPE008WE.
+     */
+    private boolean courseCodesEquivalent(
+            String left,
+            String right) {
+
+        Set<String> leftCandidates =
+                normalizedCourseCodeCandidates(
+                        left);
+
+        Set<String> rightCandidates =
+                normalizedCourseCodeCandidates(
+                        right);
+
+        if (leftCandidates.isEmpty()
+                || rightCandidates.isEmpty()) {
+
+            return false;
+        }
+
+        return leftCandidates.stream()
+                .anyMatch(
+                        rightCandidates::contains);
+    }
+
+    private Set<String> normalizedCourseCodeCandidates(
+            String value) {
+
+        if (value == null
+                || value.isBlank()) {
+
+            return Set.of();
+        }
+
+        return java.util.Arrays.stream(
+                        value.split(
+                                "\\s*[/;,|]\\s*"))
+                .map(
+                        String::trim)
+                .filter(
+                        candidate ->
+                                !candidate.isBlank())
+                .map(
+                        this::normalizeCourseCode)
+                .map(
+                        this::canonicalizeKnownCourseCodeAlias)
+                .filter(
+                        candidate ->
+                                !candidate.isBlank())
+                .collect(
+                        Collectors.toCollection(
+                                LinkedHashSet::new));
+    }
+
+    /**
+     * Official CS2021 source inconsistency:
+     * - curriculum/catalog canonical code: CH011IU
+     * - detailed syllabus code:           CHE011IU
+     *
+     * After the normal IU suffix removal these become CH011 and CHE011.
+     * Canonicalize only this verified pair so every code-based validation path
+     * (bulk resolution, confirm validation, source snapshot validation) agrees.
+     */
+    private String canonicalizeKnownCourseCodeAlias(String normalizedCode) {
+        if ("CHE011".equals(normalizedCode)) {
+            return "CH011";
+        }
+        /*
+         * IT2026 contains an old duplicate detailed syllabus using IT155IU for
+         * "Optimization and Applications", while the official curriculum table
+         * and canonical detailed syllabus use IT163IU.
+         */
+        if ("IT155".equals(normalizedCode)) {
+            return "IT163";
+        }
+        return normalizedCode;
     }
 
     private String normalizeCourseCode(String value) {
@@ -614,8 +1389,17 @@ return mapToResponse(
     }
 
     private String resolveCourseTypeCode(String courseTypes) {
-        String normalized = courseTypes == null ? "" : courseTypes.toUpperCase();
-        if (normalized.contains("ELECTIVE")) {
+        String normalized = courseTypes == null ? "" : courseTypes.toUpperCase(Locale.ROOT);
+
+        /*
+         * FR-02.3 / FR-06.5:
+         * The active SRS taxonomy is exactly:
+         *   GENERAL / COMPULSORY / ELECTIVE
+         *
+         * Legacy FOUNDATION / CORE / THESIS / INTERNSHIP values are migrated
+         * to COMPULSORY by Code/database/migrate_course_type_to_srs_3_groups.sql.
+         */
+        if (normalized.contains("ELECTIVE") || normalized.contains("OPTIONAL")) {
             return "ELECTIVE";
         }
         if (normalized.contains("GENERAL")) {
@@ -625,27 +1409,113 @@ return mapToResponse(
     }
 
     private Integer resolveCurriculumSemester(
-            CourseProgram selected,
-            Integer programId,
-            Integer cohortId,
-            String importedSemester) {
-        // The uploaded syllabus is authoritative for syllabus content. Curriculum metadata
-        // is only a fallback when the source file does not expose a valid semester.
-        Set<Integer> importedSemesters = parseImportedSemesters(importedSemester);
-        Integer selectedSemester = selected != null
-                && selected.getProgram() != null
-                && selected.getProgram().getId().equals(programId)
-                && (selected.getCohort() == null
-                    || selected.getCohort().getId().equals(cohortId))
-                ? selected.getSemesterSuggest()
-                : null;
-        if (selectedSemester != null && importedSemesters.contains(selectedSemester)) {
+        CourseProgram selected,
+        Integer programId,
+        Integer cohortId,
+        String importedSemester) {
+
+    Set<Integer> importedSemesters =
+            parseImportedSemesters(
+                    importedSemester);
+
+    Integer selectedSemester =
+            selected != null
+                    && selected.getProgram() != null
+                    && Objects.equals(
+                            selected.getProgram().getId(),
+                            programId)
+                    && (
+                            selected.getCohort() == null
+                            || Objects.equals(
+                                    selected.getCohort().getId(),
+                                    cohortId)
+                    )
+                    && selected.getSemesterSuggest() != null
+                    && selected.getSemesterSuggest() >= 1
+                    && selected.getSemesterSuggest() <= 8
+                    ? selected.getSemesterSuggest()
+                    : null;
+
+    /*
+     * Rule 1:
+     * One valid semester explicitly present in the imported
+     * syllabus is authoritative.
+     */
+    if (importedSemesters.size() == 1) {
+        return importedSemesters
+                .iterator()
+                .next();
+    }
+
+    /*
+     * Rule 2:
+     * If the source contains several valid semesters, keep
+     * the existing curriculum placement only when it belongs
+     * to that source set.
+     */
+    if (importedSemesters.size() > 1) {
+
+        if (selectedSemester != null
+                && importedSemesters.contains(
+                        selectedSemester)) {
             return selectedSemester;
         }
-        if (!importedSemesters.isEmpty()) return importedSemesters.iterator().next();
+
+        return importedSemesters
+                .iterator()
+                .next();
+    }
+
+    /*
+     * Rule 3:
+     * No semester in source -> preserve an existing valid
+     * curriculum semester.
+     */
+    if (selectedSemester != null) {
         return selectedSemester;
     }
 
+    /*
+     * Rule 4:
+     * Source and curriculum are both unassigned.
+     * Assign a deterministic temporary Semester 4-8.
+     */
+    String courseCode =
+            selected != null
+                    && selected.getCourse() != null
+                    ? selected.getCourse().getCourseCode()
+                    : null;
+
+    return resolveTemporarySemester(
+            courseCode);
+}
+
+
+private static void synchronizeCurriculumSemester(
+        CourseProgram scoped,
+        Integer curriculumSemester) {
+
+    if (scoped == null
+            || curriculumSemester == null) {
+        return;
+    }
+
+    if (curriculumSemester < 1
+            || curriculumSemester > 8) {
+        throw new IllegalArgumentException(
+                "Semester must be between 1 and 8.");
+    }
+
+    scoped.setSemesterSuggest(
+            curriculumSemester);
+
+    scoped.setYearSuggest(
+            (curriculumSemester + 1) / 2);
+
+    scoped.setTermCode(
+            CurriculumTerm.valueOf(
+                    "HK" + curriculumSemester));
+}
     private Set<Integer> parseImportedSemesters(String importedSemester) {
         Set<Integer> values = new LinkedHashSet<>();
         if (importedSemester == null || importedSemester.isBlank()) return values;
@@ -1197,12 +2067,104 @@ return mapToResponse(
         }
 
         if (data.getMajor() != null) {
-            syllabus.setMajor(
-                    data.getMajor());
+    syllabus.setMajor(
+            data.getMajor());
+}
+
+if (data.getRubricItems() != null
+        && !data.getRubricItems().isEmpty()) {
+
+    syllabus.setRubrics(
+            serializeImportedRubrics(
+                    data.getRubricItems()));
+}
+
+}
+private String serializeImportedRubrics(
+        List<SyllabusImportData.RubricItem> rubricItems) {
+
+    List<Map<String, Object>> serializedRubrics =
+            new ArrayList<>();
+
+    for (SyllabusImportData.RubricItem rubric :
+            safe(rubricItems)) {
+
+        if (rubric == null) {
+            continue;
         }
 
+        Map<String, Object> serializedRubric =
+                new LinkedHashMap<>();
+
+        serializedRubric.put(
+                "type",
+                text(rubric.getType()));
+
+        serializedRubric.put(
+                "title",
+                text(rubric.getTitle()));
+
+        serializedRubric.put(
+                "scaleLabels",
+                List.of(
+                        "Level 1",
+                        "Level 2",
+                        "Level 3",
+                        "Level 4"));
+
+        List<Map<String, Object>> serializedCriteria =
+                new ArrayList<>();
+
+        for (SyllabusImportData.RubricCriteriaItem criterion :
+                safe(rubric.getCriteria())) {
+
+            if (criterion == null) {
+                continue;
+            }
+
+            Map<String, Object> serializedCriterion =
+                    new LinkedHashMap<>();
+
+            serializedCriterion.put(
+                    "criterion",
+                    text(criterion.getCriterion()));
+
+            serializedCriterion.put(
+                    "levels",
+                    List.of(
+                            text(criterion.getLevel1()),
+                            text(criterion.getLevel2()),
+                            text(criterion.getLevel3()),
+                            text(criterion.getLevel4())));
+
+            serializedCriteria.add(
+                    serializedCriterion);
+        }
+
+        serializedRubric.put(
+                "criteria",
+                serializedCriteria);
+
+        serializedRubrics.add(
+                serializedRubric);
     }
 
+    Map<String, Object> root =
+            new LinkedHashMap<>();
+
+    root.put(
+            "rubrics",
+            serializedRubrics);
+
+    try {
+        return objectMapper.writeValueAsString(
+                root);
+    } catch (JsonProcessingException exception) {
+        throw new IllegalStateException(
+                "Cannot preserve imported rubric data",
+                exception);
+    }
+}
     private String normalizeImportedLanguage(String raw) {
         String value = text(raw).replaceAll("\\s+", " ");
         if (value.isBlank()) return null;
@@ -1582,8 +2544,13 @@ return mapToResponse(
         return values == null ? List.of() : values;
     }
     private SyllabusSourceType detectSourceType(
-        String fileType
+        String fileType, String fileName
 ){
+
+    if (com.scse.curriculum.syllabus.importer.parser.SyllabusXlsxParser.MIME.equalsIgnoreCase(fileType)
+            || fileName != null && fileName.toLowerCase(java.util.Locale.ROOT).endsWith(".xlsx")) {
+        return SyllabusSourceType.IMPORT_XLSX;
+    }
 
     if(fileType != null
             && fileType.contains("word")){

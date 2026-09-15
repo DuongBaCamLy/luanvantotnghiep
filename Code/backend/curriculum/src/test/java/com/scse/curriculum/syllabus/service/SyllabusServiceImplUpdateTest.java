@@ -76,6 +76,8 @@ class SyllabusServiceImplUpdateTest {
     @Mock private SyllabusDiffService syllabusDiffService;
     @Mock private EntityManager entityManager;
 
+    @Mock private com.scse.curriculum.syllabus.service.SyllabusIdentityService syllabusIdentityService;
+    @Mock private com.scse.curriculum.syllabus.history.SyllabusHistoryService syllabusHistoryService;
     @InjectMocks
     private SyllabusServiceImpl service;
 
@@ -295,6 +297,18 @@ class SyllabusServiceImplUpdateTest {
         assertThat(syllabus.getAssessments()).containsExactly(assessment);
         verify(studentScoreRepository, never()).deleteAll(any());
         verify(assessmentCloRepository, never()).deleteAll(any());
+        verify(repository, never()).save(any(Syllabus.class));
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(strings = {"Version 2", "v2", "v2.1", "v3.0"})
+    void updateCannotRenameTheSystemVersion(String label) {
+        CreateSyllabusRequest request = new CreateSyllabusRequest();
+        request.setVersionLabel(label);
+        assertThatThrownBy(() -> service.update(100, request))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("system-controlled");
+        assertThat(syllabus.getVersionLabel()).isEqualTo("v2.0");
         verify(repository, never()).save(any(Syllabus.class));
     }
 }

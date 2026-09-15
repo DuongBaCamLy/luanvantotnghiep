@@ -17,6 +17,8 @@ import {
 import { cohortApi } from "@/api/cohortApi"
 import { departmentApi } from "@/api/departmentApi"
 import { programApi as progApi } from "@/api/programApi"
+import { useAuthStore } from "@/store/authStore"
+import { prefixFor } from "@/config/navConfig"
 import type { Cohort, Program, ProgramArchiveValidation, ProgramCreditValidation, UpdateProgramRequest } from "@/types/admin"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
@@ -81,8 +83,12 @@ export default function ProgramManagementPage() {
   const navigate = useNavigate()
   const location = useLocation()
 
-  const isDean = false
-  const isAdmin = true
+  const user = useAuthStore((state) => state.user)
+  const role = user?.role
+  const roleBase = role ? prefixFor(role) : ""
+
+  const isAdmin = role === "ADMIN"
+  const isDean = role === "DEAN"
   const [open, setOpen] = useState(false)
   const [cohortFilter, setCohortFilter] = useState("all")
   const [majorFilter, setMajorFilter] = useState("all")
@@ -523,7 +529,7 @@ export default function ProgramManagementPage() {
   }
 
   return (
-    <div className="bg-[#FDFDF9] min-h-screen -m-6 p-6 md:-m-10 md:p-10 space-y-6">
+    <div data-admin-page="ProgramManagementPage" className="bg-[#FDFDF9] min-h-screen -m-6 p-6 md:-m-10 md:p-10 space-y-6">
       <section className="relative overflow-hidden rounded-2xl border border-[#d7e5e8] bg-white shadow-[0_10px_28px_rgba(0,86,94,0.07)]">
         <div className="absolute inset-x-0 top-0 h-[4px] bg-gradient-to-r from-[#007d84] via-[#15949a] to-[#f0a72f]" />
 
@@ -538,7 +544,7 @@ export default function ProgramManagementPage() {
               </span>
             </div>
 
-            <div className="min-w-0">
+            <div data-admin-page-header="ProgramManagementPage" className="min-w-0">
               <div className="mb-2 flex flex-wrap items-center gap-2">
                 <span className="rounded-full border border-[#cbe1e3] bg-[#eef8f8] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.9px] text-[#007d84]">
                   SCSE
@@ -605,7 +611,7 @@ export default function ProgramManagementPage() {
           Filters
         </div>
 
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-[minmax(260px,1.4fr)_1fr_1fr_1fr_auto] xl:items-end">
+        <div data-admin-filter className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-[minmax(260px,1.4fr)_1fr_1fr_1fr_auto] xl:items-end">
           <div className="space-y-1.5">
             <Label htmlFor="program-search">Search</Label>
             <div className="relative">
@@ -895,6 +901,16 @@ export default function ProgramManagementPage() {
                           >
                             <Eye className="size-3.5" />
                             View Syllabi
+                          </Button>
+
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => navigate(`${roleBase}/programs/${prog.id}/curriculum`)}
+                          >
+                            <MapIcon className="size-3.5" />
+                            {isAdmin ? "Manage Curriculum" : "View Curriculum"}
                           </Button>
 
                           <Button

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react"
+import { useMemo, useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useNavigate, useParams, useSearchParams } from "react-router-dom"
 import {
@@ -25,6 +25,8 @@ import {
 } from "@/api/courseRelationshipApi"
 import { courseTypeApi } from "@/api/courseTypeApi"
 import { programApi } from "@/api/programApi"
+import { prefixFor } from "@/config/navConfig"
+import { useAuthStore } from "@/store/authStore"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -118,13 +120,23 @@ export default function ProgramCurriculumPage() {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const user = useAuthStore((state) => state.user)
+  const role = user?.role
+  const isAdmin = role === "ADMIN"
+  const roleBase = role ? prefixFor(role) : ""
+
+  const assertAdmin = () => {
+    if (useAuthStore.getState().user?.role !== "ADMIN") {
+      throw new Error("Only Admin can modify curriculum.")
+    }
+  }
 
   const programId = Number(id)
   const validProgramId =
     Number.isInteger(programId)
     && programId > 0
 
-  const [selectedCohortId, setSelectedCohortId] =
+  const [chosenCohortId, setSelectedCohortId] =
     useState(() => searchParams.get("cohortId") ?? "")
   const [search, setSearch] = useState("")
   const [groupFilter, setGroupFilter] =
@@ -211,6 +223,7 @@ export default function ProgramCurriculumPage() {
   const {
     data: relationships = [],
     isLoading: isRelationshipsLoading,
+    error: relationshipsError,
   } = useQuery({
     queryKey: [
       "course-relationships",
@@ -241,21 +254,7 @@ export default function ProgramCurriculumPage() {
     [cohorts],
   )
 
-  useEffect(() => {
-    if (
-      selectedCohortId
-      || activeCohorts.length === 0
-    ) {
-      return
-    }
-
-    setSelectedCohortId(
-      String(activeCohorts[0].id),
-    )
-  }, [
-    activeCohorts,
-    selectedCohortId,
-  ])
+  const selectedCohortId = chosenCohortId || (activeCohorts[0] ? String(activeCohorts[0].id) : "")
 
   const selectedCohort =
     activeCohorts.find(
@@ -577,6 +576,7 @@ export default function ProgramCurriculumPage() {
   }
 
   const openAddDialog = () => {
+    if (!isAdmin) return
     resetAddForm()
     setNotice(null)
     setAddOpen(true)
@@ -585,6 +585,7 @@ export default function ProgramCurriculumPage() {
   const openEditDialog = (
     item: CourseProgramItem,
   ) => {
+    if (!isAdmin) return
     setEditingItem(item)
     setEditCourseTypeId(
       item.courseTypeId
@@ -618,6 +619,7 @@ export default function ProgramCurriculumPage() {
   const addMutation =
     useMutation({
       mutationFn: async () => {
+        assertAdmin()
         if (
           !selectedCohort
           || !addCourseId
@@ -685,6 +687,7 @@ export default function ProgramCurriculumPage() {
   const editMutation =
     useMutation({
       mutationFn: async () => {
+        assertAdmin()
         if (
           !editingItem
           || !selectedCohort
@@ -779,6 +782,7 @@ export default function ProgramCurriculumPage() {
       mutationFn: async (
         item: CourseProgramItem,
       ) => {
+        assertAdmin()
         await courseProgramApi.delete(
           item.id,
         )
@@ -805,6 +809,7 @@ export default function ProgramCurriculumPage() {
   const addPrerequisiteMutation =
     useMutation({
       mutationFn: async () => {
+        assertAdmin()
         if (
           !editingCourseId
           || !prerequisiteCourseId
@@ -851,12 +856,14 @@ export default function ProgramCurriculumPage() {
 
   const removePrerequisiteMutation =
     useMutation({
-      mutationFn: (
+      mutationFn: async (
         relationshipId: number,
-      ) =>
-        courseRelationshipApi.delete(
+      ) => {
+        assertAdmin()
+        return courseRelationshipApi.delete(
           relationshipId,
-        ),
+        )
+      },
       onSuccess: async () => {
         await queryClient.invalidateQueries({
           queryKey: [
@@ -885,6 +892,7 @@ export default function ProgramCurriculumPage() {
   const confirmDelete = (
     item: CourseProgramItem,
   ) => {
+    if (!isAdmin) return
     const isShared =
       item.cohortId == null
 
@@ -929,20 +937,20 @@ export default function ProgramCurriculumPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-[1500px] space-y-6 pb-10">
+    <div data-admin-page="ProgramCurriculumPage" className="mx-auto w-full max-w-[1500px] space-y-6 pb-10">
       <div className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm lg:flex-row lg:items-start lg:justify-between">
         <div className="flex items-start gap-4">
           <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-orange-50 text-orange-600">
             <BookOpen className="size-5" />
           </div>
 
-          <div>
+          <div data-admin-page-header="ProgramCurriculumPage">
             <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">
               FR-02.3 · FR-02.4 / Curriculum Courses
             </p>
 
             <h1 className="mt-1 text-2xl font-bold text-slate-900">
-              Manage Curriculum
+              {isAdmin ? "Manage Curriculum" : "Curriculum Structure"}
             </h1>
 
             <p className="mt-1 text-sm text-slate-500">
@@ -958,14 +966,14 @@ export default function ProgramCurriculumPage() {
             type="button"
             variant="outline"
             onClick={() =>
-              navigate("/admin/programs")
+              navigate(`${roleBase}/programs`)
             }
           >
             <ArrowLeft className="size-4" />
             Back
           </Button>
 
-          <Button
+          {isAdmin && <Button
             type="button"
             disabled={
               !selectedCohortId
@@ -975,7 +983,7 @@ export default function ProgramCurriculumPage() {
           >
             <Plus className="size-4" />
             Add Course
-          </Button>
+          </Button>}
         </div>
       </div>
 
@@ -997,7 +1005,7 @@ export default function ProgramCurriculumPage() {
         </div>
       )}
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(260px,1.1fr)_repeat(5,minmax(130px,0.7fr))]">
+      <div data-admin-filter className="grid gap-4 xl:grid-cols-[minmax(260px,1.1fr)_repeat(5,minmax(130px,0.7fr))]">
         <div className="rounded-xl border border-slate-200 bg-white p-4">
           <Label className="text-[11px] uppercase tracking-wide text-slate-500">
             Cohort
@@ -1200,9 +1208,9 @@ export default function ProgramCurriculumPage() {
                 <TableHead className="min-w-[130px]">
                   Scope
                 </TableHead>
-                <TableHead className="min-w-[190px] text-right">
+                {isAdmin && <TableHead className="min-w-[190px] text-right">
                   Actions
-                </TableHead>
+                </TableHead>}
               </TableRow>
             </TableHeader>
 
@@ -1210,7 +1218,7 @@ export default function ProgramCurriculumPage() {
               {loading ? (
                 <TableRow>
                   <TableCell
-                    colSpan={10}
+                    colSpan={isAdmin ? 10 : 9}
                     className="py-12 text-center text-sm text-slate-500"
                   >
                     Loading curriculum...
@@ -1219,7 +1227,7 @@ export default function ProgramCurriculumPage() {
               ) : !selectedCohortId ? (
                 <TableRow>
                   <TableCell
-                    colSpan={10}
+                    colSpan={isAdmin ? 10 : 9}
                     className="py-12 text-center text-sm text-slate-500"
                   >
                     Select a cohort to view its curriculum.
@@ -1228,7 +1236,7 @@ export default function ProgramCurriculumPage() {
               ) : filteredCurriculum.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={10}
+                    colSpan={isAdmin ? 10 : 9}
                     className="py-12 text-center text-sm text-slate-500"
                   >
                     No curriculum courses match the current filters.
@@ -1300,9 +1308,14 @@ export default function ProgramCurriculumPage() {
                         </TableCell>
 
                         <TableCell>
-                          <span className="text-xs text-slate-500">
-                            Manage in Edit
-                          </span>
+                          {isAdmin ? (
+                            <span className="text-xs text-slate-500">Manage in Edit</span>
+                          ) : (
+                            <Button type="button" variant="outline" size="sm" onClick={() => setEditingItem(item)}>
+                              <Link2 className="size-3.5" />
+                              View Prerequisites
+                            </Button>
+                          )}
                         </TableCell>
 
                         <TableCell>
@@ -1333,7 +1346,7 @@ export default function ProgramCurriculumPage() {
                           )}
                         </TableCell>
 
-                        <TableCell>
+                        {isAdmin && <TableCell>
                           <div className="flex justify-end gap-2">
                             <Button
                               type="button"
@@ -1367,7 +1380,7 @@ export default function ProgramCurriculumPage() {
                               Remove
                             </Button>
                           </div>
-                        </TableCell>
+                        </TableCell>}
                       </TableRow>
                     )
                   },
@@ -1385,7 +1398,7 @@ export default function ProgramCurriculumPage() {
         </div>
       </div>
 
-      <Dialog
+      {isAdmin && <Dialog
         open={addOpen}
         onOpenChange={(open) => {
           setAddOpen(open)
@@ -1560,9 +1573,9 @@ export default function ProgramCurriculumPage() {
             </Button>
           </DialogFooter>
         </DialogContent>
-      </Dialog>
+      </Dialog>}
 
-      <Dialog
+      {isAdmin && <Dialog
         open={Boolean(editingItem)}
         onOpenChange={(open) => {
           if (!open) {
@@ -1814,7 +1827,38 @@ export default function ProgramCurriculumPage() {
             </Button>
           </DialogFooter>
         </DialogContent>
-      </Dialog>
+      </Dialog>}
+
+      {!isAdmin && <Dialog open={Boolean(editingItem)} onOpenChange={(open) => { if (!open) setEditingItem(null) }}>
+        <DialogContent className="bg-white sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Prerequisites</DialogTitle>
+            <DialogDescription>
+              {editingItem ? `${editingItem.courseCode} · ${editingItem.courseName}` : ""}
+            </DialogDescription>
+          </DialogHeader>
+          {isRelationshipsLoading ? (
+            <p className="text-sm text-slate-500">Loading prerequisites...</p>
+          ) : relationshipsError ? (
+            <p role="alert" className="text-sm text-rose-700">
+              {getErrorMessage(relationshipsError, "Unable to load prerequisites.")}
+            </p>
+          ) : prerequisites.length === 0 ? (
+            <p className="text-sm text-slate-500">No prerequisite configured.</p>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {prerequisites.map((relationship) => (
+                <Badge key={relationship.id} variant="outline">
+                  {relationship.relatedCourseCode} · {relationship.relatedCourseName}
+                </Badge>
+              ))}
+            </div>
+          )}
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setEditingItem(null)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>}
     </div>
   )
 }

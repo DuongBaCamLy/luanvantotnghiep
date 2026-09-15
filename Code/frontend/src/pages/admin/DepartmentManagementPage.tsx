@@ -1,3 +1,4 @@
+import { isAxiosError } from "axios"
 import { useState } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { Plus, UserRoundCog } from "lucide-react"
@@ -59,8 +60,8 @@ export default function DepartmentManagementPage() {
       setName("")
       setNameVn("")
     },
-    onError: (err: any) => {
-      const msg = err?.response?.data?.message || "Đã xảy ra lỗi khi tạo bộ môn"
+    onError: (err: unknown) => {
+      const msg = (isAxiosError<{ message?: string }>(err) ? err.response?.data?.message : undefined) || "Đã xảy ra lỗi khi tạo bộ môn"
       alert(msg)
     }
   })
@@ -73,8 +74,8 @@ export default function DepartmentManagementPage() {
       setHeadDepartment(null)
       setSelectedHeadId("")
     },
-    onError: (err: any) => {
-      alert(err?.response?.data?.message || "Unable to assign the Head of Department.")
+    onError: (err: unknown) => {
+      alert((isAxiosError<{ message?: string }>(err) ? err.response?.data?.message : undefined) || "Unable to assign the Head of Department.")
     },
   })
 

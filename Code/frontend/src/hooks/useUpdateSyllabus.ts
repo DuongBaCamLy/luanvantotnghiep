@@ -28,6 +28,9 @@ export const useUpdateSyllabus =
         ),
 
       onSuccess: (_data, variables) => {
+      for (const key of ["faculty-dashboard", "depthead-courses", "my-active-assignments", "course-programs", "program-timeline"]) {
+        void queryClient.invalidateQueries({ queryKey: [key] })
+      }
         queryClient.invalidateQueries({
           queryKey: ["syllabuses"],
         });

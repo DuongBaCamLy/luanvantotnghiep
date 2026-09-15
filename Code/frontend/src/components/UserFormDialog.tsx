@@ -1,5 +1,4 @@
 import {
-  useEffect,
   useMemo,
   useState,
 } from "react"
@@ -64,6 +63,11 @@ const SRS_ROLES: UserRole[] = [
   "INSTRUCTOR",
 ]
 
+const ASSIGNABLE_ROLES: UserRole[] = [
+  "DEAN",
+  "DEPT_HEAD",
+  "INSTRUCTOR",
+]
 const ROLE_LABELS: Partial<Record<UserRole, string>> = {
   ADMIN: "Administrator",
   DEAN: "Dean",
@@ -141,6 +145,10 @@ export default function UserFormDialog({
   const queryClient = useQueryClient()
   const isEditMode = Boolean(editingUser)
 
+  const roleOptions: UserRole[] =
+  editingUser?.role === "ADMIN"
+    ? ["ADMIN"]
+    : ASSIGNABLE_ROLES
   const [username, setUsername] = useState("")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -176,10 +184,10 @@ export default function UserFormDialog({
     enabled: open,
   })
 
-  useEffect(() => {
-    if (!open) {
-      return
-    }
+  const [formContext, setFormContext] = useState<{ open: boolean; editingUser: typeof editingUser }>({ open: false, editingUser: null })
+  if (formContext.open !== open || formContext.editingUser !== editingUser) {
+    setFormContext({ open, editingUser })
+    if (open) {
 
     if (editingUser) {
       setUsername(editingUser.username)
@@ -207,10 +215,8 @@ export default function UserFormDialog({
 
     setShowPassword(false)
     setValidationError("")
-  }, [
-    editingUser,
-    open,
-  ])
+    }
+  }
 
   const linkedInstructorIds = useMemo(() => {
     const result = new Set<number>()
@@ -436,8 +442,9 @@ export default function UserFormDialog({
                 <DialogDescription className="mt-1">
                   {isEditMode
                     ? "Update account identity, SRS role, linked staff profile, or set a new password."
-                    : "Create a system account using one of the four business roles defined by the SRS."}
-                </DialogDescription>
+                    : "Create a Dean, Head of Department, or Instructor account. The Administrator account is unique and cannot be created here."
+                  }
+                    </DialogDescription>
               </div>
             </div>
           </DialogHeader>
@@ -549,16 +556,19 @@ export default function UserFormDialog({
               </Label>
 
               <Select
-                value={role}
-                onValueChange={handleRoleChange}
-                disabled={mutation.isPending}
-              >
+  value={role}
+  onValueChange={handleRoleChange}
+  disabled={
+    mutation.isPending
+    || editingUser?.role === "ADMIN"
+  }
+>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
 
                 <SelectContent>
-                  {SRS_ROLES.map((item) => (
+                  {roleOptions.map((item) => (
                     <SelectItem
                       key={item}
                       value={item}

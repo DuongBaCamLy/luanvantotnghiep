@@ -1,3 +1,5 @@
+import { formatVersionLabel } from "@/lib/syllabusVersion"
+import { isAxiosError } from "axios"
 import { useEffect, useMemo, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import {
@@ -39,6 +41,7 @@ import AddSyllabusDialog from "@/components/syllabus/AddSyllabusDialog"
 import CloneSyllabusDialog from "@/components/syllabus/CloneSyllabusDialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import DeleteCohortSyllabiDialog from "@/components/syllabus/DeleteCohortSyllabiDialog"
 import {
   Dialog,
   DialogContent,
@@ -54,7 +57,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { useDeleteSyllabus } from "@/hooks/useDeleteSyllabus"
+
 import { useSubmitSyllabus } from "@/hooks/useSubmitSyllabus"
 import { useSyllabuses } from "@/hooks/useSyllabuses"
 import { getSyllabusBasePath } from "@/lib/programContext"
@@ -72,7 +75,15 @@ import type {
 import type { SubmissionValidationIssue, SubmissionValidationResponse, Syllabus } from "@/types/syllabus"
 import type { BulkSyllabusImportPreviewResponse } from "@/types/syllabusImport"
 
-type CourseProgram = Record<string, any>
+type CourseProgram = Partial<import("@/api/courseProgramApi").CourseProgramItem> & {
+  program?: { id?: number; programId?: number; code?: string; majorCode?: string; major?: { code?: string }; cohort?: { name?: string } }
+  cohort?: { id?: number; cohortId?: number; name?: string }
+  syllabus?: { id?: number } | null
+  major?: { code?: string }
+  course?: { id?: number }
+  semester_suggest?: number
+  semester?: string | number
+}
 
 type CourseProgramIndex = {
   bySyllabusId: Map<number, CourseProgram[]>
@@ -95,6 +106,7 @@ type CatalogRow = {
 
 const ALL = "all"
 
+  
 const normalizeImportCourseCode = (value?: string) => String(value ?? "")
   .replace(/[^A-Z0-9]/gi, "")
   .toUpperCase()
@@ -137,22 +149,23 @@ const toNumber = (
 }
 
 const toArray = <T,>(
-  payload: any,
+  payload: unknown,
 ): T[] => {
   if (Array.isArray(payload)) {
     return payload
   }
 
-  if (Array.isArray(payload?.data)) {
-    return payload.data
+  const envelope = payload as { data?: T[]; content?: T[]; items?: T[] } | null
+  if (Array.isArray(envelope?.data)) {
+    return envelope.data
   }
 
-  if (Array.isArray(payload?.content)) {
-    return payload.content
+  if (Array.isArray(envelope?.content)) {
+    return envelope.content
   }
 
-  if (Array.isArray(payload?.items)) {
-    return payload.items
+  if (Array.isArray(envelope?.items)) {
+    return envelope.items
   }
 
   return []
@@ -242,7 +255,7 @@ const getSyllabusCourseId = (
 ) =>
   toNumber(
     item.courseId
-    ?? (item as any).course?.id,
+    ?? (item as Syllabus & { course?: { id?: number } }).course?.id,
   )
 
 const normalizeSemesterValue = (
@@ -476,10 +489,10 @@ const safeFilePart = (
 
 const getPdfDownloadErrorMessage =
   async (
-    error: any,
+    error: unknown,
   ) => {
     const responseData =
-      error?.response?.data
+      (isAxiosError<{ message?: string; error?: string; issues?: SubmissionValidationIssue[] }>(error) ? error.response?.data : undefined)
 
     if (
       responseData
@@ -516,7 +529,7 @@ const getPdfDownloadErrorMessage =
     return (
       responseData?.message
       || responseData?.error
-      || error?.message
+      || (error instanceof Error ? error.message : undefined)
     )
   }
 
@@ -552,9 +565,8 @@ export default function SyllabusListPage() {
 
   const isAdmin = role === "ADMIN"
 
-  const isSystemAdmin = role === "ADMIN"
 
-  const isDean = false
+  const isDean = role === "DEAN"
 
   const isDeptHead = role === "DEPT_HEAD"
 
@@ -689,13 +701,19 @@ export default function SyllabusListPage() {
     addDialogOpen,
     setAddDialogOpen,
   ] = useState(false)
-
+const [
+  deleteCohortDialogOpen,
+  setDeleteCohortDialogOpen,
+] = useState(false)
   const [bulkImportProgress, setBulkImportProgress] = useState<BulkImportProgressItem[]>([])
   const [bulkImportRunning, setBulkImportRunning] = useState(false)
-  const [deleteAllOpen, setDeleteAllOpen] = useState(false)
-  const [deleteAllConfirmation, setDeleteAllConfirmation] = useState("")
-  const [deleteAllRunning, setDeleteAllRunning] = useState(false)
-  const [deleteAllError, setDeleteAllError] = useState("")
+  const [deleteTarget, setDeleteTarget] = useState<{
+  syllabus: Syllabus
+  cohort: string
+} | null>(null)
+
+const [deleteOneRunning, setDeleteOneRunning] = useState(false)
+const [deleteOneError, setDeleteOneError] = useState("")
   const [submissionValidation, setSubmissionValidation] = useState<SubmissionValidationResponse | null>(null)
 
   const [
@@ -706,33 +724,8 @@ export default function SyllabusListPage() {
   >(null)
   const [downloadingWordId, setDownloadingWordId] = useState<number | null>(null)
 
-  const deleteMutation =
-    useDeleteSyllabus()
-
   const submitMutation =
     useSubmitSyllabus()
-
-  const handleDeleteAllSyllabi = async () => {
-    if (deleteAllConfirmation !== "DELETE ALL") return
-    setDeleteAllRunning(true)
-    setDeleteAllError("")
-    try {
-      const deletedCount = await syllabusApi.deleteAll()
-      setCoursePrograms((current) => current.map((item) => ({
-        ...item,
-        syllabusId: null,
-        syllabus: null,
-      })))
-      await refetchSyllabuses()
-      setDeleteAllOpen(false)
-      setDeleteAllConfirmation("")
-      window.alert(`${deletedCount} syllabus record(s) were deleted.`)
-    } catch (error: any) {
-      setDeleteAllError(error?.response?.data?.message || "Unable to delete all syllabuses.")
-    } finally {
-      setDeleteAllRunning(false)
-    }
-  }
 
   useEffect(() => {
     let cancelled = false
@@ -1074,6 +1067,7 @@ export default function SyllabusListPage() {
       )
     }
   }, [
+    cohorts,
     cohortById,
     programById,
     programs,
@@ -1142,7 +1136,18 @@ export default function SyllabusListPage() {
           selectedCohortId,
         )
       : undefined
+const selectedCohortForReset =
+  selectedCohort
 
+const selectedCohortResetName =
+  normalize(
+    selectedCohortForReset?.name,
+  )
+
+const selectedProgramResetLabel =
+  normalize(selectedProgram?.name)
+  || normalize(selectedProgram?.code)
+  || "Selected program"
   const cohortOptions =
     useMemo(() => {
       return cohorts
@@ -1462,13 +1467,24 @@ export default function SyllabusListPage() {
       ],
     )
 
+    const catalogBaseData = useMemo(() => enrichedData.filter(row =>
+      historyMode || normalize(row.item.status).toUpperCase() !== "ARCHIVED"
+    ), [enrichedData, historyMode])
   const filteredData =
     useMemo(() => {
-      return enrichedData.filter(
+      return catalogBaseData.filter(
         (row) => {
           const item =
             row.item
+const itemStatus =
+  normalize(item.status).toUpperCase()
 
+if (
+  !historyMode
+  && itemStatus === "ARCHIVED"
+) {
+  return false
+}
           if (
             !row
               .matchesCurriculumContext
@@ -1488,7 +1504,7 @@ export default function SyllabusListPage() {
               item.courseNameVn,
               item.createdByUsername,
               item.versionLabel,
-              `v${item.versionNumber}`,
+              formatVersionLabel(item.versionNumber),
             ]
               .map(normalizeKey)
               .join(" ")
@@ -1531,18 +1547,19 @@ export default function SyllabusListPage() {
         },
       )
     }, [
-      enrichedData,
-      searchValue,
-      semesterValue,
-      statusValue,
-    ])
+  catalogBaseData,
+  searchValue,
+  semesterValue,
+  statusValue,
+  historyMode,
+])
 
   const catalogRows = useMemo(() => {
     const grouped = new Map<string, CatalogRow>()
     for (const row of filteredData) {
       const courseId = getSyllabusCourseId(row.item)
       const courseKey = courseId !== undefined ? `id:${courseId}` : `code:${normalizeKey(row.item.courseCode)}`
-      const key = `${courseKey}|program:${normalizeKey(row.displayProgram)}|cohort:${normalizeKey(row.displayCohort)}`
+      const key = `${courseKey}|program:${normalizeKey(row.displayProgram)}|cohort:${normalizeKey(row.displayCohort)}|semester:${normalizeKey(row.item.semester)}`
       const current = grouped.get(key)
       const shouldReplace = !current
         || Boolean(row.item.isCurrent) && !current.item.isCurrent
@@ -1553,11 +1570,31 @@ export default function SyllabusListPage() {
     return Array.from(grouped.values())
   }, [filteredData])
 
-  const totalCourses = useMemo(() => new Set(enrichedData.map((row) => {
-    const courseId = getSyllabusCourseId(row.item)
-    const courseKey = courseId !== undefined ? `id:${courseId}` : `code:${normalizeKey(row.item.courseCode)}`
-    return `${courseKey}|program:${normalizeKey(row.displayProgram)}|cohort:${normalizeKey(row.displayCohort)}`
-  })).size, [enrichedData])
+  const totalCourses = useMemo(
+  () =>
+    new Set(
+      catalogBaseData.map((row) => {
+        const courseId =
+          getSyllabusCourseId(
+            row.item,
+          )
+
+        const courseKey =
+          courseId !== undefined
+            ? `id:${courseId}`
+            : `code:${normalizeKey(
+                row.item.courseCode,
+              )}`
+
+        return `${courseKey}|program:${normalizeKey(
+          row.displayProgram,
+        )}|cohort:${normalizeKey(
+          row.displayCohort,
+        )}|semester:${normalizeKey(row.item.semester)}`
+      }),
+    ).size,
+  [catalogBaseData],
+)
 
   const summary =
     useMemo(() => {
@@ -1869,7 +1906,7 @@ export default function SyllabusListPage() {
 
   const canViewApprovalHistory =
     (
-      _item: Syllabus,
+
     ) =>
       Boolean(user)
 
@@ -1899,43 +1936,74 @@ export default function SyllabusListPage() {
       (isAdmin && ["DRAFT", "REVISION_REQUESTED"].includes(normalize(item.status).toUpperCase()))
       || canEditDraft(item)
 
-  const handleDelete = (
-    item: Syllabus,
-  ) => {
-    if (!canEditDraft(item)) {
-      return
-    }
-
-    const confirmed =
-      window.confirm(
-        `Delete draft syllabus ${item.courseCode}? This action cannot be undone.`,
-      )
-
-    if (!confirmed) {
-      return
-    }
-
-    deleteMutation.mutate(
-      item.id,
-      {
-        onSuccess: () =>
-          alert(
-            "Draft syllabus deleted successfully.",
-          ),
-
-        onError: (
-          error: any,
-        ) =>
-          alert(
-            error?.response
-              ?.data
-              ?.message
-            || "Unable to delete the draft syllabus.",
-          ),
-      },
-    )
+const openDeleteSyllabusDialog = (
+  item: Syllabus,
+  cohort: string,
+) => {
+  if (!canEditDraft(item)) {
+    return
   }
 
+  setDeleteOneError("")
+  setDeleteTarget({
+    syllabus: item,
+    cohort,
+  })
+}
+
+const handleDeleteSyllabus = async () => {
+  if (!deleteTarget || deleteOneRunning) {
+    return
+  }
+
+  const syllabusId =
+    deleteTarget.syllabus.id
+
+  try {
+    setDeleteOneRunning(true)
+    setDeleteOneError("")
+
+    // Delete ONLY the selected syllabus.
+    await syllabusApi.delete(
+      syllabusId,
+    )
+
+    // Backend has already unlinked CourseProgram.
+    // Keep local Catalog reference data synchronized immediately.
+    setCoursePrograms(
+      (current) =>
+        current.map(
+          (courseProgram) => {
+            if (
+              getCourseProgramSyllabusId(
+                courseProgram,
+              ) !== syllabusId
+            ) {
+              return courseProgram
+            }
+
+            return {
+              ...courseProgram,
+              syllabusId: null,
+              syllabus: null,
+            }
+          },
+        ),
+    )
+
+    // Reload canonical syllabus list from backend.
+    await refetchSyllabuses()
+
+    setDeleteTarget(null)
+  } catch (error: unknown) {
+    setDeleteOneError(
+      (isAxiosError<{ message?: string; error?: string; issues?: SubmissionValidationIssue[] }>(error) ? error.response?.data : undefined)?.message
+      || "Unable to delete this syllabus.",
+    )
+  } finally {
+    setDeleteOneRunning(false)
+  }
+}
   const handleSubmit = (
     item: Syllabus,
   ) => {
@@ -1960,9 +2028,9 @@ export default function SyllabusListPage() {
             "Syllabus submitted successfully. It is awaiting Head of Department review.",
           ),
 
-        onError: (error: any) => {
-          const response = error?.response?.data as SubmissionValidationResponse | undefined
-          if (error?.response?.status === 422 && Array.isArray(response?.issues)) {
+        onError: (error: unknown) => {
+          const response = (isAxiosError<{ message?: string; error?: string; issues?: SubmissionValidationIssue[] }>(error) ? error.response?.data : undefined) as SubmissionValidationResponse | undefined
+          if ((isAxiosError(error) ? error.response?.status : undefined) === 422 && Array.isArray(response?.issues)) {
             setSubmissionValidation(response)
             return
           }
@@ -2089,7 +2157,7 @@ export default function SyllabusListPage() {
         } else {
           await syllabusPdfApi.downloadPreview(item.id, fallbackName)
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         const message =
           await getPdfDownloadErrorMessage(
             error,
@@ -2112,8 +2180,8 @@ export default function SyllabusListPage() {
       setDownloadingWordId(item.id)
       if (original) await syllabusWordApi.downloadOriginal(item.id)
       else await syllabusWordApi.downloadCurrent(item.id)
-    } catch (error: any) {
-      const blob = error?.response?.data
+    } catch (error: unknown) {
+      const blob = (isAxiosError<{ message?: string; error?: string; issues?: SubmissionValidationIssue[] }>(error) ? error.response?.data : undefined)
       let message = "Word export is available for syllabuses imported from a DOCX source."
       if (blob instanceof Blob) {
         try { message = JSON.parse(await blob.text())?.message || message } catch { /* keep fallback */ }
@@ -2170,13 +2238,13 @@ export default function SyllabusListPage() {
           : "Create, edit, submit, clone, and track syllabuses for your assigned courses."
 
   return (
-    <div className="min-h-screen -m-6 bg-[#f7faf9] p-6 text-slate-900 md:-m-10 md:p-8">
+    <div data-admin-page="SyllabusListPage" className="min-h-screen -m-6 bg-[#f7faf9] p-6 text-slate-900 md:-m-10 md:p-8">
       <div className="mx-auto max-w-[1550px] space-y-5">
         <section className="relative overflow-hidden rounded-2xl border border-[#d7e5e8] bg-white shadow-sm">
           <div className="absolute inset-x-0 top-0 h-[3px] bg-gradient-to-r from-[#007d84] via-[#15949a] to-[#f0a72f]" />
 
           <div className="flex flex-col gap-5 px-6 py-5 lg:flex-row lg:items-center lg:justify-between">
-            <div>
+            <div data-admin-page-header="SyllabusListPage">
               <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#708894]">
                 SCSE / Syllabus Management
               </p>
@@ -2191,22 +2259,6 @@ export default function SyllabusListPage() {
             </div>
 
             <div className="flex flex-wrap gap-2">
-              {isSystemAdmin && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="border-rose-200 text-rose-700 hover:bg-rose-50 hover:text-rose-800"
-                  disabled={!data?.length || deleteAllRunning}
-                  onClick={() => {
-                    setDeleteAllConfirmation("")
-                    setDeleteAllError("")
-                    setDeleteAllOpen(true)
-                  }}
-                >
-                  <Trash2 className="size-4" />
-                  Delete All Syllabi
-                </Button>
-              )}
               <Button
                 type="button"
                 variant="outline"
@@ -2378,15 +2430,36 @@ export default function SyllabusListPage() {
                 </p>
               </div>
 
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={resetFilters}
-              >
-                <RotateCcw className="size-4" />
-                Clear Filters
-              </Button>
+              <div className="flex flex-wrap items-center gap-2">
+  {isAdmin
+    && selectedProgramId
+    && selectedCohortId !== undefined
+    && selectedCohortForReset
+    && selectedCohortResetName && (
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className="border-rose-200 text-rose-700 hover:bg-rose-50 hover:text-rose-800"
+        onClick={() =>
+          setDeleteCohortDialogOpen(true)
+        }
+      >
+        <Trash2 className="size-4" />
+        Delete {selectedCohortResetName} Syllabi
+      </Button>
+    )}
+
+  <Button
+    type="button"
+    variant="outline"
+    size="sm"
+    onClick={resetFilters}
+  >
+    <RotateCcw className="size-4" />
+    Clear Filters
+  </Button>
+</div>
             </div>
           </div>
 
@@ -2407,7 +2480,7 @@ export default function SyllabusListPage() {
               />
             </div>
 
-            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            <div data-admin-filter className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
               <div className="space-y-1.5">
                 <label className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
                   Major
@@ -2437,10 +2510,10 @@ export default function SyllabusListPage() {
                           value={major.code}
                         >
                           {major.code}
-                          {normalize((major as any).name)
-                            ? ` — ${normalize((major as any).name)}`
-                            : normalize((major as any).nameVn)
-                              ? ` — ${normalize((major as any).nameVn)}`
+                          {normalize(major.name)
+                            ? ` — ${normalize(major.name)}`
+                            : normalize(major.nameVn)
+                              ? ` — ${normalize(major.nameVn)}`
                               : ""}
                         </SelectItem>
                       ),
@@ -2707,8 +2780,7 @@ export default function SyllabusListPage() {
 
                           <td className="px-4 py-4">
                             <span className="font-medium text-slate-700">
-                              {item.versionLabel
-                                || `v${item.versionNumber}`}
+                              {formatVersionLabel(item.versionNumber, item.versionLabel)}
                             </span>
 
                             {item.isCurrent && (
@@ -2789,9 +2861,7 @@ export default function SyllabusListPage() {
                                 </span>
                               </Button>
 
-                              {canViewApprovalHistory(
-                                item,
-                              ) && (
+                              {canViewApprovalHistory() && (
                                 <Button
                                   type="button"
                                   variant="outline"
@@ -2947,19 +3017,33 @@ export default function SyllabusListPage() {
                                   </Button>
 
                                   <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-8 w-8 p-0 text-rose-500 hover:bg-rose-50 hover:text-rose-600"
-                                    title={isAdmin ? "Delete syllabus" : "Delete draft"}
-                                    onClick={() =>
-                                      handleDelete(
-                                        item,
-                                      )
-                                    }
-                                  >
-                                    <Trash2 className="size-4" />
-                                  </Button>
+  type="button"
+  variant="ghost"
+  size="sm"
+  className="h-8 w-8 p-0 text-rose-500 hover:bg-rose-50 hover:text-rose-600"
+  title="Delete syllabus"
+  disabled={
+    deleteOneRunning
+    && deleteTarget?.syllabus.id
+      === item.id
+  }
+  onClick={() =>
+    openDeleteSyllabusDialog(
+      item,
+      displayCohort,
+    )
+  }
+>
+  {deleteOneRunning
+    && deleteTarget?.syllabus.id
+      === item.id
+    ? (
+      <LoaderCircle className="size-4 animate-spin" />
+    )
+    : (
+      <Trash2 className="size-4" />
+    )}
+</Button>
                                 </>
                               )}
                             </div>
@@ -3024,53 +3108,140 @@ export default function SyllabusListPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+<Dialog
+  open={deleteTarget !== null}
+  onOpenChange={(open) => {
+    if (deleteOneRunning) {
+      return
+    }
 
-      <Dialog
-        open={isSystemAdmin && deleteAllOpen}
-        onOpenChange={(open) => {
-          if (deleteAllRunning) return
-          setDeleteAllOpen(open)
-          if (!open) {
-            setDeleteAllConfirmation("")
-            setDeleteAllError("")
-          }
+    if (!open) {
+      setDeleteTarget(null)
+      setDeleteOneError("")
+    }
+  }}
+>
+  <DialogContent className="border-rose-200 bg-white sm:max-w-md">
+    <DialogHeader>
+      <DialogTitle className="flex items-center gap-2 text-rose-700">
+        <Trash2 className="size-5" />
+        Delete syllabus?
+      </DialogTitle>
+
+      <DialogDescription className="leading-6">
+        This deletes only the selected syllabus and its syllabus-owned data.
+        Other cohorts and syllabus versions will not be deleted.
+      </DialogDescription>
+    </DialogHeader>
+
+    {deleteTarget && (
+      <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
+        <div className="grid grid-cols-[120px_1fr] border-b border-slate-200 px-4 py-3">
+          <span className="text-xs font-semibold text-slate-500">
+            Course Code
+          </span>
+
+          <span className="font-mono text-sm font-bold text-slate-900">
+            {deleteTarget.syllabus.courseCode || "—"}
+          </span>
+        </div>
+
+        <div className="grid grid-cols-[120px_1fr] border-b border-slate-200 px-4 py-3">
+          <span className="text-xs font-semibold text-slate-500">
+            Cohort
+          </span>
+
+          <span className="text-sm font-medium text-slate-900">
+            {deleteTarget.cohort
+              || deleteTarget.syllabus.academicYear
+              || "—"}
+          </span>
+        </div>
+
+        <div className="grid grid-cols-[120px_1fr] px-4 py-3">
+          <span className="text-xs font-semibold text-slate-500">
+            Version
+          </span>
+
+          <span className="text-sm font-medium text-slate-900">
+            {formatVersionLabel(deleteTarget.syllabus.versionNumber, deleteTarget.syllabus.versionLabel)}
+          </span>
+        </div>
+      </div>
+    )}
+
+    <p className="text-xs leading-5 text-rose-600">
+      This action cannot be undone.
+    </p>
+
+    {deleteOneError && (
+      <p className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">
+        {deleteOneError}
+      </p>
+    )}
+
+    <DialogFooter>
+      <Button
+        type="button"
+        variant="outline"
+        disabled={deleteOneRunning}
+        onClick={() => {
+          setDeleteTarget(null)
+          setDeleteOneError("")
         }}
       >
-        <DialogContent className="border-rose-200 bg-white sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-rose-700">Delete all syllabuses?</DialogTitle>
-            <DialogDescription className="leading-6">
-              This permanently deletes every syllabus version and its CLOs, topics, assessments, readings, approvals, and import history. Courses, Programs, Cohorts, semesters, and curriculum relationships remain.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-2 py-2">
-            <label htmlFor="delete-all-syllabi-confirmation" className="text-xs font-semibold text-slate-700">
-              Type <span className="font-mono text-rose-700">DELETE ALL</span> to confirm
-            </label>
-            <Input
-              id="delete-all-syllabi-confirmation"
-              value={deleteAllConfirmation}
-              onChange={(event) => setDeleteAllConfirmation(event.target.value)}
-              disabled={deleteAllRunning}
-              autoComplete="off"
-              placeholder="DELETE ALL"
-            />
-            {deleteAllError && <p className="text-sm text-rose-600">{deleteAllError}</p>}
-          </div>
-          <DialogFooter>
-            <Button type="button" variant="outline" disabled={deleteAllRunning} onClick={() => setDeleteAllOpen(false)}>Cancel</Button>
-            <Button
-              type="button"
-              className="bg-rose-600 text-white hover:bg-rose-700"
-              disabled={deleteAllConfirmation !== "DELETE ALL" || deleteAllRunning}
-              onClick={handleDeleteAllSyllabi}
-            >
-              {deleteAllRunning ? <LoaderCircle className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
-              {deleteAllRunning ? "Deleting..." : "Delete Everything"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        Cancel
+      </Button>
+
+      <Button
+        type="button"
+        className="bg-rose-600 text-white hover:bg-rose-700"
+        disabled={!deleteTarget || deleteOneRunning}
+        onClick={() => void handleDeleteSyllabus()}
+      >
+        {deleteOneRunning
+          ? <LoaderCircle className="size-4 animate-spin" />
+          : <Trash2 className="size-4" />}
+
+        {deleteOneRunning
+          ? "Deleting..."
+          : "Delete Syllabus"}
+      </Button>
+    </DialogFooter>
+  </DialogContent>
+</Dialog>
+
+{isAdmin
+  && selectedProgramId
+  && selectedCohortId !== undefined
+  && selectedCohortForReset
+  && selectedCohortResetName && (
+    <DeleteCohortSyllabiDialog
+      open={deleteCohortDialogOpen}
+      onOpenChange={
+        setDeleteCohortDialogOpen
+      }
+      programId={
+        selectedProgramId
+      }
+      programLabel={
+        selectedProgramResetLabel
+      }
+      cohortId={
+        selectedCohortId
+      }
+      cohortName={
+        selectedCohortResetName
+      }
+      onDeleted={(deletedCount) => {
+        window.alert(
+          `Deleted ${deletedCount} syllabus record(s) from ${selectedCohortResetName}.`,
+        )
+
+        window.location.reload()
+      }}
+    />
+  )}
 
       {(isAdmin || isInstructor) && (
         <AddSyllabusDialog

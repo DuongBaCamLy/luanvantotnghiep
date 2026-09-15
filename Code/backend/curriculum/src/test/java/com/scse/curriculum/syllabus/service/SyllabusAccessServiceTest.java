@@ -156,7 +156,7 @@ class SyllabusAccessServiceTest {
         assertThat(authorization.creator()).isSameAs(instructorUser);
         assertThat(authorization.course()).isSameAs(assignedCourse);
         assertThat(authorization.academicYear()).isEqualTo("2026-2027");
-        assertThat(authorization.semester()).isEqualTo("HK1");
+        assertThat(authorization.semester()).isEqualTo("Semester 1");
         assertThat(authorization.assignments()).containsExactly(ownAssignment);
     }
 
@@ -235,6 +235,20 @@ class SyllabusAccessServiceTest {
         assertThatThrownBy(() -> service.assertCanModify(own))
                 .isInstanceOf(ForbiddenOperationException.class)
                 .hasMessageContaining("cannot edit");
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.CsvSource({
+        "ADMIN,STEP1_DEPT_HEAD", "DEAN,STEP1_DEPT_HEAD",
+        "ADMIN,STEP3_DEAN", "DEPT_HEAD,STEP3_DEAN"
+    })
+    void reviewStepRejectsOtherRoles(UserRole role, com.scse.curriculum.approval.entity.ApprovalStep step) {
+        when(currentUserService.getCurrentUser()).thenReturn(
+                UserAccount.builder().id(50).role(role).build());
+        ApprovalRequest request = ApprovalRequest.builder().step(step)
+                .syllabus(Syllabus.builder().id(500).course(assignedCourse).build()).build();
+        assertThatThrownBy(() -> service.assertCanReview(request))
+                .isInstanceOf(ForbiddenOperationException.class);
     }
 
     private ClassSection assignment(Instructor owner, Course course) {

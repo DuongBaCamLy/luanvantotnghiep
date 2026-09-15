@@ -4,7 +4,9 @@ package com.scse.curriculum.syllabus.importer.dto;
 import lombok.*;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 
 
@@ -23,6 +25,40 @@ public class SyllabusImportData {
     private String sourceCourseCode;
 
     private String sourceCourseName;
+    /**
+ * Canonical source-field provenance collected during import.
+ *
+ * Outer key = canonical template section key.
+ * Inner key = canonical field key inside that section.
+ *
+ * A nested map is required because field keys such as "name",
+ * "orderIndex", "resources", and "cloCode" can legitimately occur
+ * in more than one section.
+ *
+ * PARSED
+ *   Source exposes the value and the parser extracted it successfully.
+ *
+ * ABSENT_IN_SOURCE
+ *   The source does not provide a value for this canonical field.
+ *
+ * UNRESOLVED
+ *   The source appears to provide the field/value, but the parser could
+ *   not extract it reliably.
+ */
+@Builder.Default
+private Map<String, Map<String, SourceFieldProvenance>> sourceProvenance =
+        new LinkedHashMap<>();
+
+    /**
+     * Ordered comparison shape recognized from the uploaded template.
+     *
+     * The comparison UI must follow this structure instead of assuming a
+     * fixed template. Parsers should populate sections in source order and
+     * include only fields that are actually present/recognized.
+     */
+    @Builder.Default
+    private List<TemplateSection> templateSections =
+            new ArrayList<>();
 
 
 
@@ -208,6 +244,76 @@ public class SyllabusImportData {
     /*
      * Inner DTO
      */
+
+
+    /**
+     * Missing-state contract for one canonical source field.
+     */
+    public enum SourceFieldState {
+        PARSED,
+        ABSENT_IN_SOURCE,
+        UNRESOLVED
+    }
+
+
+    /**
+     * Provenance metadata for one canonical field.
+     *
+     * sourceLabel preserves the heading/label actually recognized from
+     * the uploaded source when available.
+     */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class SourceFieldProvenance {
+
+        @Builder.Default
+        private SourceFieldState state =
+                SourceFieldState.UNRESOLVED;
+
+        private String sourceLabel;
+    }
+    /**
+     * One field inside an uploaded-template comparison section.
+     *
+     * key   = canonical comparison field key
+     * label = source/canonical label shown in the comparison UI
+     */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class TemplateField {
+
+        private String key;
+
+        private String label;
+    }
+
+
+
+    /**
+     * One comparison section recognized from the uploaded template.
+     *
+     * The list order in SyllabusImportData.templateSections is the source
+     * template order. The fields list preserves the order recognized inside
+     * that section.
+     */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class TemplateSection {
+
+        private String key;
+
+        private String label;
+
+        @Builder.Default
+        private List<TemplateField> fields =
+                new ArrayList<>();
+    }
 
 
 

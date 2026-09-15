@@ -80,9 +80,10 @@ public class ClassSectionServiceImpl
         Syllabus syllabus = resolveOptionalSyllabus(
                 request.getSyllabusId(),
                 course,
-                request);
+                program,
+                cohort);
 
-        assertNoDuplicate(null, request);
+        assertNoDuplicate(null, request, course, program, cohort);
 
         ClassSection section = ClassSection.builder()
                 .course(course)
@@ -90,7 +91,11 @@ public class ClassSectionServiceImpl
                 .cohort(cohort)
                 .syllabus(syllabus)
                 .instructor(instructor)
-                .semester(request.getSemester() == null ? 1 : request.getSemester())
+                .semester(resolveAssignmentSemester(
+                        course,
+                        program,
+                        cohort,
+                        request.getSemester()))
                 .academicYear(defaultAcademicYear(request.getAcademicYear()))
                 .groupNumber(request.getGroupNumber() == null ? 1 : request.getGroupNumber())
                 .labGroup(request.getLabGroup())
@@ -149,9 +154,10 @@ public class ClassSectionServiceImpl
         Syllabus syllabus = resolveOptionalSyllabus(
                 request.getSyllabusId(),
                 course,
-                request);
+                program,
+                cohort);
 
-        assertNoDuplicate(id, request);
+        assertNoDuplicate(id, request, course, program, cohort);
 
         section.setCourse(course);
         section.setProgram(program);
@@ -160,7 +166,14 @@ public class ClassSectionServiceImpl
         section.setInstructor(instructor);
         // Course and Instructor are the assignment source of truth. Legacy
         // ClassSection metadata is preserved on edit, not re-entered by Admin.
-        if (request.getSemester() != null) section.setSemester(request.getSemester());
+        Integer resolvedSemester =
+                resolveAssignmentSemester(
+                        course,
+                        program,
+                        cohort,
+                        request.getSemester());
+
+        section.setSemester(resolvedSemester);
         if (request.getAcademicYear() != null && !request.getAcademicYear().isBlank()) {
             section.setAcademicYear(request.getAcademicYear().trim());
         }
@@ -522,7 +535,8 @@ public void delete(Integer id) {
     private Syllabus resolveOptionalSyllabus(
             Integer syllabusId,
             Course course,
-            CreateClassSectionRequest request) {
+            Program program,
+            Cohort cohort) {
 
         if (syllabusId == null) {
             return null;
@@ -535,6 +549,17 @@ public void delete(Integer id) {
                                 new ResourceNotFoundException(
                                         "Syllabus not found"));
 
+        /*
+         * A syllabus is identified by its curriculum context:
+         *
+         * Course + Program + Cohort + Semester
+         *
+         * ClassSection.academicYear is a teaching-term attribute
+         * such as "2026-2027". Syllabus.academicYear currently
+         * stores the curriculum Cohort name such as "CS2026".
+         *
+         * These values must NOT be compared with each other.
+         */
         if (syllabus.getCourse() == null
                 || !Objects.equals(
                         syllabus.getCourse().getId(),
@@ -545,34 +570,53 @@ public void delete(Integer id) {
                             + "môn học của phân công.");
         }
 
-        String requestedAcademicYear =
-                normalizeAcademicYear(
-                        request.getAcademicYear());
+        if (syllabus.getProgram() != null
+                && !syllabus.getProgram().isBlank()
+                && program != null
+                && program.getCode() != null
+                && !syllabus.getProgram()
+                        .trim()
+                        .equalsIgnoreCase(
+                                program.getCode().trim())) {
+
+            throw new IllegalArgumentException(
+                    "Đề cương được chọn không thuộc "
+                            + "chương trình đào tạo của phân công.");
+        }
 
         if (syllabus.getAcademicYear() != null
                 && !syllabus.getAcademicYear().isBlank()
-                && !syllabus
-                        .getAcademicYear()
+                && cohort != null
+                && cohort.getName() != null
+                && !syllabus.getAcademicYear()
                         .trim()
                         .equalsIgnoreCase(
-                                requestedAcademicYear)) {
+                                cohort.getName().trim())) {
 
             throw new IllegalArgumentException(
-                    "Năm học của đề cương không khớp "
-                            + "với năm học phân công.");
+                    "Đề cương được chọn không thuộc "
+                            + "khóa tuyển sinh của phân công.");
         }
 
         Integer syllabusSemester =
-                parseSemester(syllabus.getSemester());
+                parseSemester(
+                        syllabus.getSemester());
+
+        Integer curriculumSemester =
+                resolveCurriculumSemester(
+                        course,
+                        program,
+                        cohort);
 
         if (syllabusSemester != null
+                && curriculumSemester != null
                 && !Objects.equals(
                         syllabusSemester,
-                        request.getSemester())) {
+                        curriculumSemester)) {
 
             throw new IllegalArgumentException(
                     "Học kỳ của đề cương không khớp "
-                            + "với học kỳ phân công.");
+                            + "với học kỳ trong chương trình đào tạo.");
         }
 
         return syllabus;
@@ -583,25 +627,76 @@ public void delete(Integer id) {
      * DUPLICATE VALIDATION
      * =====================================================
      */
-
     private void assertNoDuplicate(
             Integer currentId,
-            CreateClassSectionRequest request) {
+            CreateClassSectionRequest request,
+            Course course,
+            Program program,
+            Cohort cohort) {
 
-        long duplicateCount = repository.findByCourse_Id(request.getCourseId())
-                .stream()
-                .filter(section -> !Objects.equals(section.getId(), currentId))
-                .filter(section -> section.getInstructor() != null
-                        && Objects.equals(section.getInstructor().getId(), request.getInstructorId()))
-                .count();
+        Integer effectiveSemester =
+                resolveAssignmentSemester(
+                        course,
+                        program,
+                        cohort,
+                        request.getSemester());
+
+        String effectiveAcademicYear =
+                defaultAcademicYear(
+                        request.getAcademicYear());
+
+        Integer effectiveGroupNumber =
+                request.getGroupNumber() == null
+                        ? 1
+                        : request.getGroupNumber();
+
+        long duplicateCount =
+                repository.findByCourse_Id(course.getId())
+                        .stream()
+                        .filter(section ->
+                                !Objects.equals(
+                                        section.getId(),
+                                        currentId))
+                        .filter(section ->
+                                section.getProgram() != null
+                                        && Objects.equals(
+                                                section.getProgram().getId(),
+                                                program.getId()))
+                        .filter(section ->
+                                section.getCohort() != null
+                                        && Objects.equals(
+                                                section.getCohort().getId(),
+                                                cohort.getId()))
+                        .filter(section ->
+                                section.getInstructor() != null
+                                        && Objects.equals(
+                                                section.getInstructor().getId(),
+                                                request.getInstructorId()))
+                        .filter(section ->
+                                Objects.equals(
+                                        section.getSemester(),
+                                        effectiveSemester))
+                        .filter(section ->
+                                section.getAcademicYear() != null
+                                        && section.getAcademicYear()
+                                                .trim()
+                                                .equalsIgnoreCase(
+                                                        effectiveAcademicYear))
+                        .filter(section ->
+                                Objects.equals(
+                                        section.getGroupNumber(),
+                                        effectiveGroupNumber))
+                        .count();
 
         if (duplicateCount > 0) {
             throw new IllegalStateException(
-                    "Giảng viên này đã được phân công cho môn học.");
+                    "Teaching assignment already exists "
+                            + "for this Course, Program, Cohort, "
+                            + "Instructor, Semester, Academic Year, "
+                            + "and Group.");
         }
     }
-
-    private String defaultAcademicYear(String value) {
+private String defaultAcademicYear(String value) {
         return value == null || value.isBlank() ? "COURSE_ASSIGNMENT" : value.trim();
     }
 
@@ -699,5 +794,56 @@ public void delete(Integer id) {
                                 section.getIsActive())
                                 && syllabus == null)
                 .build();
+    }
+
+    private Integer resolveAssignmentSemester(
+            Course course,
+            Program program,
+            Cohort cohort,
+            Integer requestedSemester) {
+
+        if (course != null
+                && program != null
+                && cohort != null) {
+
+            Integer curriculumSemester =
+                    courseProgramRepository
+                            .findByCourse_IdAndProgram_IdAndCohort_Id(
+                                    course.getId(),
+                                    program.getId(),
+                                    cohort.getId())
+                            .map(item ->
+                                    item.getSemesterSuggest())
+                            .orElse(null);
+
+            if (curriculumSemester != null) {
+                return curriculumSemester;
+            }
+        }
+
+        return requestedSemester == null
+                ? 1
+                : requestedSemester;
+    }
+
+    private Integer resolveCurriculumSemester(
+            Course course,
+            Program program,
+            Cohort cohort) {
+
+        if (course == null
+                || program == null
+                || cohort == null) {
+            return null;
+        }
+
+        return courseProgramRepository
+                .findByCourse_IdAndProgram_IdAndCohort_Id(
+                        course.getId(),
+                        program.getId(),
+                        cohort.getId())
+                .map(item ->
+                        item.getSemesterSuggest())
+                .orElse(null);
     }
 }

@@ -430,6 +430,11 @@ public class SyllabusAccessService {
         if (approval == null || approval.getSyllabus() == null) {
             throw new ForbiddenOperationException("The approval request is invalid.");
         }
+        if (approval.getStep() == ApprovalStep.STEP1_DEPT_HEAD
+                && user.getRole() != UserRole.DEPT_HEAD) {
+            throw new ForbiddenOperationException(
+                    "Only the Head of Department may perform Department syllabus approval.");
+        }
         if (approval.getStep() == ApprovalStep.STEP3_DEAN
                 && user.getRole() != UserRole.DEAN) {
             throw new ForbiddenOperationException(
@@ -652,7 +657,7 @@ private String canonicalSemester(Integer semester) {
                 "The assignment semester is invalid.");
     }
 
-    return "HK" + semester;
+    return "Semester " + semester;
 }
 
 private String requireSemesterText(String value) {
