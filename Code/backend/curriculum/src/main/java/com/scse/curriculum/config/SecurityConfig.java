@@ -3,6 +3,7 @@ package com.scse.curriculum.config;
 import com.scse.curriculum.auth.security.JwtAuthFilter;
 import com.scse.curriculum.user.service.CustomUserDetailsService;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -32,15 +33,19 @@ public class SecurityConfig {
     private final CustomUserDetailsService customUserDetailsService;
     private final JwtAuthFilter jwtAuthFilter;
     private final HttpsSecurityConfig httpsSecurityConfig;
+    private final List<String> corsAllowedOrigins;
 
     public SecurityConfig(
             CustomUserDetailsService customUserDetailsService,
             JwtAuthFilter jwtAuthFilter,
-            HttpsSecurityConfig httpsSecurityConfig) {
+            HttpsSecurityConfig httpsSecurityConfig,
+            @Value("${app.cors.allowed-origins:http://localhost:5173}")
+            List<String> corsAllowedOrigins) {
 
         this.customUserDetailsService = customUserDetailsService;
         this.jwtAuthFilter = jwtAuthFilter;
         this.httpsSecurityConfig = httpsSecurityConfig;
+        this.corsAllowedOrigins = corsAllowedOrigins;
     }
 
     @Bean
@@ -245,13 +250,12 @@ public class SecurityConfig {
                 new CorsConfiguration();
 
         /*
-         * Frontend development server
+         * Local development defaults to the Vite dev server.
+         * Deployments set APP_CORS_ALLOWED_ORIGINS to the URL the
+         * browser actually uses, e.g. http://10.8.102.56:8088
+         * (comma-separated when there is more than one).
          */
-        config.setAllowedOrigins(
-                List.of(
-                        "http://localhost:5173"
-                )
-        );
+        config.setAllowedOrigins(corsAllowedOrigins);
 
         config.setAllowedMethods(
                 List.of(
