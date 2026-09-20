@@ -3,6 +3,7 @@ package com.scse.curriculum.config;
 import com.scse.curriculum.auth.security.JwtAuthFilter;
 import com.scse.curriculum.user.service.CustomUserDetailsService;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -23,6 +24,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import java.util.Arrays;
 import java.util.List;
 
 @Configuration
@@ -32,6 +34,9 @@ public class SecurityConfig {
     private final CustomUserDetailsService customUserDetailsService;
     private final JwtAuthFilter jwtAuthFilter;
     private final HttpsSecurityConfig httpsSecurityConfig;
+
+    @Value("${APP_CORS_ALLOWED_ORIGINS:http://localhost:5173}")
+    private String allowedOrigins;
 
     public SecurityConfig(
             CustomUserDetailsService customUserDetailsService,
@@ -248,9 +253,10 @@ public class SecurityConfig {
          * Frontend development server
          */
         config.setAllowedOrigins(
-                List.of(
-                        "http://localhost:5173"
-                )
+                Arrays.stream(allowedOrigins.split(","))
+                        .map(String::trim)
+                        .filter(origin -> !origin.isEmpty())
+                        .toList()
         );
 
         config.setAllowedMethods(
