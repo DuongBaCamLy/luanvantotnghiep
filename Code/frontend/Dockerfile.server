@@ -5,6 +5,8 @@ COPY package*.json ./
 RUN npm ci
 
 COPY . .
+# ImportSyllabusDialog imports ../../../../templates/*.xlsx, which resolves to /templates
+COPY --from=templates . /templates
 
 ARG VITE_API_BASE_URL=/
 ARG VITE_GOOGLE_CLIENT_ID=
