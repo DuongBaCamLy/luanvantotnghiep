@@ -8,19 +8,47 @@ export interface SyllabusImportTemplateSection {
         | "general"
         | "workloadCredit"
         | "requirements"
+        | "objectives"
         | "clo"
         | "content"
         | "topicClo"
         | "cloPlo"
+        | "cloLlo"
         | "plannedActivities"
         | "assessment"
         | "assessmentClo"
+        | "rubrics"
         | "examination"
+        | "studyRequirements"
         | "readings"
         | "revision";
 
     label:string;
     fields:SyllabusImportTemplateField[];
+}
+
+export type SyllabusImportSourceFieldState =
+  | "PARSED"
+  | "ABSENT_IN_SOURCE"
+  | "UNRESOLVED"
+
+export interface SyllabusImportSourceFieldProvenance {
+  state: SyllabusImportSourceFieldState
+  sourceLabel?: string | null
+}
+
+export interface SyllabusImportRubricCriteriaItem {
+  criterion?: string
+  level1?: string
+  level2?: string
+  level3?: string
+  level4?: string
+}
+
+export interface SyllabusImportRubricItem {
+  type?: string
+  title?: string
+  criteria?: SyllabusImportRubricCriteriaItem[]
 }
 
 export interface CloImportData {
@@ -234,6 +262,10 @@ export interface SyllabusImportData {
     templateSections?:SyllabusImportTemplateSection[];
 
 
+    sourceProvenance?: Record<
+      string,
+      Record<string, SyllabusImportSourceFieldProvenance>
+    >;
     sourceCourseCode?:string;
 
 
@@ -312,6 +344,8 @@ export interface SyllabusImportData {
 
 
 
+
+    rubricItems?:SyllabusImportRubricItem[];
     clos:CloImportData[];
 
 
@@ -405,6 +439,8 @@ export interface BulkSyllabusImportPreviewResponse {
   syllabusCount: number
   sourceDocumentId?: number
   sourceType?: "PDF" | "DOCX"
+  targetTemplateProfile?: string
+  targetTemplateSections?: SyllabusImportTemplateSection[]
   items: BulkSyllabusImportItem[]
 }
 

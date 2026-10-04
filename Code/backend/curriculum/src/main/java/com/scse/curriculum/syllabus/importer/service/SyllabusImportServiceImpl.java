@@ -1,7 +1,7 @@
 package com.scse.curriculum.syllabus.importer.service;
 
 import com.scse.curriculum.syllabus.entity.SyllabusVersion;
-
+import com.scse.curriculum.syllabus.template.TargetTemplateProfileResolver;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -16,6 +16,7 @@ import com.scse.curriculum.courseprogram.entity.CurriculumTerm;
 import com.scse.curriculum.courseprogram.repository.CourseProgramRepository;
 import com.scse.curriculum.coursetype.repository.CourseTypeRepository;
 import com.scse.curriculum.cohort.repository.CohortRepository;
+import com.scse.curriculum.cohort.service.CohortOperationalGuard;
 import com.scse.curriculum.program.repository.ProgramRepository;
 import com.scse.curriculum.clo.entity.BloomLevel;
 import com.scse.curriculum.clo.entity.CompetencyLevel;
@@ -107,6 +108,7 @@ public class SyllabusImportServiceImpl
     private final CourseProgramRepository courseProgramRepository;
     private final CourseTypeRepository courseTypeRepository;
     private final CohortRepository cohortRepository;
+    private final CohortOperationalGuard cohortOperationalGuard;
     private final ProgramRepository programRepository;
     private final PloRepository ploRepository;
     private final CloPloMappingRepository cloPloMappingRepository;
@@ -117,7 +119,7 @@ public class SyllabusImportServiceImpl
     private final SourceDocumentRepository sourceDocumentRepository;
     private final SyllabusSourceSnapshotRepository sourceSnapshotRepository;
     private final CurrentUserService currentUserService;
-
+private final TargetTemplateProfileResolver targetTemplateProfileResolver;
     /**
      * =====================================================
      * PREVIEW IMPORT
@@ -138,6 +140,15 @@ public class SyllabusImportServiceImpl
                     .orElseThrow(() -> new IllegalArgumentException(
                             "Unsupported syllabus file. Upload a DOCX, XLSX, or PDF file."));
             SyllabusImportData data = parser.parse(file.getInputStream(), issues);
+
+            /*
+             * Populate review-only SOURCE provenance after parsing has
+             * completed templateSections. This metadata does not alter
+             * semantic syllabus content or persistence.
+             */
+            data.setSourceProvenance(
+                    SyllabusSourceProvenanceResolver.resolve(
+                            data));
 
             return SyllabusImportPreviewResponse.builder()
 
@@ -211,6 +222,8 @@ public class SyllabusImportServiceImpl
     @Override
     public BulkSyllabusImportPreviewResponse previewBulk(
             MultipartFile file, Integer programId, Integer cohortId) {
+        cohortOperationalGuard.requireActive(cohortId);
+
         try {
             if (file == null || file.isEmpty()) throw new IllegalArgumentException("The program document is empty.");
             if (file.getSize() > 200L * 1024 * 1024) throw new IllegalArgumentException("The program document exceeds 200 MB.");
@@ -305,12 +318,28 @@ public class SyllabusImportServiceImpl
                             "Bulk programme import scope filter skipped because no reliable curriculum course-list table was found.");
                 }
             }
-
+String targetTemplateProfile =
+        targetTemplateProfileResolver.resolve(cohort);
+List<SyllabusImportData.TemplateSection> targetTemplateSections =
+        resolveTargetTemplateSections(targetTemplateProfile);
             SourceDocument source=sourceDocumentRepository.save(SourceDocument.builder()
                     .originalFilename(filename).contentType(file.getContentType()).fileSize(file.getSize())
                     .sha256(sha256(content)).uploadedAt(LocalDateTime.now()).uploadedBy(currentUserService.getCurrentUser())
                     .program(program).cohort(cohort).content(content).build());
             List<BulkSyllabusImportItem> items = parsedItems.stream().map(section -> {
+                /*
+                 * SOURCE provenance belongs to this parsed source syllabus.
+                 * It is intentionally independent from targetTemplateSections.
+                 */
+                SyllabusImportData itemData =
+                        section.data();
+
+                if (itemData != null) {
+                    itemData.setSourceProvenance(
+                            SyllabusSourceProvenanceResolver.resolve(
+                                    itemData));
+                }
+
                 List<SyllabusImportIssue> issues = section.issues();
                 int errors = (int) issues.stream()
                         .filter(issue -> "ERROR".equalsIgnoreCase(issue.getSeverity())).count();
@@ -322,7 +351,7 @@ public class SyllabusImportServiceImpl
                         .valid(errors == 0)
                         .errorCount(errors)
                         .warningCount(warnings)
-                        .data(section.data())
+                        .data(itemData)
                         .issues(issues)
                         .build();
                 SyllabusSourceSnapshot snapshot=null;
@@ -341,15 +370,166 @@ public class SyllabusImportServiceImpl
                         .build();
             }).toList();
             return BulkSyllabusImportPreviewResponse.builder()
-                    .fileName(filename)
-                    .pageCount(parsed.unitCount())
-                    .syllabusCount(items.size())
-                    .sourceDocumentId(source.getId()).sourceType(sourceType)
-                    .items(items)
-                    .build();
+        .fileName(filename)
+        .pageCount(parsed.unitCount())
+        .syllabusCount(items.size())
+        .sourceDocumentId(source.getId())
+        .sourceType(sourceType)
+        .targetTemplateProfile(targetTemplateProfile)
+        .targetTemplateSections(targetTemplateSections)
+        .items(items)
+        .build();
         } catch (Exception exception) {
             throw new IllegalArgumentException("Cannot extract the program document: " + exception.getMessage(), exception);
         }
+    }
+
+
+    /**
+     * Returns the ordered TARGET template structure.
+     *
+     * SOURCE_TEMPLATE intentionally returns an empty list so all existing
+     * cohorts continue using SyllabusImportData.templateSections exactly
+     * as before.
+     */
+    private List<SyllabusImportData.TemplateSection> resolveTargetTemplateSections(
+            String targetTemplateProfile) {
+
+        if (!"NEW_2027".equals(targetTemplateProfile)) {
+            return List.of();
+        }
+
+        return List.of(
+                targetSection(
+                        "general",
+                        "1. General Information",
+                        targetField("courseCode", "Course Code"),
+                        targetField("courseName", "Course Name"),
+                        targetField("courseDesignation", "Course Designation"),
+                        targetField("courseTypes", "Course Type"),
+                        targetField("semester", "Semester"),
+                        targetField("personResponsible", "Person Responsible"),
+                        targetField("language", "Language"),
+                        targetField("relation", "Relation to Curriculum"),
+                        targetField("teachingMethods", "Teaching Methods"),
+                        targetField("workloadTotal", "Total Workload"),
+                        targetField("workloadContact", "Contact Hours"),
+                        targetField("workloadPrivate", "Self-study Hours"),
+                        targetField("creditPoints", "Credit Points"),
+                        targetField("lectureCredits", "Theory / Lecture Credits"),
+                        targetField("laboratoryCredits", "Practice / Laboratory Credits"),
+                        targetField("prerequisites", "Prerequisites")),
+
+                targetSection(
+                        "objectives",
+                        "2. Course Objectives",
+                        targetField("objectives", "Course Objectives")),
+
+                targetSection(
+                        "clo",
+                        "3. Course Learning Outcomes (CLO)",
+                        targetField("competencyLevel", "Competency Level"),
+                        targetField("code", "CLO Code"),
+                        targetField("descriptionVn", "CLO — Vietnamese"),
+                        targetField("description", "CLO — English"),
+                        targetField("mappedPloCodes", "Mapped PLOs")),
+
+                targetSection(
+                        "content",
+                        "4. Course Content",
+                        targetField("nameVn", "Topic — Vietnamese"),
+                        targetField("name", "Topic — English"),
+                        targetField("contentWeight", "Weight"),
+                        targetField("contentLevel", "Level (I/T/U)"),
+                        targetField("cloCodes", "Related CLOs")),
+
+                targetSection(
+                        "cloPlo",
+                        "5. Course CLO–PLO Alignment",
+                        targetField("ploCode", "PLO"),
+                        targetField("ploGroup", "PLO Group"),
+                        targetField("ploDescription", "PLO Description"),
+                        targetField("cloCodes", "Contributing CLOs")),
+
+                targetSection(
+                        "cloLlo",
+                        "6. Detailed CLO–LLO Table",
+                        targetField("unit", "Unit"),
+                        targetField("lloCode", "LLO Code"),
+                        targetField("cloCode", "Related CLO"),
+                        targetField("descriptionVn", "LLO — Vietnamese"),
+                        targetField("description", "LLO — English")),
+
+                targetSection(
+                        "examination",
+                        "7. Examination Forms",
+                        targetField("examForms", "Examination Forms")),
+
+                targetSection(
+                        "studyRequirements",
+                        "8. Study and Examination Requirements",
+                        targetField("examRequirements", "Study / Examination Requirements"),
+                        targetField("assessmentPassNote", "Passing Requirement")),
+
+                targetSection(
+                        "plannedActivities",
+                        "9. Planned Learning Activities and Teaching Methods",
+                        targetField("week", "Week"),
+                        targetField("topic", "Topic"),
+                        targetField("clo", "CLO"),
+                        targetField("learningActivities", "Activities"),
+                        targetField("assessments", "Assessment"),
+                        targetField("resources", "Resources")),
+
+                targetSection(
+                        "assessment",
+                        "10. Assessment Plan",
+                        targetField("name", "Assessment"),
+                        targetField("weightPercent", "Weight (%)"),
+                        targetField("cloCode", "CLO"),
+                        targetField("contributionPercent", "Contribution (%)")),
+
+                targetSection(
+                        "rubrics",
+                        "11. Assignment Description and Rubric Summary",
+                        targetField("type", "Rubric Type"),
+                        targetField("title", "Title"),
+                        targetField("criterion", "Criterion"),
+                        targetField("level1", "Level 1"),
+                        targetField("level2", "Level 2"),
+                        targetField("level3", "Level 3"),
+                        targetField("level4", "Level 4")),
+
+                targetSection(
+                        "readings",
+                        "12. Reading List",
+                        targetField("title", "Title"),
+                        targetField("author", "Author"),
+                        targetField("year", "Publication Year"),
+                        targetField("publisher", "Publisher"),
+                        targetField("type", "Usage Type")));
+    }
+
+    private SyllabusImportData.TemplateSection targetSection(
+            String key,
+            String label,
+            SyllabusImportData.TemplateField... fields) {
+
+        return SyllabusImportData.TemplateSection.builder()
+                .key(key)
+                .label(label)
+                .fields(List.of(fields))
+                .build();
+    }
+
+    private SyllabusImportData.TemplateField targetField(
+            String key,
+            String label) {
+
+        return SyllabusImportData.TemplateField.builder()
+                .key(key)
+                .label(label)
+                .build();
     }
 
     private String sanitizeFilename(String value) {
@@ -370,6 +550,8 @@ public class SyllabusImportServiceImpl
     @Override
     public SyllabusResponse confirm(
             ConfirmSyllabusImportRequest request) {
+        cohortOperationalGuard.requireActive(request.getCohortId());
+
         Course requestedCourse = courseRepository.findById(request.getCourseId())
                 .orElseThrow(() -> new IllegalArgumentException("Course not found"));
         SyllabusAccessService.CreationAuthorization authorization =
@@ -402,41 +584,96 @@ public class SyllabusImportServiceImpl
                 request.getProgramId(),
                 request.getCohortId());
 
-        Integer nextVersion = 1;
-        Syllabus syllabus = Syllabus.builder()
+                boolean updateMode =
+                "UPDATE".equalsIgnoreCase(
+                        request.getImportMode() == null
+                                ? ""
+                                : request.getImportMode().trim());
 
-.createdBy(currentUser)
+        CourseProgram updateTarget = null;
+        Syllabus syllabus;
 
-.versionNumber(nextVersion)
+        if (updateMode) {
 
-        .versionLabel(
-                SyllabusVersion.format(nextVersion)
-        )
+            updateTarget =
+                    courseProgramRepository
+                            .findByCourse_IdAndProgram_IdAndCohort_Id(
+                                    effectiveCourse.getId(),
+                                    request.getProgramId(),
+                                    request.getCohortId())
+                            .orElseThrow(() ->
+                                    new IllegalStateException(
+                                            "UPDATE import requires an existing CourseProgram."));
 
-        .sourceType(
+            syllabus = updateTarget.getSyllabus();
+
+            if (syllabus == null) {
+                throw new IllegalStateException(
+                        "UPDATE import requires an existing syllabus.");
+            }
+
+            if (syllabus.getCourse() == null
+                    || !Objects.equals(
+                            syllabus.getCourse().getId(),
+                            effectiveCourse.getId())) {
+
+                throw new IllegalStateException(
+                        "UPDATE import target does not match the imported course.");
+            }
+
+            if (syllabus.getStatus()
+                            != com.scse.curriculum.syllabus.entity.SyllabusStatus.DRAFT
+                    && syllabus.getStatus()
+                            != com.scse.curriculum.syllabus.entity.SyllabusStatus.REVISION_REQUESTED) {
+
+                throw new IllegalStateException(
+                        "UPDATE import is allowed only for DRAFT or REVISION_REQUESTED syllabuses.");
+            }
+
+            boolean hasStructuredContent =
+                    (syllabus.getClos() != null
+                            && !syllabus.getClos().isEmpty())
+                    || (syllabus.getTopics() != null
+                            && !syllabus.getTopics().isEmpty())
+                    || (syllabus.getAssessments() != null
+                            && !syllabus.getAssessments().isEmpty())
+                    || (syllabus.getReferences() != null
+                            && !syllabus.getReferences().isEmpty());
+
+            if (hasStructuredContent) {
+                throw new IllegalStateException(
+                        "UPDATE import repair is allowed only for an empty syllabus draft.");
+            }
+
+        } else {
+
+            Integer nextVersion = 1;
+
+            syllabus =
+                    Syllabus.builder()
+                            .createdBy(currentUser)
+                            .versionNumber(nextVersion)
+                            .versionLabel(
+                                    SyllabusVersion.format(nextVersion))
+                            .isCurrent(Boolean.FALSE)
+                            .build();
+
+            syllabus.setCourse(effectiveCourse);
+        }
+
+        syllabus.setSourceType(
                 detectSourceType(
-                        request.getOriginalFileType(), request.getOriginalFileName()
-                )
-        )
+                        request.getOriginalFileType(),
+                        request.getOriginalFileName()));
 
-.importStatus(
-        SyllabusImportStatus.CONFIRMED
-)
+        syllabus.setImportStatus(
+                SyllabusImportStatus.CONFIRMED);
 
-.isCurrent(Boolean.FALSE)
+        syllabus.setOriginalFileName(
+                request.getOriginalFileName());
 
-.originalFileName(
-        request.getOriginalFileName()
-)
-
-.originalFileType(
-        request.getOriginalFileType()
-)
-
-.build();
-
-        // THÊM ĐOẠN NÀY Ở ĐÂY
-        syllabus.setCourse(effectiveCourse);
+        syllabus.setOriginalFileType(
+                request.getOriginalFileType());
 
         SyllabusImportData data = request.getData();
         syllabus.setAcademicYear(cohortRepository.findById(request.getCohortId())
@@ -488,12 +725,14 @@ CourseProgram requestedSelection =
  * courseProgramId, but an exact CourseProgram already exists.
  */
 CourseProgram scoped =
-        courseProgramRepository
-                .findByCourse_IdAndProgram_IdAndCohort_Id(
-                        effectiveCourse.getId(),
-                        request.getProgramId(),
-                        request.getCohortId())
-                .orElse(null);
+        updateMode
+                ? updateTarget
+                : courseProgramRepository
+                        .findByCourse_IdAndProgram_IdAndCohort_Id(
+                                effectiveCourse.getId(),
+                                request.getProgramId(),
+                                request.getCohortId())
+                        .orElse(null);
 
 /*
  * Semester resolution order:
@@ -574,7 +813,14 @@ if (scoped.getCohort() != null && scoped.getProgram() != null) {
     syllabus.setProgram(scoped.getProgram().getCode());
     syllabus.setSemester(scoped.getSemesterSuggest() == null ? null : "Semester " + scoped.getSemesterSuggest());
 }
-syllabusIdentityService.assertAvailable(syllabus.getCourse(), syllabus.getProgram(), syllabus.getAcademicYear(), syllabus.getSemester(), null);
+syllabusIdentityService.assertAvailable(
+        syllabus.getCourse(),
+        syllabus.getProgram(),
+        syllabus.getAcademicYear(),
+        syllabus.getSemester(),
+        updateMode
+                ? syllabus.getId()
+                : null);
 syllabusRepository.saveAndFlush(syllabus);
         importClos(
                 syllabus,
@@ -622,6 +868,8 @@ return mapToResponse(
 
     @Override
     public SyllabusResponse confirmBulkItem(BulkConfirmSyllabusImportRequest request) {
+        cohortOperationalGuard.requireActive(request.getCohortId());
+
         programRepository.findById(request.getProgramId())
                 .orElseThrow(() -> new IllegalArgumentException("Program not found"));
         cohortRepository.findById(request.getCohortId())
@@ -1350,6 +1598,8 @@ private Integer resolveTemporarySemester(
     public CloPloReconciliationResponse reconcileCloPloMappings(
             Integer programId,
             Integer cohortId) {
+        cohortOperationalGuard.requireActive(cohortId);
+
         programRepository.findById(programId)
                 .orElseThrow(() -> new IllegalArgumentException("Program not found"));
         cohortRepository.findById(cohortId)

@@ -132,11 +132,19 @@ private final SyllabusService syllabusService;
 
         List<UserAccount> deans = List.of();
         if (!isRejected && currentStep == ApprovalStep.STEP1_DEPT_HEAD) {
-            deans = userRepository.findByRoleAndIsActiveTrue(UserRole.DEAN);
+            deans = java.util.stream.Stream.concat(
+        userRepository
+                .findByRoleAndIsActiveTrue(UserRole.DEAN)
+                .stream(),
+        userRepository
+                .findByRoleAndIsActiveTrue(
+                        UserRole.DEAN_SECRETARY)
+                .stream()
+).distinct().toList();
             if (deans.isEmpty()) {
-                throw new IllegalStateException(
-                        "Chưa có tài khoản Trưởng khoa đang hoạt động để nhận đề cương.");
-            }
+    throw new IllegalStateException(
+            "No active Dean or Dean Secretary account is available for final review.");
+}
         }
 
         /*

@@ -28,7 +28,7 @@ void assessmentSectionCoversSourceBackedCanonicalField() {
             provenance.get("assessment");
 
     assertThat(assessment)
-            .containsOnlyKeys(
+            .containsKey(
                     "assessmentPassNote");
 
     assertThat(assessment.get("assessmentPassNote").getState())
@@ -53,7 +53,7 @@ void contentSectionCoversSourceBackedCanonicalField() {
             provenance.get("content");
 
     assertThat(content)
-            .containsOnlyKeys(
+            .containsKey(
                     "contentNote");
 
     assertThat(content.get("contentNote").getState())

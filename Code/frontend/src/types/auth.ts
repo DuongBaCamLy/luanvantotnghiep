@@ -1,6 +1,7 @@
 export type UserRole =
   | "ADMIN"
   | "DEAN"
+  | "DEAN_SECRETARY"
   | "DEPT_HEAD"
   | "INSTRUCTOR"
 
@@ -20,7 +21,6 @@ export interface LoginResponse {
   username: string
   email: string
   role: UserRole
-  instructorId: number | null
 }
 
 export interface AuthUser {
@@ -28,7 +28,6 @@ export interface AuthUser {
   username: string
   email: string
   role: UserRole
-  instructorId: number | null
 }
 
 export interface ForgotPasswordRequest {

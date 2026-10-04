@@ -29,8 +29,6 @@ import com.scse.curriculum.deadline.entity.SyllabusDeadline;
 import com.scse.curriculum.deadline.repository.SyllabusDeadlineRepository;
 import com.scse.curriculum.deadline.service.DeadlineReminderProperties;
 import com.scse.curriculum.department.entity.Department;
-import com.scse.curriculum.instructor.entity.Instructor;
-import com.scse.curriculum.instructor.repository.InstructorRepository;
 import com.scse.curriculum.syllabus.entity.Syllabus;
 import com.scse.curriculum.syllabus.entity.SyllabusStatus;
 import com.scse.curriculum.user.entity.UserAccount;
@@ -65,7 +63,6 @@ public class FacultyDashboardQueryService {
 
     private final CurrentUserService currentUserService;
     private final UserAccountRepository userAccountRepository;
-    private final InstructorRepository instructorRepository;
     private final ClassSectionRepository classSectionRepository;
     private final SyllabusDeadlineRepository syllabusDeadlineRepository;
     private final DeadlineReminderProperties deadlineReminderProperties;
@@ -101,18 +98,20 @@ public class FacultyDashboardQueryService {
     }
 
     private DashboardFacultyResponse buildDashboard(UserAccount facultyUser) {
-        if (facultyUser.getInstructorId() == null) {
-            throw new ForbiddenOperationException(
-                    "Tài khoản giảng viên chưa liên kết hồ sơ Instructor.");
-        }
+    if (facultyUser == null || facultyUser.getId() == null) {
+        throw new ForbiddenOperationException(
+                "Invalid instructor account.");
+    }
 
-        Instructor instructor = instructorRepository
-                .findById(facultyUser.getInstructorId())
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Không tìm thấy hồ sơ giảng viên đã liên kết."));
+    if (facultyUser.getRole() != UserRole.INSTRUCTOR) {
+        throw new ForbiddenOperationException(
+                "The selected account is not an Instructor.");
+    }
 
-        List<ClassSection> assignments = classSectionRepository
-                .findActiveByInstructorId(instructor.getId());
+    List<ClassSection> assignments =
+            classSectionRepository
+                    .findActiveByInstructorUserId(
+                            facultyUser.getId());
 
         Map<TermKey, SyllabusDeadline> deadlinesByTerm =
                 syllabusDeadlineRepository
@@ -155,10 +154,33 @@ public class FacultyDashboardQueryService {
 
         DashboardFacultyResponse response = new DashboardFacultyResponse();
         response.setFacultyUserId(facultyUser.getId());
-        response.setInstructorId(instructor.getId());
-        response.setInstructorName(instructor.getFullName());
-        response.setStaffCode(instructor.getStaffCode());
-        Department department = instructor.getDepartment();
+
+        /*
+         * Transitional response compatibility:
+         * the dashboard DTO still exposes legacy-named instructor fields,
+         * but the source of truth is now UserAccount.
+         */
+        response.setInstructorId(facultyUser.getId());
+        response.setInstructorName(
+                facultyUser.getFullName() == null
+                        || facultyUser.getFullName().isBlank()
+                        ? facultyUser.getUsername()
+                        : facultyUser.getFullName());
+        response.setStaffCode(null);
+
+        /*
+         * UserAccount no longer depends on an Instructor Profile.
+         * Department information, when available, is derived from an
+         * assigned course instead of an Instructor entity.
+         */
+        Department department = assignments.stream()
+                .map(ClassSection::getCourse)
+                .filter(Objects::nonNull)
+                .map(Course::getDepartment)
+                .filter(Objects::nonNull)
+                .findFirst()
+                .orElse(null);
+
         response.setDepartmentCode(
                 department == null ? null : department.getCode());
         response.setDepartmentName(

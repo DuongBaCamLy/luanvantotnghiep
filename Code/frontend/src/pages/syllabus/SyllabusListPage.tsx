@@ -62,6 +62,7 @@ import { useSubmitSyllabus } from "@/hooks/useSubmitSyllabus"
 import { useSyllabuses } from "@/hooks/useSyllabuses"
 import { getSyllabusBasePath } from "@/lib/programContext"
 import { saveSyllabusImportDraft } from "@/lib/syllabusImportDraft"
+import { validateNew2027TargetTemplateResponse } from "@/lib/syllabusComparisonTemplate"
 import {
   SYLLABUS_CANONICAL_STATUSES,
   SYLLABUS_SEMESTER_OPTIONS,
@@ -106,11 +107,36 @@ type CatalogRow = {
 
 const ALL = "all"
 
-  
-const normalizeImportCourseCode = (value?: string) => String(value ?? "")
-  .replace(/[^A-Z0-9]/gi, "")
-  .toUpperCase()
-  .replace(/IU$/, "")
+
+const normalizeImportCourseCode = (value?: string) =>
+  String(value ?? "")
+    .replace(/[^A-Z0-9]/gi, "")
+    .toUpperCase()
+    .replace(/IU$/, "")
+
+const getImportCourseCodeCandidates = (value?: string) =>
+  String(value ?? "")
+    .split(/\s*[/;,|]\s*/)
+    .map((candidate) =>
+      normalizeImportCourseCode(candidate),
+    )
+    .filter(Boolean)
+
+const importCourseCodesEquivalent = (
+  left?: string,
+  right?: string,
+) => {
+  const leftCandidates =
+    getImportCourseCodeCandidates(left)
+
+  const rightCandidates =
+    getImportCourseCodeCandidates(right)
+
+  return leftCandidates.some(
+    (candidate) =>
+      rightCandidates.includes(candidate),
+  )
+}
 
 type BulkImportProgressItem = {
   code: string
@@ -340,7 +366,7 @@ const formatStatusLabelForRole = (
   }
 
   if (
-    role === "DEAN"
+    role === "DEAN" || role === "DEAN_SECRETARY"
     && status === "UNDER_REVIEW"
   ) {
     return "Pending Final Review"
@@ -566,7 +592,9 @@ export default function SyllabusListPage() {
   const isAdmin = role === "ADMIN"
 
 
-  const isDean = role === "DEAN"
+  const isDean =
+  role === "DEAN"
+  || role === "DEAN_SECRETARY"
 
   const isDeptHead = role === "DEPT_HEAD"
 
@@ -701,19 +729,19 @@ export default function SyllabusListPage() {
     addDialogOpen,
     setAddDialogOpen,
   ] = useState(false)
-const [
-  deleteCohortDialogOpen,
-  setDeleteCohortDialogOpen,
-] = useState(false)
+  const [
+    deleteCohortDialogOpen,
+    setDeleteCohortDialogOpen,
+  ] = useState(false)
   const [bulkImportProgress, setBulkImportProgress] = useState<BulkImportProgressItem[]>([])
   const [bulkImportRunning, setBulkImportRunning] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<{
-  syllabus: Syllabus
-  cohort: string
-} | null>(null)
+    syllabus: Syllabus
+    cohort: string
+  } | null>(null)
 
-const [deleteOneRunning, setDeleteOneRunning] = useState(false)
-const [deleteOneError, setDeleteOneError] = useState("")
+  const [deleteOneRunning, setDeleteOneRunning] = useState(false)
+  const [deleteOneError, setDeleteOneError] = useState("")
   const [submissionValidation, setSubmissionValidation] = useState<SubmissionValidationResponse | null>(null)
 
   const [
@@ -801,75 +829,303 @@ const [deleteOneError, setDeleteOneError] = useState("")
     }
   }, [])
 
-  const runBulkImport = async (response: BulkSyllabusImportPreviewResponse) => {
-    if (!selectedProgramId || !selectedCohortId || bulkImportRunning) return
+    const runBulkImport = async (response: BulkSyllabusImportPreviewResponse) => {
+    if (
+      isArchivedCohort
+      || !selectedProgramId
+      || !selectedCohortId
+      || bulkImportRunning
+    ) {
+      return
+    }
+
+    const isNew2027Target =
+      String(response.targetTemplateProfile ?? "")
+        .trim()
+        .toUpperCase() === "NEW_2027"
+
+    if (isNew2027Target) {
+      const targetTemplateError =
+        validateNew2027TargetTemplateResponse(response)
+
+      if (targetTemplateError) {
+        setBulkImportProgress([
+          {
+            code: response.targetTemplateProfile ?? "NEW_2027",
+            name: "NEW_2027 template review gate",
+            status: "error",
+            error: targetTemplateError,
+          },
+        ])
+
+        setBulkImportRunning(false)
+        return
+      }
+    }
+
+    let currentCoursePrograms =
+      toArray<CourseProgram>(
+        await courseProgramApi.getAll(),
+      )
+
+    setCoursePrograms(currentCoursePrograms)
 
     const progress = response.items.map((item) => ({
-      code: item.preview.data?.sourceCourseCode || "Unknown",
-      name: item.preview.data?.sourceCourseName || "Unnamed syllabus",
+      code:
+        item.preview.data?.sourceCourseCode
+        || "Unknown",
+      name:
+        item.preview.data?.sourceCourseName
+        || "Unnamed syllabus",
       status: "pending" as const,
     }))
+
     setBulkImportProgress(progress)
     setBulkImportRunning(true)
 
-    for (let index = 0; index < response.items.length; index++) {
-      const item = response.items[index]
-      setBulkImportProgress((current) => current.map((row, rowIndex) =>
-        rowIndex === index ? { ...row, status: "importing", error: undefined } : row))
+    for (
+      let index = 0;
+      index < response.items.length;
+      index++
+    ) {
+      const item =
+        response.items[index]
+
+      setBulkImportProgress(
+        (current) =>
+          current.map(
+            (row, rowIndex) =>
+              rowIndex === index
+                ? {
+                    ...row,
+                    status: "importing",
+                    error: undefined,
+                  }
+                : row,
+          ),
+      )
 
       try {
-        if (!item.preview.valid || !item.preview.data) {
-          throw new Error(item.preview.issues?.map((issue) => issue.message).join("; ") || "Extracted data is incomplete")
+        if (
+          !item.preview.valid
+          || !item.preview.data
+        ) {
+          throw new Error(
+            item.preview.issues
+              ?.map(
+                (issue) =>
+                  issue.message,
+              )
+              .join("; ")
+            || "Extracted data is incomplete",
+          )
         }
 
-        const sourceCode = normalizeImportCourseCode(item.preview.data.sourceCourseCode)
-        const mappings = coursePrograms
-          .filter((mapping) =>
-            normalizeImportCourseCode(mapping.courseCode) === sourceCode
-            &&
-            Number(mapping.programId) === selectedProgramId
-            && (mapping.cohortId == null || Number(mapping.cohortId) === selectedCohortId)
-          )
-          .sort((left, right) => Number(right.cohortId === selectedCohortId) - Number(left.cohortId === selectedCohortId))
-        const mapping = mappings[0]
-        const targetAssignment = isInstructor
-          ? instructorAvailableAssignments.find((assignment) =>
-              mapping != null && assignment.courseId === Number(mapping.courseId))
-          : undefined
-        await syllabusImportApi.confirmBulkItem({
-          assignmentId: targetAssignment?.id,
-          sourceSnapshotId: item.sourceSnapshotId,
-          programId: selectedProgramId,
-          cohortId: selectedCohortId,
-          data: item.preview.data,
-          importMode: "CREATE",
-          originalFileName: response.fileName,
-          originalFileType: response.sourceType === "DOCX"
-            ? "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-            : "application/pdf",
-        })
+        const sourceCode =
+  String(
+    item.preview.data
+      .sourceCourseCode ?? "",
+  ).trim()
 
-        const [, refreshedMappings] = await Promise.all([
-          refetchSyllabuses(),
-          courseProgramApi.getAll(),
-        ])
-        setCoursePrograms(toArray<CourseProgram>(refreshedMappings))
-        setBulkImportProgress((current) => current.map((row, rowIndex) =>
-          rowIndex === index ? { ...row, status: "success", error: undefined } : row))
+        const mappings =
+          currentCoursePrograms
+            .filter(
+              (mapping) =>
+                importCourseCodesEquivalent(
+  mapping.courseCode,
+  sourceCode,
+)
+                && Number(
+                  mapping.programId,
+                ) === selectedProgramId
+                && (
+                  mapping.cohortId == null
+                  || Number(
+                    mapping.cohortId,
+                  ) === selectedCohortId
+                ),
+            )
+            .sort(
+              (left, right) =>
+                Number(
+                  right.cohortId
+                  === selectedCohortId,
+                )
+                - Number(
+                  left.cohortId
+                  === selectedCohortId,
+                ),
+            )
+
+        const mapping =
+          mappings[0]
+
+        if (!mapping) {
+          throw new Error(
+            `Import stopped: no CourseProgram mapping found for ${sourceCode} in the selected Program/Cohort.`,
+          )
+        }
+
+        const existingSyllabusId =
+          Number(
+            mapping.syllabusId ?? 0,
+          )
+
+        const existingStatus =
+          String(
+            mapping.syllabusStatus ?? "",
+          )
+            .trim()
+            .toUpperCase()
+
+        const updateExisting =
+          existingSyllabusId > 0
+          && (
+            existingStatus === "DRAFT"
+            || existingStatus
+              === "REVISION_REQUESTED"
+          )
+
+        /*
+         * Existing immutable syllabus:
+         * keep it untouched.
+         */
+        if (
+          existingSyllabusId > 0
+          && !updateExisting
+        ) {
+          setBulkImportProgress(
+            (current) =>
+              current.map(
+                (row, rowIndex) =>
+                  rowIndex === index
+                    ? {
+                        ...row,
+                        status: "success",
+                        error: undefined,
+                      }
+                    : row,
+              ),
+          )
+
+          continue
+        }
+
+        const targetAssignment =
+          isInstructor
+            ? instructorAvailableAssignments
+                .find(
+                  (assignment) =>
+                    assignment.courseId
+                    === Number(
+                      mapping.courseId,
+                    ),
+                )
+            : undefined
+
+        await syllabusImportApi
+          .confirmBulkItem({
+            assignmentId:
+              targetAssignment?.id,
+
+            sourceSnapshotId:
+              item.sourceSnapshotId,
+
+            programId:
+              selectedProgramId,
+
+            cohortId:
+              selectedCohortId,
+
+            data:
+              item.preview.data,
+
+            importMode:
+              updateExisting
+                ? "UPDATE"
+                : "CREATE",
+
+            originalFileName:
+              response.fileName,
+
+            originalFileType:
+              response.sourceType
+                === "DOCX"
+                ? "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                : "application/pdf",
+          })
+
+        const [
+          ,
+          refreshedMappings,
+        ] =
+          await Promise.all([
+            refetchSyllabuses(),
+            courseProgramApi.getAll(),
+          ])
+
+        currentCoursePrograms =
+          toArray<CourseProgram>(
+            refreshedMappings,
+          )
+
+        setCoursePrograms(
+          currentCoursePrograms,
+        )
+
+        setBulkImportProgress(
+          (current) =>
+            current.map(
+              (row, rowIndex) =>
+                rowIndex === index
+                  ? {
+                      ...row,
+                      status: "success",
+                      error: undefined,
+                    }
+                  : row,
+            ),
+        )
       } catch (error) {
-        const serverMessage = (error as { response?: { data?: { message?: string; error?: string } } })
-          ?.response?.data
-        const message = serverMessage?.message
+        const serverMessage =
+          (
+            error as {
+              response?: {
+                data?: {
+                  message?: string
+                  error?: string
+                }
+              }
+            }
+          )?.response?.data
+
+        const message =
+          serverMessage?.message
           || serverMessage?.error
-          || (error instanceof Error ? error.message : "Import failed")
-        setBulkImportProgress((current) => current.map((row, rowIndex) =>
-          rowIndex === index ? { ...row, status: "error", error: message } : row))
+          || (
+            error instanceof Error
+              ? error.message
+              : "Import failed"
+          )
+
+        setBulkImportProgress(
+          (current) =>
+            current.map(
+              (row, rowIndex) =>
+                rowIndex === index
+                  ? {
+                      ...row,
+                      status: "error",
+                      error: message,
+                    }
+                  : row,
+            ),
+        )
       }
     }
 
     setBulkImportRunning(false)
   }
-
   const programById =
     useMemo(
       () =>
@@ -1024,8 +1280,8 @@ const [deleteOneError, setDeleteOneError] = useState("")
       const selectedProgram =
         selectedCohort
           ? programById.get(
-              selectedCohort.programId,
-            )
+            selectedCohort.programId,
+          )
           : undefined
 
       if (
@@ -1126,35 +1382,44 @@ const [deleteOneError, setDeleteOneError] = useState("")
   const selectedProgram =
     selectedProgramId !== undefined
       ? programById.get(
-          selectedProgramId,
-        )
+        selectedProgramId,
+      )
       : undefined
 
   const selectedCohort =
     selectedCohortId !== undefined
       ? cohortById.get(
-          selectedCohortId,
-        )
+        selectedCohortId,
+      )
       : undefined
-const selectedCohortForReset =
-  selectedCohort
+  const isArchivedCohort =
+    selectedCohort?.isActive === false
 
-const selectedCohortResetName =
-  normalize(
-    selectedCohortForReset?.name,
-  )
+  const selectedCohortForReset =
+    selectedCohort
 
-const selectedProgramResetLabel =
-  normalize(selectedProgram?.name)
-  || normalize(selectedProgram?.code)
-  || "Selected program"
+  const selectedCohortResetName =
+    normalize(
+      selectedCohortForReset?.name,
+    )
+
+  const selectedProgramResetLabel =
+    normalize(selectedProgram?.name)
+    || normalize(selectedProgram?.code)
+    || "Selected program"
   const cohortOptions =
     useMemo(() => {
       return cohorts
         .filter(
           (cohort) =>
-            (selectedProgramId === undefined
-              || cohort.programId === selectedProgramId),
+            (
+              cohort.isActive !== false
+              || cohort.id === selectedCohortId
+            )
+            && (
+              selectedProgramId === undefined
+              || cohort.programId === selectedProgramId
+            ),
         )
         .slice()
         .sort(
@@ -1164,6 +1429,7 @@ const selectedProgramResetLabel =
         )
     }, [
       cohorts,
+      selectedCohortId,
       selectedProgramId,
     ])
 
@@ -1242,23 +1508,23 @@ const selectedProgramResetLabel =
                   const programMajorCode =
                     programId !== undefined
                       ? normalize(
-                          programById.get(
-                            programId,
-                          )?.majorCode,
-                        )
+                        programById.get(
+                          programId,
+                        )?.majorCode,
+                      )
                       : ""
 
                   const programMatches =
                     selectedProgramId
                     === undefined
                     || programId
-                      === selectedProgramId
+                    === selectedProgramId
 
                   const cohortMatches =
                     selectedCohortId
                     === undefined
                     || cohortId
-                      === selectedCohortId
+                    === selectedCohortId
 
                   const majorMatches =
                     selectedMajorCode === ALL
@@ -1306,10 +1572,10 @@ const selectedProgramResetLabel =
                     return programId
                       !== undefined
                       ? baseProgramCode(
-                          programById.get(
-                            programId,
-                          )?.code,
-                        )
+                        programById.get(
+                          programId,
+                        )?.code,
+                      )
                       : ""
                   },
                 ),
@@ -1351,10 +1617,10 @@ const selectedProgramResetLabel =
                     return programId
                       !== undefined
                       ? normalize(
-                          programById.get(
-                            programId,
-                          )?.majorCode,
-                        )
+                        programById.get(
+                          programId,
+                        )?.majorCode,
+                      )
                       : ""
                   },
                 ),
@@ -1416,9 +1682,9 @@ const selectedProgramResetLabel =
                 || contextMatched.length > 0
                 || (
                   selectedProgramId
-                    === undefined
+                  === undefined
                   && selectedCohortId
-                    === undefined
+                  === undefined
                   && matchesMajorFallback
                 ),
 
@@ -1467,24 +1733,24 @@ const selectedProgramResetLabel =
       ],
     )
 
-    const catalogBaseData = useMemo(() => enrichedData.filter(row =>
-      historyMode || normalize(row.item.status).toUpperCase() !== "ARCHIVED"
-    ), [enrichedData, historyMode])
+  const catalogBaseData = useMemo(() => enrichedData.filter(row =>
+    historyMode || normalize(row.item.status).toUpperCase() !== "ARCHIVED"
+  ), [enrichedData, historyMode])
   const filteredData =
     useMemo(() => {
       return catalogBaseData.filter(
         (row) => {
           const item =
             row.item
-const itemStatus =
-  normalize(item.status).toUpperCase()
+          const itemStatus =
+            normalize(item.status).toUpperCase()
 
-if (
-  !historyMode
-  && itemStatus === "ARCHIVED"
-) {
-  return false
-}
+          if (
+            !historyMode
+            && itemStatus === "ARCHIVED"
+          ) {
+            return false
+          }
           if (
             !row
               .matchesCurriculumContext
@@ -1547,12 +1813,12 @@ if (
         },
       )
     }, [
-  catalogBaseData,
-  searchValue,
-  semesterValue,
-  statusValue,
-  historyMode,
-])
+      catalogBaseData,
+      searchValue,
+      semesterValue,
+      statusValue,
+      historyMode,
+    ])
 
   const catalogRows = useMemo(() => {
     const grouped = new Map<string, CatalogRow>()
@@ -1564,37 +1830,37 @@ if (
       const shouldReplace = !current
         || Boolean(row.item.isCurrent) && !current.item.isCurrent
         || Boolean(row.item.isCurrent) === Boolean(current.item.isCurrent)
-          && Number(row.item.versionNumber ?? 0) > Number(current.item.versionNumber ?? 0)
+        && Number(row.item.versionNumber ?? 0) > Number(current.item.versionNumber ?? 0)
       if (shouldReplace) grouped.set(key, row)
     }
     return Array.from(grouped.values())
   }, [filteredData])
 
   const totalCourses = useMemo(
-  () =>
-    new Set(
-      catalogBaseData.map((row) => {
-        const courseId =
-          getSyllabusCourseId(
-            row.item,
-          )
+    () =>
+      new Set(
+        catalogBaseData.map((row) => {
+          const courseId =
+            getSyllabusCourseId(
+              row.item,
+            )
 
-        const courseKey =
-          courseId !== undefined
-            ? `id:${courseId}`
-            : `code:${normalizeKey(
+          const courseKey =
+            courseId !== undefined
+              ? `id:${courseId}`
+              : `code:${normalizeKey(
                 row.item.courseCode,
               )}`
 
-        return `${courseKey}|program:${normalizeKey(
-          row.displayProgram,
-        )}|cohort:${normalizeKey(
-          row.displayCohort,
-        )}|semester:${normalizeKey(row.item.semester)}`
-      }),
-    ).size,
-  [catalogBaseData],
-)
+          return `${courseKey}|program:${normalizeKey(
+            row.displayProgram,
+          )}|cohort:${normalizeKey(
+            row.displayCohort,
+          )}|semester:${normalizeKey(row.item.semester)}`
+        }),
+      ).size,
+    [catalogBaseData],
+  )
 
   const summary =
     useMemo(() => {
@@ -1639,7 +1905,7 @@ if (
             return (
               status === "REJECTED"
               || status
-                === "REVISION_REQUESTED"
+              === "REVISION_REQUESTED"
             )
           },
         ).length
@@ -1662,9 +1928,9 @@ if (
           : isDean
             ? forwardedToDean
             : (
-                pendingDepartmentReview
-                + forwardedToDean
-              )
+              pendingDepartmentReview
+              + forwardedToDean
+            )
 
       return {
         total: rows.length,
@@ -1759,7 +2025,7 @@ if (
       if (
         selectedProgram
         && selectedProgram.majorId
-          !== major.id
+        !== major.id
       ) {
         params.delete(
           "programId",
@@ -1892,7 +2158,7 @@ if (
             return (
               courseId !== undefined
               && assignment.courseId
-                === courseId
+              === courseId
               && normalizeKey(
                 assignment.academicYear,
               ) === academicYear
@@ -1912,13 +2178,15 @@ if (
 
   const canCloneSyllabus =
     () =>
-      isInstructor || isAdmin
+      !isArchivedCohort
+      && (isInstructor || isAdmin)
 
   const canEditDraft =
     (
       item: Syllabus,
     ) =>
-      ["DRAFT", "REVISION_REQUESTED"].includes(
+      !isArchivedCohort
+      && ["DRAFT", "REVISION_REQUESTED"].includes(
         normalize(item.status).toUpperCase(),
       )
       && (
@@ -1933,77 +2201,85 @@ if (
     (
       item: Syllabus,
     ) =>
-      (isAdmin && ["DRAFT", "REVISION_REQUESTED"].includes(normalize(item.status).toUpperCase()))
-      || canEditDraft(item)
+      !isArchivedCohort
+      && (
+        (
+          isAdmin
+          && ["DRAFT", "REVISION_REQUESTED"].includes(
+            normalize(item.status).toUpperCase(),
+          )
+        )
+        || canEditDraft(item)
+      )
 
-const openDeleteSyllabusDialog = (
-  item: Syllabus,
-  cohort: string,
-) => {
-  if (!canEditDraft(item)) {
-    return
-  }
+  const openDeleteSyllabusDialog = (
+    item: Syllabus,
+    cohort: string,
+  ) => {
+    if (!canEditDraft(item)) {
+      return
+    }
 
-  setDeleteOneError("")
-  setDeleteTarget({
-    syllabus: item,
-    cohort,
-  })
-}
-
-const handleDeleteSyllabus = async () => {
-  if (!deleteTarget || deleteOneRunning) {
-    return
-  }
-
-  const syllabusId =
-    deleteTarget.syllabus.id
-
-  try {
-    setDeleteOneRunning(true)
     setDeleteOneError("")
-
-    // Delete ONLY the selected syllabus.
-    await syllabusApi.delete(
-      syllabusId,
-    )
-
-    // Backend has already unlinked CourseProgram.
-    // Keep local Catalog reference data synchronized immediately.
-    setCoursePrograms(
-      (current) =>
-        current.map(
-          (courseProgram) => {
-            if (
-              getCourseProgramSyllabusId(
-                courseProgram,
-              ) !== syllabusId
-            ) {
-              return courseProgram
-            }
-
-            return {
-              ...courseProgram,
-              syllabusId: null,
-              syllabus: null,
-            }
-          },
-        ),
-    )
-
-    // Reload canonical syllabus list from backend.
-    await refetchSyllabuses()
-
-    setDeleteTarget(null)
-  } catch (error: unknown) {
-    setDeleteOneError(
-      (isAxiosError<{ message?: string; error?: string; issues?: SubmissionValidationIssue[] }>(error) ? error.response?.data : undefined)?.message
-      || "Unable to delete this syllabus.",
-    )
-  } finally {
-    setDeleteOneRunning(false)
+    setDeleteTarget({
+      syllabus: item,
+      cohort,
+    })
   }
-}
+
+  const handleDeleteSyllabus = async () => {
+    if (isArchivedCohort || !deleteTarget || deleteOneRunning) {
+      return
+    }
+
+    const syllabusId =
+      deleteTarget.syllabus.id
+
+    try {
+      setDeleteOneRunning(true)
+      setDeleteOneError("")
+
+      // Delete ONLY the selected syllabus.
+      await syllabusApi.delete(
+        syllabusId,
+      )
+
+      // Backend has already unlinked CourseProgram.
+      // Keep local Catalog reference data synchronized immediately.
+      setCoursePrograms(
+        (current) =>
+          current.map(
+            (courseProgram) => {
+              if (
+                getCourseProgramSyllabusId(
+                  courseProgram,
+                ) !== syllabusId
+              ) {
+                return courseProgram
+              }
+
+              return {
+                ...courseProgram,
+                syllabusId: null,
+                syllabus: null,
+              }
+            },
+          ),
+      )
+
+      // Reload canonical syllabus list from backend.
+      await refetchSyllabuses()
+
+      setDeleteTarget(null)
+    } catch (error: unknown) {
+      setDeleteOneError(
+        (isAxiosError<{ message?: string; error?: string; issues?: SubmissionValidationIssue[] }>(error) ? error.response?.data : undefined)?.message
+        || "Unable to delete this syllabus.",
+      )
+    } finally {
+      setDeleteOneRunning(false)
+    }
+  }
   const handleSubmit = (
     item: Syllabus,
   ) => {
@@ -2226,7 +2502,7 @@ const handleDeleteSyllabus = async () => {
         ? "Syllabus Oversight"
         : isAdmin
           ? "Syllabus Administration"
-          : "My Syllabi"
+          : "Syllabus Catalog"
 
   const pageDescription =
     isDeptHead
@@ -2235,7 +2511,7 @@ const handleDeleteSyllabus = async () => {
         ? "Monitor syllabus versions, final-review status, official PDFs, and complete review history across the School."
         : isAdmin
           ? "Monitor syllabus records, curriculum scope, workflow status, official PDFs, and review history."
-          : "Create, edit, submit, clone, and track syllabuses for your assigned courses."
+          : "View approved syllabuses across the curriculum and manage drafts for your assigned courses."
 
   return (
     <div data-admin-page="SyllabusListPage" className="min-h-screen -m-6 bg-[#f7faf9] p-6 text-slate-900 md:-m-10 md:p-8">
@@ -2262,7 +2538,7 @@ const handleDeleteSyllabus = async () => {
               <Button
                 type="button"
                 variant="outline"
-                disabled={!selectedProgram}
+                disabled={!selectedProgram || isArchivedCohort}
                 title={
                   selectedProgram
                     ? "Open the curriculum map for the selected program."
@@ -2275,7 +2551,7 @@ const handleDeleteSyllabus = async () => {
                 <MapIcon className="size-4" />
                 View Curriculum Map
               </Button>
-              {(isInstructor || isAdmin) && (
+              {(isInstructor || isAdmin) && !isArchivedCohort && (
                 <Button
                   type="button"
                   className="bg-[#007d84] text-white hover:bg-[#006d73]"
@@ -2295,6 +2571,15 @@ const handleDeleteSyllabus = async () => {
             </div>
           </div>
         </section>
+
+        {isArchivedCohort && (
+          <section className="rounded-xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-800">
+            <span className="font-semibold">
+              {selectedCohort?.name}
+            </span>
+            {" "}is archived. Archived syllabus history is read-only; View, History, and document export remain available.
+          </section>
+        )}
 
         {isDeptHead && (
           <section className="flex flex-col gap-3 rounded-xl border border-[#cfe1e4] bg-[#f6fbfb] px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
@@ -2431,35 +2716,35 @@ const handleDeleteSyllabus = async () => {
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
-  {isAdmin
-    && selectedProgramId
-    && selectedCohortId !== undefined
-    && selectedCohortForReset
-    && selectedCohortResetName && (
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        className="border-rose-200 text-rose-700 hover:bg-rose-50 hover:text-rose-800"
-        onClick={() =>
-          setDeleteCohortDialogOpen(true)
-        }
-      >
-        <Trash2 className="size-4" />
-        Delete {selectedCohortResetName} Syllabi
-      </Button>
-    )}
+                {isAdmin
+                  && selectedProgramId
+                  && selectedCohortId !== undefined
+                  && selectedCohortForReset
+                  && selectedCohortResetName && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="border-rose-200 text-rose-700 hover:bg-rose-50 hover:text-rose-800"
+                      onClick={() =>
+                        setDeleteCohortDialogOpen(true)
+                      }
+                    >
+                      <Trash2 className="size-4" />
+                      Delete {selectedCohortResetName} Syllabi
+                    </Button>
+                  )}
 
-  <Button
-    type="button"
-    variant="outline"
-    size="sm"
-    onClick={resetFilters}
-  >
-    <RotateCcw className="size-4" />
-    Clear Filters
-  </Button>
-</div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={resetFilters}
+                >
+                  <RotateCcw className="size-4" />
+                  Clear Filters
+                </Button>
+              </div>
             </div>
           </div>
 
@@ -2532,8 +2817,8 @@ const handleDeleteSyllabus = async () => {
                     selectedCohortId
                       !== undefined
                       ? String(
-                          selectedCohortId,
-                        )
+                        selectedCohortId,
+                      )
                       : ALL
                   }
                   onValueChange={
@@ -2829,16 +3114,16 @@ const handleDeleteSyllabus = async () => {
                           <td className="px-4 py-4 text-xs text-slate-600">
                             {itemStatus === "APPROVED"
                               ? (
-                                  item.approvedAt
-                                    ? formatDateTime(
-                                        item.approvedAt,
-                                      )
-                                    : (
-                                      <span className="font-medium text-amber-700">
-                                        Not recorded
-                                      </span>
-                                    )
-                                )
+                                item.approvedAt
+                                  ? formatDateTime(
+                                    item.approvedAt,
+                                  )
+                                  : (
+                                    <span className="font-medium text-amber-700">
+                                      Not recorded
+                                    </span>
+                                  )
+                              )
                               : "—"}
                           </td>
 
@@ -3017,33 +3302,33 @@ const handleDeleteSyllabus = async () => {
                                   </Button>
 
                                   <Button
-  type="button"
-  variant="ghost"
-  size="sm"
-  className="h-8 w-8 p-0 text-rose-500 hover:bg-rose-50 hover:text-rose-600"
-  title="Delete syllabus"
-  disabled={
-    deleteOneRunning
-    && deleteTarget?.syllabus.id
-      === item.id
-  }
-  onClick={() =>
-    openDeleteSyllabusDialog(
-      item,
-      displayCohort,
-    )
-  }
->
-  {deleteOneRunning
-    && deleteTarget?.syllabus.id
-      === item.id
-    ? (
-      <LoaderCircle className="size-4 animate-spin" />
-    )
-    : (
-      <Trash2 className="size-4" />
-    )}
-</Button>
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-8 w-8 p-0 text-rose-500 hover:bg-rose-50 hover:text-rose-600"
+                                    title="Delete syllabus"
+                                    disabled={
+                                      deleteOneRunning
+                                      && deleteTarget?.syllabus.id
+                                      === item.id
+                                    }
+                                    onClick={() =>
+                                      openDeleteSyllabusDialog(
+                                        item,
+                                        displayCohort,
+                                      )
+                                    }
+                                  >
+                                    {deleteOneRunning
+                                      && deleteTarget?.syllabus.id
+                                      === item.id
+                                      ? (
+                                        <LoaderCircle className="size-4 animate-spin" />
+                                      )
+                                      : (
+                                        <Trash2 className="size-4" />
+                                      )}
+                                  </Button>
                                 </>
                               )}
                             </div>
@@ -3059,7 +3344,7 @@ const handleDeleteSyllabus = async () => {
         </section>
       </div>
 
-      {(isInstructor || isAdmin) && (
+      {(isInstructor || isAdmin) && !isArchivedCohort && (
         <CloneSyllabusDialog
           source={cloneSource}
           open={cloneSource !== null}
@@ -3091,7 +3376,7 @@ const handleDeleteSyllabus = async () => {
           </DialogHeader>
           <div className="space-y-4">
             {Object.entries((submissionValidation?.issues ?? []).reduce<Record<string, SubmissionValidationIssue[]>>((groups, issue) => {
-              ;(groups[issue.section] ??= []).push(issue)
+              ; (groups[issue.section] ??= []).push(issue)
               return groups
             }, {})).map(([section, issues]) => (
               <section key={section} className="rounded-lg border border-amber-200 bg-amber-50/50 p-4">
@@ -3108,140 +3393,140 @@ const handleDeleteSyllabus = async () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-<Dialog
-  open={deleteTarget !== null}
-  onOpenChange={(open) => {
-    if (deleteOneRunning) {
-      return
-    }
+      <Dialog
+        open={deleteTarget !== null}
+        onOpenChange={(open) => {
+          if (deleteOneRunning) {
+            return
+          }
 
-    if (!open) {
-      setDeleteTarget(null)
-      setDeleteOneError("")
-    }
-  }}
->
-  <DialogContent className="border-rose-200 bg-white sm:max-w-md">
-    <DialogHeader>
-      <DialogTitle className="flex items-center gap-2 text-rose-700">
-        <Trash2 className="size-5" />
-        Delete syllabus?
-      </DialogTitle>
-
-      <DialogDescription className="leading-6">
-        This deletes only the selected syllabus and its syllabus-owned data.
-        Other cohorts and syllabus versions will not be deleted.
-      </DialogDescription>
-    </DialogHeader>
-
-    {deleteTarget && (
-      <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
-        <div className="grid grid-cols-[120px_1fr] border-b border-slate-200 px-4 py-3">
-          <span className="text-xs font-semibold text-slate-500">
-            Course Code
-          </span>
-
-          <span className="font-mono text-sm font-bold text-slate-900">
-            {deleteTarget.syllabus.courseCode || "—"}
-          </span>
-        </div>
-
-        <div className="grid grid-cols-[120px_1fr] border-b border-slate-200 px-4 py-3">
-          <span className="text-xs font-semibold text-slate-500">
-            Cohort
-          </span>
-
-          <span className="text-sm font-medium text-slate-900">
-            {deleteTarget.cohort
-              || deleteTarget.syllabus.academicYear
-              || "—"}
-          </span>
-        </div>
-
-        <div className="grid grid-cols-[120px_1fr] px-4 py-3">
-          <span className="text-xs font-semibold text-slate-500">
-            Version
-          </span>
-
-          <span className="text-sm font-medium text-slate-900">
-            {formatVersionLabel(deleteTarget.syllabus.versionNumber, deleteTarget.syllabus.versionLabel)}
-          </span>
-        </div>
-      </div>
-    )}
-
-    <p className="text-xs leading-5 text-rose-600">
-      This action cannot be undone.
-    </p>
-
-    {deleteOneError && (
-      <p className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">
-        {deleteOneError}
-      </p>
-    )}
-
-    <DialogFooter>
-      <Button
-        type="button"
-        variant="outline"
-        disabled={deleteOneRunning}
-        onClick={() => {
-          setDeleteTarget(null)
-          setDeleteOneError("")
+          if (!open) {
+            setDeleteTarget(null)
+            setDeleteOneError("")
+          }
         }}
       >
-        Cancel
-      </Button>
+        <DialogContent className="border-rose-200 bg-white sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-rose-700">
+              <Trash2 className="size-5" />
+              Delete syllabus?
+            </DialogTitle>
 
-      <Button
-        type="button"
-        className="bg-rose-600 text-white hover:bg-rose-700"
-        disabled={!deleteTarget || deleteOneRunning}
-        onClick={() => void handleDeleteSyllabus()}
-      >
-        {deleteOneRunning
-          ? <LoaderCircle className="size-4 animate-spin" />
-          : <Trash2 className="size-4" />}
+            <DialogDescription className="leading-6">
+              This deletes only the selected syllabus and its syllabus-owned data.
+              Other cohorts and syllabus versions will not be deleted.
+            </DialogDescription>
+          </DialogHeader>
 
-        {deleteOneRunning
-          ? "Deleting..."
-          : "Delete Syllabus"}
-      </Button>
-    </DialogFooter>
-  </DialogContent>
-</Dialog>
+          {deleteTarget && (
+            <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
+              <div className="grid grid-cols-[120px_1fr] border-b border-slate-200 px-4 py-3">
+                <span className="text-xs font-semibold text-slate-500">
+                  Course Code
+                </span>
 
-{isAdmin
-  && selectedProgramId
-  && selectedCohortId !== undefined
-  && selectedCohortForReset
-  && selectedCohortResetName && (
-    <DeleteCohortSyllabiDialog
-      open={deleteCohortDialogOpen}
-      onOpenChange={
-        setDeleteCohortDialogOpen
-      }
-      programId={
-        selectedProgramId
-      }
-      programLabel={
-        selectedProgramResetLabel
-      }
-      cohortId={
-        selectedCohortId
-      }
-      cohortName={
-        selectedCohortResetName
-      }
-      onDeleted={(deletedCount) => {
-        window.alert(
-          `Deleted ${deletedCount} syllabus record(s) from ${selectedCohortResetName}.`,
-        )
+                <span className="font-mono text-sm font-bold text-slate-900">
+                  {deleteTarget.syllabus.courseCode || "—"}
+                </span>
+              </div>
 
-        window.location.reload()
-      }}
-    />
-  )}
+              <div className="grid grid-cols-[120px_1fr] border-b border-slate-200 px-4 py-3">
+                <span className="text-xs font-semibold text-slate-500">
+                  Cohort
+                </span>
+
+                <span className="text-sm font-medium text-slate-900">
+                  {deleteTarget.cohort
+                    || deleteTarget.syllabus.academicYear
+                    || "—"}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-[120px_1fr] px-4 py-3">
+                <span className="text-xs font-semibold text-slate-500">
+                  Version
+                </span>
+
+                <span className="text-sm font-medium text-slate-900">
+                  {formatVersionLabel(deleteTarget.syllabus.versionNumber, deleteTarget.syllabus.versionLabel)}
+                </span>
+              </div>
+            </div>
+          )}
+
+          <p className="text-xs leading-5 text-rose-600">
+            This action cannot be undone.
+          </p>
+
+          {deleteOneError && (
+            <p className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">
+              {deleteOneError}
+            </p>
+          )}
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={deleteOneRunning}
+              onClick={() => {
+                setDeleteTarget(null)
+                setDeleteOneError("")
+              }}
+            >
+              Cancel
+            </Button>
+
+            <Button
+              type="button"
+              className="bg-rose-600 text-white hover:bg-rose-700"
+              disabled={!deleteTarget || deleteOneRunning}
+              onClick={() => void handleDeleteSyllabus()}
+            >
+              {deleteOneRunning
+                ? <LoaderCircle className="size-4 animate-spin" />
+                : <Trash2 className="size-4" />}
+
+              {deleteOneRunning
+                ? "Deleting..."
+                : "Delete Syllabus"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {isAdmin
+        && selectedProgramId
+        && selectedCohortId !== undefined
+        && selectedCohortForReset
+        && selectedCohortResetName && (
+          <DeleteCohortSyllabiDialog
+            open={deleteCohortDialogOpen}
+            onOpenChange={
+              setDeleteCohortDialogOpen
+            }
+            programId={
+              selectedProgramId
+            }
+            programLabel={
+              selectedProgramResetLabel
+            }
+            cohortId={
+              selectedCohortId
+            }
+            cohortName={
+              selectedCohortResetName
+            }
+            onDeleted={(deletedCount) => {
+              window.alert(
+                `Deleted ${deletedCount} syllabus record(s) from ${selectedCohortResetName}.`,
+              )
+
+              window.location.reload()
+            }}
+          />
+        )}
 
       {(isAdmin || isInstructor) && (
         <AddSyllabusDialog
@@ -3285,8 +3570,8 @@ const handleDeleteSyllabus = async () => {
                 <div className="flex items-start gap-3">
                   {item.status === "importing" ? <LoaderCircle className="mt-0.5 size-4 shrink-0 animate-spin text-[#007d84]" />
                     : item.status === "success" ? <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-600" />
-                    : item.status === "error" ? <AlertTriangle className="mt-0.5 size-4 shrink-0 text-rose-600" />
-                    : <Clock3 className="mt-0.5 size-4 shrink-0 text-slate-400" />}
+                      : item.status === "error" ? <AlertTriangle className="mt-0.5 size-4 shrink-0 text-rose-600" />
+                        : <Clock3 className="mt-0.5 size-4 shrink-0 text-slate-400" />}
                   <div className="min-w-0">
                     <p className="font-mono text-xs font-bold text-slate-800">{item.code}</p>
                     <p className="truncate text-xs text-slate-500">{item.name}</p>

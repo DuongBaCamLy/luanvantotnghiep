@@ -6,7 +6,8 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
-
+import org.mockito.Spy;
+import com.scse.curriculum.syllabus.template.TargetTemplateProfileResolver;
 import java.util.List;
 import java.util.Optional;
 
@@ -52,7 +53,9 @@ class SyllabusServiceImplComparisonTest {
 
     @Mock
     private ClassSectionRepository classSectionRepository;
-
+@Spy
+private TargetTemplateProfileResolver targetTemplateProfileResolver =
+        new TargetTemplateProfileResolver();
     @InjectMocks
     private SyllabusServiceImpl service;
 

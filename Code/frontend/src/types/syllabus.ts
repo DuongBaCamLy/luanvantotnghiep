@@ -98,6 +98,7 @@ export interface Syllabus {
   programCode?: string | null
   programName?: string | null
   academicYear: string
+  targetTemplateProfile?: string | null
   creditTheory?: number | null
   creditLab?: number | null
   /** Instructor(s) linked via teaching assignment; distinct from createdByUsername. */

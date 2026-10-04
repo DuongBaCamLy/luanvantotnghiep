@@ -25,6 +25,7 @@ import com.scse.curriculum.syllabus.repository.SyllabusRepository;
 import com.scse.curriculum.syllabusbook.repository.SyllabusBookRepository;
 import com.scse.curriculum.topic.repository.TopicRepository;
 import com.scse.curriculum.topicclo.repository.TopicCloRepository;
+import com.scse.curriculum.syllabus.template.TargetTemplateProfileResolver;
 import com.scse.curriculum.user.entity.UserAccount;
 import com.scse.curriculum.user.entity.UserRole;
 import com.scse.curriculum.user.repository.UserAccountRepository;
@@ -35,6 +36,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
@@ -110,13 +112,20 @@ class SyllabusServiceImplCreateTest {
 
     @Mock private com.scse.curriculum.syllabus.service.SyllabusIdentityService syllabusIdentityService;
     @Mock private com.scse.curriculum.syllabus.history.SyllabusHistoryService syllabusHistoryService;
-    @InjectMocks
-    private SyllabusServiceImpl service;
+    @Mock private com.scse.curriculum.cohort.service.CohortOperationalGuard cohortOperationalGuard;
+
+@Spy
+private TargetTemplateProfileResolver targetTemplateProfileResolver =
+        new TargetTemplateProfileResolver();
+
+@InjectMocks
+private SyllabusServiceImpl service;
 
     private Course course;
+    private com.scse.curriculum.program.entity.Program program;
+    private com.scse.curriculum.cohort.entity.Cohort cohort;
     private UserAccount faculty;
     private UserAccount admin;
-    private Instructor instructor;
     private ClassSection assignment;
 
     @BeforeEach
@@ -129,12 +138,25 @@ class SyllabusServiceImplCreateTest {
                 .isActive(true)
                 .build();
 
+        program = com.scse.curriculum.program.entity.Program.builder()
+                .id(1)
+                .code("CS-2021")
+                .name("Computer Science")
+                .build();
+
+        cohort = com.scse.curriculum.cohort.entity.Cohort.builder()
+                .id(12)
+                .program(program)
+                .entryYear(2026)
+                .name("CS2026")
+                .isActive(true)
+                .build();
+
         faculty = UserAccount.builder()
                 .id(10)
                 .username("instructor1")
                 .email("instructor1@example.com")
                 .role(UserRole.INSTRUCTOR)
-                .instructorId(3)
                 .isActive(true)
                 .build();
 
@@ -146,26 +168,22 @@ class SyllabusServiceImplCreateTest {
                 .isActive(true)
                 .build();
 
-        instructor = Instructor.builder()
-                .id(3)
-                .staffCode("GV003")
-                .fullName("Hoàng Thị Mai")
-                .email("mai@example.com")
-                .isActive(true)
-                .build();
+
 
         assignment = ClassSection.builder()
-                .id(6)
-                .course(course)
-                .instructor(instructor)
-                .syllabus(null)
-                .semester(1)
-                .academicYear("2099-2100")
-                .groupNumber(999)
-                .maxStudents(50)
-                .sectionType(SectionType.THEORY)
-                .isActive(true)
-                .build();
+        .id(6)
+        .course(course)
+                .program(program)
+                .cohort(cohort)
+        .instructorUser(faculty)
+        .syllabus(null)
+        .semester(1)
+        .academicYear("2099-2100")
+        .groupNumber(999)
+        .maxStudents(50)
+        .sectionType(SectionType.THEORY)
+        .isActive(true)
+        .build();
     }
 
     @Test

@@ -18,12 +18,11 @@ import com.scse.curriculum.course.entity.Course;
 import com.scse.curriculum.course.repository.CourseRepository;
 import com.scse.curriculum.department.entity.Department;
 import com.scse.curriculum.enrollment.repository.EnrollmentRepository;
-import com.scse.curriculum.instructor.entity.Instructor;
-import com.scse.curriculum.instructor.repository.InstructorRepository;
 import com.scse.curriculum.syllabus.entity.Syllabus;
 import com.scse.curriculum.syllabus.repository.SyllabusRepository;
 import com.scse.curriculum.user.entity.UserAccount;
 import com.scse.curriculum.user.entity.UserRole;
+import com.scse.curriculum.user.repository.UserAccountRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -72,7 +71,7 @@ private Cohort itCohort;
     private SyllabusRepository syllabusRepository;
 
     @Mock
-    private InstructorRepository instructorRepository;
+    private UserAccountRepository userAccountRepository;
 
     @Mock
     private EnrollmentRepository enrollmentRepository;
@@ -80,6 +79,7 @@ private Cohort itCohort;
     @Mock
     private CurrentUserService currentUserService;
 
+    @Mock private com.scse.curriculum.cohort.service.CohortOperationalGuard cohortOperationalGuard;
     @InjectMocks
     private ClassSectionServiceImpl service;
 
@@ -89,9 +89,8 @@ private Cohort itCohort;
     private UserAccount adminAccount;
     private UserAccount csDepartmentHeadAccount;
 
-    private Instructor csDepartmentHeadProfile;
-    private Instructor csInstructor;
-    private Instructor itInstructor;
+    private UserAccount csInstructorAccount;
+    private UserAccount itInstructorAccount;
 
     private Course csCourse;
     private Course itCourse;
@@ -166,35 +165,25 @@ itCohort = Cohort.builder()
         .id(2)
         .username("cs_head")
         .role(UserRole.DEPT_HEAD)
-        .instructorId(100)
         .managedMajor(csMajor)
         .isActive(true)
         .build();
 
-        csDepartmentHeadProfile = Instructor.builder()
-                .id(100)
-                .staffCode("CS-HEAD")
-                .fullName("CS Department Head")
-                .email("cs-head@example.com")
-                .department(csDepartment)
-                .isActive(true)
-                .build();
-
-        csInstructor = Instructor.builder()
+        csInstructorAccount = UserAccount.builder()
                 .id(101)
-                .staffCode("CS-001")
                 .fullName("CS Instructor")
+                .username("cs.instructor")
                 .email("cs-instructor@example.com")
-                .department(csDepartment)
+                .role(UserRole.INSTRUCTOR)
                 .isActive(true)
                 .build();
 
-        itInstructor = Instructor.builder()
+        itInstructorAccount = UserAccount.builder()
                 .id(201)
-                .staffCode("IT-001")
                 .fullName("IT Instructor")
+                .username("it.instructor")
                 .email("it-instructor@example.com")
-                .department(itDepartment)
+                .role(UserRole.INSTRUCTOR)
                 .isActive(true)
                 .build();
 
@@ -222,7 +211,7 @@ itCohort = Cohort.builder()
         ClassSection section = createSection(
                 1,
                 csCourse,
-                csInstructor,
+                csInstructorAccount,
                 null);
 
         when(currentUserService.getCurrentUser())
@@ -247,7 +236,7 @@ void departmentHeadGetAllUsesOwnManagedMajorScope() {
     ClassSection section = createSection(
             2,
             csCourse,
-            csInstructor,
+            csInstructorAccount,
             null);
 
     when(currentUserService.getCurrentUser())
@@ -293,8 +282,8 @@ void departmentHeadCannotCreateSectionForProgramOfOtherManagedMajor() {
     when(courseRepository.findById(20))
             .thenReturn(Optional.of(itCourse));
 
-    when(instructorRepository.findById(101))
-            .thenReturn(Optional.of(csInstructor));
+    when(userAccountRepository.findById(101))
+            .thenReturn(Optional.of(csInstructorAccount));
 
     stubCurriculumContext(
             itCourse,
@@ -320,8 +309,8 @@ void departmentHeadCanAssignActiveInstructorWhenProgramIsInManagedMajor() {
     when(courseRepository.findById(10))
             .thenReturn(Optional.of(csCourse));
 
-    when(instructorRepository.findById(201))
-            .thenReturn(Optional.of(itInstructor));
+    when(userAccountRepository.findById(201))
+            .thenReturn(Optional.of(itInstructorAccount));
 
     stubCurriculumContext(
             csCourse,
@@ -338,7 +327,7 @@ void departmentHeadCanAssignActiveInstructorWhenProgramIsInManagedMajor() {
             service.create(request);
 
     assertThat(result.getCourseId()).isEqualTo(10);
-    assertThat(result.getInstructorId()).isEqualTo(201);
+    assertThat(result.getInstructorUserId()).isEqualTo(201);
     assertThat(result.getProgramId()).isEqualTo(70);
     assertThat(result.getCohortId()).isEqualTo(700);
 }
@@ -353,7 +342,7 @@ void departmentHeadCanAssignActiveInstructorWhenProgramIsInManagedMajor() {
         ClassSection section = createSection(
                 3,
                 csCourse,
-                csInstructor,
+                csInstructorAccount,
                 syllabus);
 
         when(currentUserService.getCurrentUser())
@@ -379,7 +368,7 @@ void departmentHeadCanAssignActiveInstructorWhenProgramIsInManagedMajor() {
         ClassSection section = createSection(
                 4,
                 csCourse,
-                csInstructor,
+                csInstructorAccount,
                 null);
 
         when(currentUserService.getCurrentUser())
@@ -406,7 +395,7 @@ void departmentHeadCanAssignActiveInstructorWhenProgramIsInManagedMajor() {
         ClassSection section = createSection(
                 5,
                 csCourse,
-                csInstructor,
+                csInstructorAccount,
                 null);
 
         when(currentUserService.getCurrentUser())
@@ -434,8 +423,8 @@ void departmentHeadCanAssignActiveInstructorWhenProgramIsInManagedMajor() {
         when(courseRepository.findById(10))
                 .thenReturn(Optional.of(csCourse));
 
-        when(instructorRepository.findById(101))
-                .thenReturn(Optional.of(csInstructor));
+        when(userAccountRepository.findById(101))
+        .thenReturn(Optional.of(csInstructorAccount));
 
         stubCurriculumContext(
                 csCourse,
@@ -448,7 +437,7 @@ void departmentHeadCanAssignActiveInstructorWhenProgramIsInManagedMajor() {
                         .course(csCourse)
                         .program(csProgram)
                         .cohort(csCohort)
-                        .instructor(csInstructor)
+                        .instructorUser(csInstructorAccount)
                         .syllabus(null)
                         .semester(1)
                         .academicYear("2026-2027")
@@ -560,9 +549,8 @@ void departmentHeadCanAssignActiveInstructorWhenProgramIsInManagedMajor() {
                         701))
                 .thenReturn(Optional.of(curriculumEntry));
 
-        when(instructorRepository.findById(101))
-                .thenReturn(Optional.of(csInstructor));
-
+        when(userAccountRepository.findById(101))
+        .thenReturn(Optional.of(csInstructorAccount));
         when(syllabusRepository.findById(501))
                 .thenReturn(Optional.of(syllabus));
 
@@ -594,9 +582,126 @@ void departmentHeadCanAssignActiveInstructorWhenProgramIsInManagedMajor() {
         assertThat(result.getSyllabusId())
                 .isEqualTo(501);
     }
+    @Test
+    void cannotCreateTeachingAssignmentForArchivedCohort() {
+        CreateClassSectionRequest request =
+                createRequest(10, 101);
+
+        csCohort.setIsActive(false);
+
+        when(currentUserService.getCurrentUser())
+                .thenReturn(adminAccount);
+
+        when(courseRepository.findById(10))
+                .thenReturn(Optional.of(csCourse));
+
+        when(programRepository.findById(70))
+                .thenReturn(Optional.of(csProgram));
+
+        when(cohortRepository.findById(700))
+                .thenReturn(Optional.of(csCohort));
+
+        org.mockito.Mockito.doThrow(
+                new IllegalStateException(
+                        "Archived Cohort is read-only."))
+                .when(cohortOperationalGuard)
+                .assertActive(csCohort);
+
+        assertThatThrownBy(() ->
+                service.create(request))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Archived Cohort");
+
+        verify(cohortOperationalGuard)
+                .assertActive(csCohort);
+
+        verify(repository, never())
+                .save(any(ClassSection.class));
+    }
+
+    @Test
+    void cannotUpdateTeachingAssignmentBelongingToArchivedCohort() {
+        CreateClassSectionRequest request =
+                createRequest(10, 101);
+
+        csCohort.setIsActive(false);
+
+        ClassSection section = createSection(
+                51,
+                csCourse,
+                csInstructorAccount,
+                null);
+
+        section.setProgram(csProgram);
+        section.setCohort(csCohort);
+
+        when(currentUserService.getCurrentUser())
+                .thenReturn(adminAccount);
+
+        when(repository.findByIdInScope(51, null))
+                .thenReturn(Optional.of(section));
+
+        org.mockito.Mockito.doThrow(
+                new IllegalStateException(
+                        "Archived Cohort is read-only."))
+                .when(cohortOperationalGuard)
+                .assertActive(csCohort);
+
+        assertThatThrownBy(() ->
+                service.update(51, request))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Archived Cohort");
+
+        verify(cohortOperationalGuard)
+                .assertActive(csCohort);
+
+        verify(repository, never())
+                .save(any(ClassSection.class));
+    }
+
+    @Test
+    void cannotDeleteTeachingAssignmentBelongingToArchivedCohort() {
+        csCohort.setIsActive(false);
+
+        ClassSection section = createSection(
+                52,
+                csCourse,
+                csInstructorAccount,
+                null);
+
+        section.setProgram(csProgram);
+        section.setCohort(csCohort);
+
+        when(currentUserService.getCurrentUser())
+                .thenReturn(adminAccount);
+
+        when(repository.findByIdInScope(52, null))
+                .thenReturn(Optional.of(section));
+
+        org.mockito.Mockito.doThrow(
+                new IllegalStateException(
+                        "Archived Cohort is read-only."))
+                .when(cohortOperationalGuard)
+                .assertActive(csCohort);
+
+        assertThatThrownBy(() ->
+                service.delete(52))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Archived Cohort");
+
+        verify(cohortOperationalGuard)
+                .assertActive(csCohort);
+
+        verify(enrollmentRepository, never())
+                .existsByClassSection_Id(52);
+
+        verify(repository, never())
+                .delete(any(ClassSection.class));
+    }
+
     private CreateClassSectionRequest createRequest(
             Integer courseId,
-            Integer instructorId) {
+            Integer instructorUserId) {
 
         CreateClassSectionRequest request =
                 new CreateClassSectionRequest();
@@ -605,7 +710,7 @@ void departmentHeadCanAssignActiveInstructorWhenProgramIsInManagedMajor() {
         request.setProgramId(70);
 request.setCohortId(700);
         request.setSyllabusId(null);
-        request.setInstructorId(instructorId);
+        request.setInstructorUserId(instructorUserId);
         request.setSemester(1);
         request.setAcademicYear("2026-2027");
         request.setGroupNumber(1);
@@ -645,14 +750,14 @@ private void stubCurriculumContext(
     private ClassSection createSection(
             Integer id,
             Course course,
-            Instructor instructor,
+            UserAccount instructorUser,
             Syllabus syllabus) {
 
         return ClassSection.builder()
                 .id(id)
                 .course(course)
                 .syllabus(syllabus)
-                .instructor(instructor)
+                .instructorUser(instructorUser)
                 .semester(1)
                 .academicYear("2026-2027")
                 .groupNumber(1)

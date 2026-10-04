@@ -21,6 +21,7 @@ public class StudentServiceImpl implements StudentService {
 
     private final StudentRepository repository;
     private final CohortRepository cohortRepository;
+    private final com.scse.curriculum.cohort.service.CohortOperationalGuard cohortOperationalGuard;
 
     @Override
     public StudentResponse create(CreateStudentRequest request) {
@@ -30,6 +31,8 @@ public class StudentServiceImpl implements StudentService {
 
         Cohort cohort = cohortRepository.findById(request.getCohortId())
                 .orElseThrow(() -> new ResourceNotFoundException("Cohort not found"));
+
+        cohortOperationalGuard.assertActive(cohort);
 
         Student student = Student.builder()
                 .studentCode(request.getStudentCode())
@@ -49,6 +52,10 @@ public class StudentServiceImpl implements StudentService {
         Student student = repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Student not found"));
 
+        if (student.getCohort() != null) {
+            cohortOperationalGuard.assertActive(student.getCohort());
+        }
+
         repository.findByStudentCode(request.getStudentCode())
                 .ifPresent(item -> {
                     if (!item.getId().equals(id)) {
@@ -58,6 +65,8 @@ public class StudentServiceImpl implements StudentService {
 
         Cohort cohort = cohortRepository.findById(request.getCohortId())
                 .orElseThrow(() -> new ResourceNotFoundException("Cohort not found"));
+
+        cohortOperationalGuard.assertActive(cohort);
 
         student.setStudentCode(request.getStudentCode());
         student.setFullName(request.getFullName());
@@ -73,6 +82,9 @@ public class StudentServiceImpl implements StudentService {
     public void delete(Integer id) {
         Student student = repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Student not found"));
+        if (student.getCohort() != null) {
+            cohortOperationalGuard.assertActive(student.getCohort());
+        }
         repository.delete(student);
     }
 

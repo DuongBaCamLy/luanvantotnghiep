@@ -5,16 +5,22 @@ export interface ClassSectionResponse {
   courseId: number
   courseCode: string
   courseName: string
+
   programId: number | null
   programCode: string | null
   programName: string | null
+
   cohortId: number | null
   cohortName: string | null
+
   syllabusId: number | null
   syllabusVersionNumber: number | null
   syllabusStatus: string | null
-  instructorId: number
-  instructorName: string
+
+  instructorUserId: number
+  instructorFullName: string | null
+  instructorUsername: string
+
   semester: number
   academicYear: string
   groupNumber: number
@@ -22,10 +28,12 @@ export interface ClassSectionResponse {
   maxStudents: number | null
   room: string | null
   schedule: string | null
+
   sectionType:
     | "THEORY"
     | "LAB"
     | "COMBINED"
+
   isActive: boolean
   readyForSyllabusCreation: boolean
 }
@@ -37,12 +45,13 @@ export interface CreateClassSectionRequest {
 
   /**
    * New Admin assignments should normally use null.
-   * The backend later links the Draft created by the assigned Faculty.
+   * The backend later links the Draft created by the assigned Instructor.
    * Existing linked assignments preserve their syllabusId on edit.
    */
   syllabusId?: number | null
 
-  instructorId: number
+  instructorUserId: number
+
   semester?: number
   academicYear?: string
   groupNumber?: number
@@ -50,21 +59,19 @@ export interface CreateClassSectionRequest {
   maxStudents?: number
   room?: string
   schedule?: string
+
   sectionType?:
     | "THEORY"
     | "LAB"
     | "COMBINED"
+
   isActive?: boolean
 }
 
 export const getClassSections =
-  async (): Promise<
-    ClassSectionResponse[]
-  > => {
+  async (): Promise<ClassSectionResponse[]> => {
     const { data } =
-      await api.get<
-        ClassSectionResponse[]
-      >(
+      await api.get<ClassSectionResponse[]>(
         "/api/class-sections",
       )
 
@@ -72,13 +79,9 @@ export const getClassSections =
   }
 
 export const getMyActiveAssignments =
-  async (): Promise<
-    ClassSectionResponse[]
-  > => {
+  async (): Promise<ClassSectionResponse[]> => {
     const { data } =
-      await api.get<
-        ClassSectionResponse[]
-      >(
+      await api.get<ClassSectionResponse[]>(
         "/api/class-sections/my-assignments",
       )
 
@@ -88,13 +91,9 @@ export const getMyActiveAssignments =
 export const getClassSectionById =
   async (
     id: number,
-  ): Promise<
-    ClassSectionResponse
-  > => {
+  ): Promise<ClassSectionResponse> => {
     const { data } =
-      await api.get<
-        ClassSectionResponse
-      >(
+      await api.get<ClassSectionResponse>(
         `/api/class-sections/${id}`,
       )
 
@@ -104,13 +103,9 @@ export const getClassSectionById =
 export const getSectionsByCourse =
   async (
     courseId: number,
-  ): Promise<
-    ClassSectionResponse[]
-  > => {
+  ): Promise<ClassSectionResponse[]> => {
     const { data } =
-      await api.get<
-        ClassSectionResponse[]
-      >(
+      await api.get<ClassSectionResponse[]>(
         `/api/class-sections/course/${courseId}`,
       )
 
@@ -119,15 +114,10 @@ export const getSectionsByCourse =
 
 export const createClassSection =
   async (
-    request:
-      CreateClassSectionRequest,
-  ): Promise<
-    ClassSectionResponse
-  > => {
+    request: CreateClassSectionRequest,
+  ): Promise<ClassSectionResponse> => {
     const { data } =
-      await api.post<
-        ClassSectionResponse
-      >(
+      await api.post<ClassSectionResponse>(
         "/api/class-sections",
         request,
       )
@@ -141,15 +131,10 @@ export const updateClassSection =
     req,
   }: {
     id: number
-    req:
-      CreateClassSectionRequest
-  }): Promise<
-    ClassSectionResponse
-  > => {
+    req: CreateClassSectionRequest
+  }): Promise<ClassSectionResponse> => {
     const { data } =
-      await api.put<
-        ClassSectionResponse
-      >(
+      await api.put<ClassSectionResponse>(
         `/api/class-sections/${id}`,
         req,
       )
@@ -160,10 +145,8 @@ export const updateClassSection =
 /**
  * Legacy hard-delete endpoint.
  *
- * Keep this client method only for compatibility with older code.
- * The Admin Teaching Assignments UI intentionally does NOT expose it,
- * because assignment history should be preserved and normal removal is
- * represented by isActive = false.
+ * Keep this client method only while the Admin UI still supports
+ * explicit deletion of an unreferenced assignment.
  */
 export const deleteClassSection =
   async (

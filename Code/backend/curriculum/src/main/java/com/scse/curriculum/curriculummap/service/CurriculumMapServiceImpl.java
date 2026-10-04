@@ -151,7 +151,7 @@ public class CurriculumMapServiceImpl implements CurriculumMapService {
         String courseType = mapping == null || mapping.getCourseType() == null
                 ? syllabus.getCourseTypes() : mapping.getCourseType().getName();
         return CurriculumMapResponse.CourseNode.builder()
-                .courseId(course.getId()).courseCode(course.getCourseCode())
+                .courseId(course.getId()).syllabusId(syllabus.getId()).courseCode(course.getCourseCode())
                 .courseName(course.getName()).courseNameVn(course.getNameVn())
                 .creditTheory(course.getCreditTheory()).creditLab(course.getCreditLab())
                 .semester(displaySemester(syllabus.getSemester()))
@@ -216,3 +216,4 @@ public class CurriculumMapServiceImpl implements CurriculumMapService {
         return 10;
     }
 }
+

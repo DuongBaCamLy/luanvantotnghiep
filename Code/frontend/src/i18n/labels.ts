@@ -10,6 +10,7 @@ export const ROLE_LABELS: Record<UserRole, string> = {
   DEAN: t("role.dean"),
   DEPT_HEAD: t("role.departmentHead"),
   INSTRUCTOR: t("role.instructor"),
+  DEAN_SECRETARY: t("role.deanSecretary"),
 }
 
 export const APPROVAL_STATUS_LABELS: Record<ApprovalStatus, string> = {

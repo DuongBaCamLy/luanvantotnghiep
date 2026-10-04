@@ -42,6 +42,7 @@ private String cohortName;
     @AllArgsConstructor
     public static class CourseNode {
         private Integer courseId;
+        private Integer syllabusId;
         private String courseCode;
         private String courseName;
         private String courseNameVn;

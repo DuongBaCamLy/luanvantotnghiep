@@ -15,7 +15,7 @@ import {
 import { courseApi } from "@/api/courseApi"
 import { cohortApi } from "@/api/cohortApi"
 import { courseProgramApi } from "@/api/courseProgramApi"
-import { instructorApi } from "@/api/instructorApi"
+import { getUsers } from "@/api/userApi"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -69,7 +69,7 @@ export default function ClassSectionFormDialog({
   const [courseId, setCourseId] = useState("")
   const [programId, setProgramId] = useState("")
   const [cohortId, setCohortId] = useState("")
-  const [instructorId, setInstructorId] = useState("")
+const [instructorUserId, setInstructorUserId] = useState("")
   const [semester, setSemester] = useState("1")
   const [academicYear, setAcademicYear] = useState(
     getDefaultAcademicYear(),
@@ -98,7 +98,7 @@ export default function ClassSectionFormDialog({
       cohorts
         .filter(
           (cohort) =>
-            cohort.isActive
+            cohort.isActive !== false
             || cohort.id === initialData?.cohortId,
         )
         .slice()
@@ -132,6 +132,10 @@ export default function ClassSectionFormDialog({
       cohortId,
     ],
   )
+
+
+  const isArchivedCohortContext =
+    selectedCohortRecord?.isActive === false
 
   const resolvedProgramId =
     selectedCohortRecord?.programId
@@ -183,37 +187,47 @@ export default function ClassSectionFormDialog({
     )
 
 
-  const {
-    data: instructors = [],
-  } = useQuery({
-    queryKey: ["instructors"],
-    queryFn: instructorApi.getAll,
-    enabled: open,
-  })
+const {
+  data: users = [],
+} = useQuery({
+  queryKey: ["users"],
+  queryFn: getUsers,
+  enabled: open,
+})
 
-  const activeInstructors =
-    useMemo(
-      () =>
-        instructors
-          .filter(
-            (instructor) =>
-              instructor.isActive
-              || instructor.id === initialData?.instructorId,
+const activeInstructorUsers =
+  useMemo(
+    () =>
+      users
+        .filter(
+          (user) =>
+            user.role === "INSTRUCTOR"
+            && (
+              user.isActive
+              || user.id === initialData?.instructorUserId
+            ),
+        )
+        .slice()
+        .sort((left, right) => {
+          const leftName =
+            left.fullName?.trim()
+            || left.username
+
+          const rightName =
+            right.fullName?.trim()
+            || right.username
+
+          return leftName.localeCompare(
+            rightName,
+            "vi",
+            { numeric: true },
           )
-          .slice()
-          .sort(
-            (left, right) =>
-              left.fullName.localeCompare(
-                right.fullName,
-                "vi",
-              ),
-          ),
-      [
-        initialData?.instructorId,
-        instructors,
-      ],
-    )
-
+        }),
+    [
+      initialData?.instructorUserId,
+      users,
+    ],
+  )
   const hasLinkedSyllabus =
     Boolean(
       initialData?.syllabusId,
@@ -230,9 +244,9 @@ export default function ClassSectionFormDialog({
       setCourseId(
         String(initialData.courseId),
       )
-      setInstructorId(
-        String(initialData.instructorId),
-      )
+      setInstructorUserId(
+  String(initialData.instructorUserId),
+)
       setSemester(
         String(initialData.semester),
       )
@@ -252,7 +266,7 @@ export default function ClassSectionFormDialog({
       setProgramId("")
       setCohortId("")
       setCourseId("")
-      setInstructorId("")
+      setInstructorUserId("")
       setSemester("1")
       setAcademicYear(
         getDefaultAcademicYear(),
@@ -271,11 +285,18 @@ export default function ClassSectionFormDialog({
   ) => {
     event.preventDefault()
 
+    if (isArchivedCohortContext) {
+      setValidationError(
+        "Archived Cohort is read-only. Restore it before changing teaching assignments.",
+      )
+      return
+    }
+
     if (
       !courseId
       || !resolvedProgramId
       || !cohortId
-      || !instructorId
+      || !instructorUserId
     ) {
       setValidationError(
         "Cohort, Course, and Instructor are required.",
@@ -295,8 +316,8 @@ export default function ClassSectionFormDialog({
         initialData?.syllabusId
         ?? null,
 
-      instructorId:
-        Number(instructorId),
+      instructorUserId:
+  Number(instructorUserId),
 
       semester:
         Number(semester),
@@ -483,45 +504,49 @@ export default function ClassSectionFormDialog({
               </div>
 
               <div className="space-y-1.5">
-                <Label>
-                  Instructor *
-                </Label>
+  <Label>
+    Instructor *
+  </Label>
 
-                <Select
-                  value={instructorId}
-                  onValueChange={(value) => {
-                    setInstructorId(value)
-                    setValidationError("")
-                  }}
-                  disabled={
-                    isLoading
-                    || hasLinkedSyllabus
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select Instructor" />
-                  </SelectTrigger>
+  <Select
+    value={instructorUserId}
+    onValueChange={(value) => {
+      setInstructorUserId(value)
+      setValidationError("")
+    }}
+    disabled={
+      isLoading
+      || hasLinkedSyllabus
+    }
+  >
+    <SelectTrigger>
+      <SelectValue placeholder="Select Instructor" />
+    </SelectTrigger>
 
-                  <SelectContent>
-                    {activeInstructors.map(
-                      (instructor) => (
-                        <SelectItem
-                          key={instructor.id}
-                          value={String(instructor.id)}
-                        >
-                          {instructor.staffCode}
-                          {" — "}
-                          {instructor.fullName}
-                        </SelectItem>
-                      ),
-                    )}
-                  </SelectContent>
-                </Select>
+    <SelectContent>
+      {activeInstructorUsers.map((user) => {
+        const displayName =
+          user.fullName?.trim()
+          || user.username
 
-                <p className="text-xs text-slate-500">
-                  Only active instructor profiles are available for new assignments.
-                </p>
-              </div>
+        return (
+          <SelectItem
+            key={user.id}
+            value={String(user.id)}
+          >
+            {displayName}
+            {" — "}
+            {user.username}
+          </SelectItem>
+        )
+      })}
+    </SelectContent>
+  </Select>
+
+  <p className="text-xs text-slate-500">
+    Only active Instructor accounts are available for new assignments.
+  </p>
+</div>
 
             </div>
 
@@ -547,7 +572,7 @@ export default function ClassSectionFormDialog({
             <Button
               type="submit"
               className="bg-[#007d84] text-white hover:bg-[#006d73]"
-              disabled={isLoading}
+              disabled={isLoading || isArchivedCohortContext}
             >
               {isLoading
                 ? "Saving..."

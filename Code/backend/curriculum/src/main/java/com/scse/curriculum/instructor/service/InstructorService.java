@@ -17,6 +17,6 @@ public interface InstructorService {
 
     InstructorResponse getInstructorById(Integer id);
 
-    InstructorResponse getInstructorByUserId(Integer userId);
+   
 
 }

@@ -13,6 +13,12 @@ import lombok.Setter;
 @Setter
 public class CreateUserRequest {
 
+    @NotBlank(message = "Full name is required")
+    @Size(
+            max = 255,
+            message = "Full name must not exceed 255 characters")
+    private String fullName;
+
     @NotBlank(
             message = "Username is required")
     @Size(
@@ -38,6 +44,5 @@ public class CreateUserRequest {
             message = "Role is required")
     private UserRole role;
 
-    private Integer instructorId;
     private Integer managedMajorId;
 }

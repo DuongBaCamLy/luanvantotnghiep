@@ -2,12 +2,11 @@ package com.scse.curriculum.department.controller;
 
 import com.scse.curriculum.department.dto.CreateDepartmentRequest;
 import com.scse.curriculum.department.dto.DepartmentResponse;
-import com.scse.curriculum.department.dto.AssignDepartmentHeadRequest;
-import com.scse.curriculum.department.dto.DepartmentHeadCandidateResponse;
 import com.scse.curriculum.department.service.DepartmentService;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -32,33 +31,18 @@ public class DepartmentController {
         return service.getById(id);
     }
 
+    @GetMapping("/code/{code}")
+    public DepartmentResponse getByCode(
+            @PathVariable String code) {
+
+        return service.getByCode(code);
+    }
+
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
     public DepartmentResponse create(
-            @Valid
-            @RequestBody CreateDepartmentRequest request) {
+            @Valid @RequestBody CreateDepartmentRequest request) {
 
         return service.create(request);
     }
-
-    @GetMapping("/head-candidates")
-    @PreAuthorize("hasRole('ADMIN')")
-    public List<DepartmentHeadCandidateResponse> getHeadCandidates() {
-        return service.getActiveHeadCandidates();
-    }
-
-    @PutMapping("/{id}/head")
-    @PreAuthorize("hasRole('ADMIN')")
-    public DepartmentResponse assignHead(
-            @PathVariable Integer id,
-            @Valid @RequestBody AssignDepartmentHeadRequest request) {
-        return service.assignHead(id, request.getUserAccountId());
-    }
-
-    @GetMapping("/code/{code}")
-public DepartmentResponse getByCode(
-        @PathVariable String code) {
-
-    return service.getByCode(code);
-}
 }

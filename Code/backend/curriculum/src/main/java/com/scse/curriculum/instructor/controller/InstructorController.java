@@ -137,14 +137,6 @@ public class InstructorController {
                 instructorService.getInstructorById(id));
     }
 
-    @GetMapping("/user/{userId}")
-    public ResponseEntity<InstructorResponse> getInstructorByUserId(
-            @PathVariable Integer userId) {
-
-        return ResponseEntity.ok(
-                instructorService.getInstructorByUserId(userId));
-    }
-
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<InstructorResponse> updateInstructor(

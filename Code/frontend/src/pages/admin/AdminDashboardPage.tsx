@@ -500,20 +500,16 @@ const accountStatusTotal =
       ),
     [accountStatusData],
   )
-  const accountByInstructorId =
+  const accountByUserId =
   useMemo(
     () =>
       new Map(
         (accountsQuery.data ?? [])
-          .filter(
-            (account) =>
-              account.instructorId != null,
-          )
           .map(
             (account) => [
-              account.instructorId!,
+              account.id,
               account,
-            ],
+            ] as const,
           ),
       ),
     [accountsQuery.data],
@@ -530,9 +526,9 @@ const accountStatusTotal =
             )
             .map((course) => {
               const account =
-                accountByInstructorId.get(
-                  faculty.instructorId,
-                )
+  accountByUserId.get(
+    faculty.instructorId,
+  )
 
               return {
                 key:
@@ -566,9 +562,9 @@ const accountStatusTotal =
 
     return rows.slice(0, 5)
   }, [
-    dashboard,
-    accountByInstructorId,
-  ])
+  accountByUserId,
+  dashboard,
+])
   const recentLoginRows = useMemo(() => {
   return (accountsQuery.data ?? [])
     .filter((account) =>

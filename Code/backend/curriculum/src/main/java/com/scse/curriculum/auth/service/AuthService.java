@@ -377,8 +377,7 @@ private LoginResponse buildLoginResponse(
                     user.getEmail())
             .role(
                     user.getRole())
-            .instructorId(
-                    user.getInstructorId())
+
             .refreshToken(refreshToken)
             .build();
 }

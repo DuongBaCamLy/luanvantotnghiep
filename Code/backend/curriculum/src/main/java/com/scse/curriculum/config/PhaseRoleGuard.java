@@ -26,7 +26,8 @@ public class PhaseRoleGuard {
         UserRole role = activePersistedRole(authentication);
 
         return role == UserRole.ADMIN
-                || role == UserRole.DEAN;
+        || role == UserRole.DEAN
+        || role == UserRole.DEAN_SECRETARY;
     }
 
     private UserRole activePersistedRole(

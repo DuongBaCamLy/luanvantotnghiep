@@ -68,6 +68,64 @@ class SyllabusPdfRendererTest {
 
 
     @Test
+    void rendersNew2027WithExactTargetSectionContract() throws Exception {
+        SyllabusPdfFontProvider fonts = new SyllabusPdfFontProvider("", "");
+        SyllabusPdfRenderer renderer = new SyllabusPdfRenderer(
+                fonts,
+                new ObjectMapper(),
+                "VIETNAM NATIONAL UNIVERSITY HCMC - INTERNATIONAL UNIVERSITY",
+                "SCHOOL OF COMPUTER SCIENCE AND ENGINEERING");
+
+        SyllabusPdfDocument base = sampleDocument();
+        SyllabusPdfDocument data = new SyllabusPdfDocument(
+                base.syllabusId(), base.status(), base.courseCode(), base.courseName(),
+                base.courseNameVn(), base.departmentCode(), base.departmentName(),
+                "CS2027", "NEW_2027", base.semester(), base.versionNumber(), base.versionLabel(),
+                base.currentVersion(), base.courseDesignation(), base.courseTypes(), base.language(),
+                base.relation(), base.teachingMethods(), base.workloadTotal(), base.workloadContact(),
+                base.workloadPrivate(), base.prerequisites(), base.objectives(), base.examForms(),
+                base.examRequirements(), base.rubrics(), base.major(), base.creditTheory(),
+                base.creditLab(), base.responsiblePersons(), base.createdBy(), base.approvedBy(),
+                base.submittedAt(), base.approvedAt(), base.updatedAt(), base.changeSummary(),
+                "{\"schemaVersion\":1,\"assessmentPassNote\":\"Pass requirement from source\","
+                        + "\"plannedActivities\":[{\"week\":1,\"topic\":\"Course overview\","
+                        + "\"clo\":\"CLO1\",\"assessments\":\"\","
+                        + "\"learningActivities\":\"Lecture, Discussion\","
+                        + "\"resources\":\"[1]. Chapter 1\"}]}",
+                base.clos(), base.plos(), base.cloPloCells(), base.topics(),
+                base.assessments(), base.books());
+
+        byte[] bytes = renderer.render(data, SyllabusPdfMode.EXPORT);
+        try (var document = Loader.loadPDF(bytes)) {
+            String text = new org.apache.pdfbox.text.PDFTextStripper().getText(document)
+                    .replace('\u2013', '-')
+                    .replace('\u2014', '-')
+                    .replaceAll("\\s+", " ");
+
+            for (String heading : List.of(
+                    "1. General Information",
+                    "2. Course Objectives",
+                    "3. Course Learning Outcomes (CLO)",
+                    "4. Course Content",
+                    "5. Course CLO-PLO Alignment",
+                    "6. Detailed CLO-LLO Table",
+                    "7. Examination Forms",
+                    "8. Study and Examination Requirements",
+                    "9. Planned Learning Activities and Teaching Methods",
+                    "10. Assessment Plan",
+                    "11. Assignment Description and Rubric Summary",
+                    "12. Reading List")) {
+                assertTrue(text.contains(heading), "Missing NEW_2027 section: " + heading);
+            }
+
+            assertTrue(text.contains("CS2027"));
+            assertTrue(text.contains("No source LLO data is available. LLO values are not generated."));
+            assertTrue(text.contains("Lecture, Discussion"));
+            assertTrue(text.contains("[1]. Chapter 1"));
+            assertTrue(!text.contains("2. Learning Outcomes Matrix"));
+        }
+    }
+    @Test
     void rendersWideCloPloMatrixOnLandscapePage() throws Exception {
         SyllabusPdfFontProvider fonts = new SyllabusPdfFontProvider("", "");
         SyllabusPdfRenderer renderer = new SyllabusPdfRenderer(
@@ -95,7 +153,7 @@ class SyllabusPdfRendererTest {
         SyllabusPdfDocument wide = new SyllabusPdfDocument(
                 base.syllabusId(), base.status(), base.courseCode(), base.courseName(),
                 base.courseNameVn(), base.departmentCode(), base.departmentName(),
-                base.academicYear(), base.semester(), base.versionNumber(), base.versionLabel(),
+                base.academicYear(), base.targetTemplateProfile(), base.semester(), base.versionNumber(), base.versionLabel(),
                 base.currentVersion(), base.courseDesignation(), base.courseTypes(), base.language(),
                 base.relation(), base.teachingMethods(), base.workloadTotal(), base.workloadContact(),
                 base.workloadPrivate(), base.prerequisites(), base.objectives(), base.examForms(),
@@ -140,6 +198,7 @@ class SyllabusPdfRendererTest {
                 "IT",
                 "Department of Information Technology",
                 "2026-2027",
+                "SOURCE_TEMPLATE",
                 "1",
                 1,
                 "v1.0",

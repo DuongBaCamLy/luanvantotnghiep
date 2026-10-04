@@ -23,8 +23,6 @@ import com.scse.curriculum.common.exception.ForbiddenOperationException;
 import com.scse.curriculum.course.entity.Course;
 import com.scse.curriculum.courseprogram.entity.CourseProgram;
 import com.scse.curriculum.courseprogram.repository.CourseProgramRepository;
-import com.scse.curriculum.instructor.entity.Instructor;
-import com.scse.curriculum.instructor.repository.InstructorRepository;
 import com.scse.curriculum.major.entity.Major;
 import com.scse.curriculum.program.entity.Program;
 import com.scse.curriculum.syllabus.entity.Syllabus;
@@ -32,12 +30,11 @@ import com.scse.curriculum.approval.entity.ApprovalRequest;
 import com.scse.curriculum.user.entity.UserAccount;
 import com.scse.curriculum.user.entity.UserRole;
 import com.scse.curriculum.user.repository.UserAccountRepository;
-
+import com.scse.curriculum.syllabus.entity.SyllabusStatus;
 @ExtendWith(MockitoExtension.class)
 class SyllabusAccessServiceTest {
 
     @Mock private CurrentUserService currentUserService;
-    @Mock private InstructorRepository instructorRepository;
     @Mock private ClassSectionRepository classSectionRepository;
     @Mock private UserAccountRepository userAccountRepository;
     @Mock private CourseProgramRepository courseProgramRepository;
@@ -45,17 +42,17 @@ class SyllabusAccessServiceTest {
     @InjectMocks private SyllabusAccessService service;
 
     private UserAccount instructorUser;
-    private Instructor instructor;
     private Course assignedCourse;
 
     @BeforeEach
     void setUp() {
         instructorUser = UserAccount.builder()
                 .id(10)
+                .fullName("Instructor User")
+                .username("instructor.user")
                 .role(UserRole.INSTRUCTOR)
-                .instructorId(100)
+                .isActive(true)
                 .build();
-        instructor = Instructor.builder().id(100).build();
         assignedCourse = Course.builder().id(200).courseCode("IT013IU").build();
         when(currentUserService.getCurrentUser()).thenReturn(instructorUser);
     }
@@ -71,7 +68,14 @@ class SyllabusAccessServiceTest {
     @Test
     void instructorCannotCreateFromAnotherInstructorsAssignment() {
         ClassSection foreignAssignment = assignment(
-                Instructor.builder().id(999).build(), assignedCourse);
+                UserAccount.builder()
+                        .id(999)
+                        .fullName("Other Instructor")
+                        .username("other.instructor")
+                        .role(UserRole.INSTRUCTOR)
+                        .isActive(true)
+                        .build(),
+                assignedCourse);
         when(classSectionRepository.findById(300))
                 .thenReturn(Optional.of(foreignAssignment));
 
@@ -105,7 +109,7 @@ class SyllabusAccessServiceTest {
                 .semester("Semester 2")
                 .build();
         when(classSectionRepository
-                .existsByInstructor_IdAndSyllabus_IdAndIsActiveTrue(100, 400))
+                .existsByInstructorUser_IdAndSyllabus_IdAndIsActiveTrue(10, 400))
                 .thenReturn(true);
 
         assertThatCode(() -> service.assertCanModify(syllabus))
@@ -117,27 +121,75 @@ class SyllabusAccessServiceTest {
         Syllabus syllabus = Syllabus.builder().id(401).course(assignedCourse)
                 .academicYear("2026-2027").semester("HK1").build();
         when(classSectionRepository
-                .findActiveAssignmentsExact(100, 200, "2026-2027", 1))
-                .thenReturn(List.of(assignment(instructor, assignedCourse)));
+                .findActiveAssignmentsExact(10, 200, "2026-2027", 1))
+                .thenReturn(List.of(assignment(instructorUser, assignedCourse)));
 
         assertThatCode(() -> service.assertCanView(syllabus)).doesNotThrowAnyException();
     }
 
+
     @Test
-    void instructorCannotViewSyllabusOutsideAssignmentScope() {
-        Syllabus syllabus = Syllabus.builder().id(402).course(assignedCourse)
-                .academicYear("2026-2027").semester("HK2").build();
-        when(classSectionRepository
-                .findActiveAssignmentsExact(100, 200, "2026-2027", 2))
-                .thenReturn(List.of());
+void instructorCanViewApprovedSyllabusOutsideAssignmentScope() {
 
-        assertThatThrownBy(() -> service.assertCanView(syllabus))
-                .isInstanceOf(ForbiddenOperationException.class);
-    }
+    Syllabus syllabus = Syllabus.builder()
+            .id(402)
+            .course(assignedCourse)
+            .academicYear("2026-2027")
+            .semester("HK2")
+            .status(SyllabusStatus.APPROVED)
+            .build();
 
+    assertThatCode(() -> service.assertCanView(syllabus))
+            .doesNotThrowAnyException();
+}
+    @Test
+void instructorCannotViewDraftSyllabusOutsideAssignmentScope() {
+
+    Syllabus syllabus = Syllabus.builder()
+            .id(403)
+            .course(assignedCourse)
+            .academicYear("2026-2027")
+            .semester("HK2")
+            .status(SyllabusStatus.DRAFT)
+            .build();
+
+    when(classSectionRepository
+            .findActiveAssignmentsExact(
+                    10,
+                    200,
+                    "2026-2027",
+                    2
+            ))
+            .thenReturn(List.of());
+
+    assertThatThrownBy(
+            () -> service.assertCanView(syllabus)
+    )
+            .isInstanceOf(
+                    ForbiddenOperationException.class
+            );
+}
+@Test
+void instructorCannotModifyApprovedSyllabusOutsideAssignmentScope() {
+
+    Syllabus syllabus = Syllabus.builder()
+            .id(404)
+            .course(assignedCourse)
+            .academicYear("2026-2027")
+            .semester("HK2")
+            .status(SyllabusStatus.APPROVED)
+            .build();
+
+    assertThatThrownBy(
+            () -> service.assertCanModify(syllabus)
+    )
+            .isInstanceOf(
+                    ForbiddenOperationException.class
+            );
+}
     @Test
     void instructorCanCreateFromOwnActiveAssignment() {
-        ClassSection ownAssignment = assignment(instructor, assignedCourse);
+        ClassSection ownAssignment = assignment(instructorUser, assignedCourse);
         when(classSectionRepository.findById(300)).thenReturn(Optional.of(ownAssignment));
 
         assertThatCode(() -> service.authorizeCreate(
@@ -147,7 +199,7 @@ class SyllabusAccessServiceTest {
 
     @Test
     void instructorImportUsesOwnAssignmentAsAuthoritativeContext() {
-        ClassSection ownAssignment = assignment(instructor, assignedCourse);
+        ClassSection ownAssignment = assignment(instructorUser, assignedCourse);
         when(classSectionRepository.findById(300)).thenReturn(Optional.of(ownAssignment));
 
         SyllabusAccessService.CreationAuthorization authorization =
@@ -163,7 +215,13 @@ class SyllabusAccessServiceTest {
     @Test
     void instructorCannotImportWithAnotherInstructorsAssignment() {
         when(classSectionRepository.findById(300)).thenReturn(Optional.of(
-                assignment(Instructor.builder().id(999).build(), assignedCourse)));
+                assignment(UserAccount.builder()
+                        .id(999)
+                        .fullName("Other Instructor")
+                        .username("other.instructor")
+                        .role(UserRole.INSTRUCTOR)
+                        .isActive(true)
+                        .build(), assignedCourse)));
 
         assertThatThrownBy(() -> service.authorizeImport(300, assignedCourse))
                 .isInstanceOf(ForbiddenOperationException.class)
@@ -173,7 +231,7 @@ class SyllabusAccessServiceTest {
     @Test
     void instructorCannotImportASelectedCourseDifferentFromAssignmentCourse() {
         when(classSectionRepository.findById(300))
-                .thenReturn(Optional.of(assignment(instructor, assignedCourse)));
+                .thenReturn(Optional.of(assignment(instructorUser, assignedCourse)));
         Course unassignedCourse = Course.builder().id(201).courseCode("IT069IU").build();
 
         assertThatThrownBy(() -> service.authorizeImport(300, unassignedCourse))
@@ -251,10 +309,10 @@ class SyllabusAccessServiceTest {
                 .isInstanceOf(ForbiddenOperationException.class);
     }
 
-    private ClassSection assignment(Instructor owner, Course course) {
+    private ClassSection assignment(UserAccount owner, Course course) {
         return ClassSection.builder()
                 .id(300)
-                .instructor(owner)
+                .instructorUser(owner)
                 .course(course)
                 .semester(1)
                 .academicYear("2026-2027")

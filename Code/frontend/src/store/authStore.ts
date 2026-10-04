@@ -26,7 +26,6 @@ export const useAuthStore = create<AuthState>()(
             username: data.username,
             email: data.email,
             role: data.role,
-            instructorId: data.instructorId,
           },
         }),
 

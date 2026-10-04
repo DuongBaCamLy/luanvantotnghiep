@@ -222,7 +222,8 @@ export default function DeptHeadApprovalPage() {
     )
 
   const isDean =
-    role === "DEAN"
+  role === "DEAN"
+  || role === "DEAN_SECRETARY"
 
   const isDeptHead =
     role === "DEPT_HEAD"
@@ -238,9 +239,9 @@ export default function DeptHeadApprovalPage() {
         : "STEP1_DEPT_HEAD"
 
   const detailBasePath =
-    isDean
-      ? "/dean/syllabus"
-      : "/dept-head/syllabus"
+  isDean
+    ? "/dean/syllabus"
+    : "/dept-head/syllabus"
 
   const pageTitle =
     isDean

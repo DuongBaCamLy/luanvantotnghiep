@@ -50,7 +50,6 @@ export const en = {
   "nav.syllabusCatalog": "Syllabus Catalog",
   "nav.curriculumMap": "Curriculum Map",
   "nav.versionComparison": "Version Comparison",
-  "nav.instructors": "Instructor Management",
   "nav.teachingAssignments": "Teaching Assignments",
   "nav.reports": "Reports",
   "nav.auditLog": "Audit Log",
@@ -68,6 +67,7 @@ export const en = {
 
   "role.admin": "Administrator",
   "role.dean": "Dean",
+  "role.deanSecretary": "Dean Secretary",
   "role.programCoordinator": "Program Coordinator",
   "role.departmentHead": "Head of Department",
   "role.instructor": "Instructor",
@@ -132,8 +132,6 @@ export const en = {
   "userForm.password": "Password",
   "userForm.passwordOptional": "Password (leave blank to keep unchanged)",
   "userForm.role": "Role",
-  "userForm.instructorId": "Instructor ID",
-  "userForm.instructorPlaceholder": "Link to an instructor profile (optional)",
   "userForm.saving": "Saving...",
   "userForm.saveError": "Unable to save the user.",
 

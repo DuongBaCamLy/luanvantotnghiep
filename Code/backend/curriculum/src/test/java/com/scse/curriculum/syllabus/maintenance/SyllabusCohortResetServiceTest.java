@@ -59,6 +59,7 @@ class SyllabusCohortResetServiceTest {
     @Mock
     private SyllabusService syllabusService;
 
+    @Mock private com.scse.curriculum.cohort.service.CohortOperationalGuard cohortOperationalGuard;
     @InjectMocks
     private SyllabusCohortResetService service;
 

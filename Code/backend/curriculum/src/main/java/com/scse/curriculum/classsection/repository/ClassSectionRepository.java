@@ -1,6 +1,7 @@
 package com.scse.curriculum.classsection.repository;
 
 import com.scse.curriculum.classsection.entity.ClassSection;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -11,47 +12,55 @@ import java.util.Optional;
 public interface ClassSectionRepository
         extends JpaRepository<ClassSection, Integer> {
 
-    /*
-     * Những method cũ vẫn được giữ lại vì các service khác
-     * trong project có thể đang sử dụng.
-     */
+    @Query("""
+            SELECT COUNT(cs)
+            FROM ClassSection cs
+            WHERE cs.cohort.id = :cohortId
+              AND cs.isActive = true
+            """)
+    long countActiveByCohortId(
+            @Param("cohortId")
+            Integer cohortId);
 
-    List<ClassSection> findByCourse_Id(Integer courseId);
 
-    List<ClassSection> findBySyllabusId(Integer syllabusId);
+    List<ClassSection> findByCourse_Id(
+            Integer courseId);
+
+    List<ClassSection> findBySyllabusId(
+            Integer syllabusId);
 
     List<ClassSection>
-    findByCourse_CourseCodeContainingIgnoreCaseOrCourse_NameContainingIgnoreCaseOrInstructor_FullNameContainingIgnoreCaseOrAcademicYearContainingIgnoreCase(
+    findByCourse_CourseCodeContainingIgnoreCaseOrCourse_NameContainingIgnoreCaseOrInstructorUser_FullNameContainingIgnoreCaseOrAcademicYearContainingIgnoreCase(
             String courseCode,
             String courseName,
-            String instructorName,
+            String instructorFullName,
             String academicYear);
 
     List<ClassSection>
-    findByCourse_IdAndInstructor_IdAndSemesterAndAcademicYearIgnoreCaseAndGroupNumber(
+    findByCourse_IdAndInstructorUser_IdAndSemesterAndAcademicYearIgnoreCaseAndGroupNumber(
             Integer courseId,
-            Integer instructorId,
+            Integer instructorUserId,
             Integer semester,
             String academicYear,
             Integer groupNumber);
 
     /*
      * =====================================================
-     * DATA SCOPE CHO ADMIN VÀ DEPT_HEAD
+     * DATA SCOPE FOR ADMIN / DEPT_HEAD
      * =====================================================
      *
      * departmentId = null:
-     * - Admin xem được toàn bộ.
+     * - Admin sees all assignments.
      *
-     * departmentId có giá trị:
-     * - DeptHead chỉ xem ClassSection thuộc bộ môn đó.
+     * departmentId != null:
+     * - Dept Head sees only assignments in the managed Major.
      */
 
     @Query("""
             SELECT DISTINCT cs
             FROM ClassSection cs
             JOIN FETCH cs.course c
-            JOIN FETCH cs.instructor i
+            JOIN FETCH cs.instructorUser iu
             LEFT JOIN FETCH cs.syllabus s
             WHERE (
                 :departmentId IS NULL
@@ -64,13 +73,14 @@ public interface ClassSectionRepository
                 cs.groupNumber ASC
             """)
     List<ClassSection> findAllInScope(
-            @Param("departmentId") Integer departmentId);
+            @Param("departmentId")
+            Integer departmentId);
 
     @Query("""
             SELECT cs
             FROM ClassSection cs
             JOIN FETCH cs.course c
-            JOIN FETCH cs.instructor i
+            JOIN FETCH cs.instructorUser iu
             LEFT JOIN FETCH cs.syllabus s
             WHERE cs.id = :id
               AND (
@@ -79,14 +89,17 @@ public interface ClassSectionRepository
               )
             """)
     Optional<ClassSection> findByIdInScope(
-            @Param("id") Integer id,
-            @Param("departmentId") Integer departmentId);
+            @Param("id")
+            Integer id,
+
+            @Param("departmentId")
+            Integer departmentId);
 
     @Query("""
             SELECT DISTINCT cs
             FROM ClassSection cs
             JOIN FETCH cs.course c
-            JOIN FETCH cs.instructor i
+            JOIN FETCH cs.instructorUser iu
             LEFT JOIN FETCH cs.syllabus s
             WHERE c.id = :courseId
               AND (
@@ -99,14 +112,17 @@ public interface ClassSectionRepository
                 cs.groupNumber ASC
             """)
     List<ClassSection> findByCourseIdInScope(
-            @Param("courseId") Integer courseId,
-            @Param("departmentId") Integer departmentId);
+            @Param("courseId")
+            Integer courseId,
+
+            @Param("departmentId")
+            Integer departmentId);
 
     @Query("""
             SELECT DISTINCT cs
             FROM ClassSection cs
             JOIN FETCH cs.course c
-            JOIN FETCH cs.instructor i
+            JOIN FETCH cs.instructorUser iu
             LEFT JOIN FETCH cs.syllabus s
             WHERE (
                 :departmentId IS NULL
@@ -115,10 +131,16 @@ public interface ClassSectionRepository
             AND (
                 LOWER(c.courseCode)
                     LIKE LOWER(CONCAT('%', :keyword, '%'))
+
                 OR LOWER(c.name)
                     LIKE LOWER(CONCAT('%', :keyword, '%'))
-                OR LOWER(i.fullName)
+
+                OR LOWER(iu.fullName)
                     LIKE LOWER(CONCAT('%', :keyword, '%'))
+
+                OR LOWER(iu.username)
+                    LIKE LOWER(CONCAT('%', :keyword, '%'))
+
                 OR LOWER(cs.academicYear)
                     LIKE LOWER(CONCAT('%', :keyword, '%'))
             )
@@ -129,20 +151,21 @@ public interface ClassSectionRepository
                 cs.groupNumber ASC
             """)
     List<ClassSection> searchInScope(
-            @Param("keyword") String keyword,
-            @Param("departmentId") Integer departmentId);
+            @Param("keyword")
+            String keyword,
+
+            @Param("departmentId")
+            Integer departmentId);
 
     /*
-     * Kiểm tra trùng đúng theo nghiệp vụ:
+     * Duplicate assignment rule:
      *
-     * course + semester + academicYear + groupNumber.
+     * course
+     * + semester
+     * + academicYear
+     * + groupNumber
      *
-     * Không đưa instructorId vào điều kiện vì đổi giảng viên
-     * không được phép tạo thêm một lớp trùng nhóm.
-     *
-     * excludedId:
-     * - null khi tạo mới.
-     * - ID hiện tại khi cập nhật.
+     * Instructor is intentionally NOT part of this rule.
      */
     @Query("""
             SELECT COUNT(cs)
@@ -158,28 +181,38 @@ public interface ClassSectionRepository
               )
             """)
     long countDuplicateAssignment(
-            @Param("courseId") Integer courseId,
-            @Param("semester") Integer semester,
-            @Param("academicYear") String academicYear,
-            @Param("groupNumber") Integer groupNumber,
-            @Param("excludedId") Integer excludedId);
+            @Param("courseId")
+            Integer courseId,
+
+            @Param("semester")
+            Integer semester,
+
+            @Param("academicYear")
+            String academicYear,
+
+            @Param("groupNumber")
+            Integer groupNumber,
+
+            @Param("excludedId")
+            Integer excludedId);
 
     @Query("""
             SELECT COUNT(DISTINCT cs.course.id)
             FROM ClassSection cs
-            WHERE cs.instructor.id = :instructorId
+            WHERE cs.instructorUser.id = :instructorUserId
             """)
-    Integer countDistinctCoursesByInstructorId(
-            @Param("instructorId") Integer instructorId);
+    Integer countDistinctCoursesByInstructorUserId(
+            @Param("instructorUserId")
+            Integer instructorUserId);
 
     @Query("""
             SELECT cs
             FROM ClassSection cs
             JOIN FETCH cs.course c
             LEFT JOIN FETCH c.department d
-            JOIN FETCH cs.instructor i
+            JOIN FETCH cs.instructorUser iu
             LEFT JOIN FETCH cs.syllabus s
-            WHERE i.id = :instructorId
+            WHERE iu.id = :instructorUserId
               AND cs.isActive = true
             ORDER BY
                 cs.academicYear DESC,
@@ -187,48 +220,49 @@ public interface ClassSectionRepository
                 c.courseCode ASC,
                 cs.groupNumber ASC
             """)
-    List<ClassSection> findActiveByInstructorId(
-            @Param("instructorId") Integer instructorId);
+    List<ClassSection> findActiveByInstructorUserId(
+            @Param("instructorUserId")
+            Integer instructorUserId);
 
     /**
-     * FR-05.6: lấy toàn bộ phân công ACTIVE của đúng năm học + học kỳ,
-     * đồng thời fetch course/instructor/syllabus để scheduler không gặp N+1
-     * hoặc LazyInitializationException.
+     * FR-05.6:
+     * Load all ACTIVE teaching assignments
+     * for the requested academic year and semester.
      */
     @Query("""
             SELECT DISTINCT cs
             FROM ClassSection cs
             JOIN FETCH cs.course c
             LEFT JOIN FETCH c.department d
-            JOIN FETCH cs.instructor i
+            JOIN FETCH cs.instructorUser iu
             LEFT JOIN FETCH cs.syllabus s
             WHERE cs.isActive = true
               AND LOWER(TRIM(cs.academicYear))
                     = LOWER(TRIM(:academicYear))
               AND cs.semester = :semester
-            ORDER BY i.id, c.courseCode, cs.groupNumber
+            ORDER BY
+                iu.id,
+                c.courseCode,
+                cs.groupNumber
             """)
     List<ClassSection> findActiveForDeadline(
-            @Param("academicYear") String academicYear,
-            @Param("semester") Integer semester);
+            @Param("academicYear")
+            String academicYear,
+
+            @Param("semester")
+            Integer semester);
 
     /**
-     * Kiểm tra assignment chính xác theo:
-     * - Giảng viên
-     * - Môn học
-     * - Năm học
-     * - Học kỳ
-     *
-     * Không dùng wildcard khi academicYear hoặc semester null,
-     * vì đây là điều kiện phân quyền dữ liệu.
+     * Exact active assignment for:
+     * instructor account + course + year + semester.
      */
     @Query("""
             SELECT cs
             FROM ClassSection cs
             JOIN FETCH cs.course c
-            JOIN FETCH cs.instructor i
+            JOIN FETCH cs.instructorUser iu
             LEFT JOIN FETCH cs.syllabus s
-            WHERE i.id = :instructorId
+            WHERE iu.id = :instructorUserId
               AND c.id = :courseId
               AND cs.isActive = true
               AND LOWER(TRIM(cs.academicYear))
@@ -239,30 +273,37 @@ public interface ClassSectionRepository
                 cs.id ASC
             """)
     List<ClassSection> findActiveAssignmentsExact(
-            @Param("instructorId") Integer instructorId,
-            @Param("courseId") Integer courseId,
-            @Param("academicYear") String academicYear,
-            @Param("semester") Integer semester);
+            @Param("instructorUserId")
+            Integer instructorUserId,
+
+            @Param("courseId")
+            Integer courseId,
+
+            @Param("academicYear")
+            String academicYear,
+
+            @Param("semester")
+            Integer semester);
 
     /**
-     * A direct ClassSection -> Syllabus link is the authoritative assignment
-     * for an existing syllabus.  It must be checked independently from the
-     * textual academic-year fields because imported legacy syllabi may store
-     * a cohort code there while ClassSection stores the teaching year.
+     * Direct ClassSection -> Syllabus assignment check
+     * based on UserAccount rather than Instructor Profile.
      */
-    boolean existsByInstructor_IdAndSyllabus_IdAndIsActiveTrue(
-            Integer instructorId,
+    boolean existsByInstructorUser_IdAndSyllabus_IdAndIsActiveTrue(
+            Integer instructorUserId,
             Integer syllabusId);
 
     @Query("""
             SELECT section
             FROM ClassSection section
-            JOIN FETCH section.instructor instructor
+            JOIN FETCH section.instructorUser instructorUser
             JOIN FETCH section.course course
             WHERE section.syllabus.id = :syllabusId
-            ORDER BY instructor.fullName, section.groupNumber
+            ORDER BY
+                instructorUser.fullName,
+                section.groupNumber
             """)
     List<ClassSection> findForPdfBySyllabusId(
-            @Param("syllabusId") Integer syllabusId);
-
+            @Param("syllabusId")
+            Integer syllabusId);
 }

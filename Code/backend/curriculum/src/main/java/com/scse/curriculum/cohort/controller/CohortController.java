@@ -19,18 +19,30 @@ public class CohortController {
     private final CohortService service;
 
     @PostMapping
-@PreAuthorize("hasRole('ADMIN')")
-public CohortResponse create(
+    @PreAuthorize("hasRole('ADMIN')")
+    public CohortResponse create(
             @Valid
             @RequestBody CreateCohortRequest request) {
 
         return service.create(request);
     }
 
+    /*
+     * Compatibility list used by existing screens.
+     */
     @GetMapping
     public List<CohortResponse> getAll() {
 
         return service.getAll();
+    }
+
+    /*
+     * Dedicated data source for Curriculum Archive.
+     */
+    @GetMapping("/archived")
+    public List<CohortResponse> getArchived() {
+
+        return service.getArchived();
     }
 
     @GetMapping("/program/{programId}")
@@ -56,14 +68,17 @@ public CohortResponse create(
 
     @PostMapping("/{id}/archive")
     @PreAuthorize("hasRole('ADMIN')")
-    public CohortResponse archive(@PathVariable Integer id) {
+    public CohortResponse archive(
+            @PathVariable Integer id) {
+
         return service.archive(id);
     }
 
     @PostMapping("/{id}/reactivate")
     @PreAuthorize("hasRole('ADMIN')")
-    public CohortResponse reactivate(@PathVariable Integer id) {
+    public CohortResponse reactivate(
+            @PathVariable Integer id) {
+
         return service.reactivate(id);
     }
-
 }

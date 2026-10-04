@@ -159,7 +159,7 @@ public class DashboardServiceImpl implements DashboardService {
                         List<String> linkedInstructorNames = entityManager.createQuery(
                                         "SELECT i.fullName " +
                                                         "FROM ClassSection cs " +
-                                                        "JOIN cs.instructor i " +
+                                                        "JOIN cs.instructorUser i " +
                                                         "WHERE cs.syllabus.id = :syllabusId " +
                                                         "AND cs.program.major.id = :majorId " +
                                                         "ORDER BY CASE WHEN cs.isActive = true THEN 0 ELSE 1 END, cs.id DESC",
@@ -179,7 +179,7 @@ public class DashboardServiceImpl implements DashboardService {
                 List<String> activeInstructorNames = entityManager.createQuery(
                                 "SELECT i.fullName " +
                                                 "FROM ClassSection cs " +
-                                                "JOIN cs.instructor i " +
+                                                "JOIN cs.instructorUser i " +
                                                 "WHERE cs.course.id = :courseId " +
                                                 "AND cs.program.major.id = :majorId " +
                                                 "AND cs.isActive = true " +

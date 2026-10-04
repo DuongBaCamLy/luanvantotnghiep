@@ -8,6 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.scse.curriculum.cohort.entity.Cohort;
 import com.scse.curriculum.cohort.repository.CohortRepository;
+import com.scse.curriculum.cohort.service.CohortOperationalGuard;
 import com.scse.curriculum.common.exception.ResourceNotFoundException;
 import com.scse.curriculum.course.entity.Course;
 import com.scse.curriculum.course.repository.CourseRepository;
@@ -37,6 +38,7 @@ private final SyllabusRepository syllabusRepository;
     private final ProgramRepository programRepository;
 
     private final CohortRepository cohortRepository;
+    private final CohortOperationalGuard cohortOperationalGuard;
 
     private final CourseTypeRepository courseTypeRepository;
 
@@ -80,6 +82,10 @@ if (request.getCohortId() != null) {
         );
     }
 }
+
+        if (cohort != null) {
+            cohortOperationalGuard.assertActive(cohort);
+        }
 
         CourseType courseType
                 = courseTypeRepository.findById(
@@ -184,7 +190,16 @@ CourseProgram entity
     public void delete(
             Integer id) {
 
-        repository.deleteById(id);
+        CourseProgram entity = repository.findById(id)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "CourseProgram not found"));
+
+        if (entity.getCohort() != null) {
+            cohortOperationalGuard.assertActive(entity.getCohort());
+        }
+
+        repository.delete(entity);
     }
 
     @Override
@@ -194,6 +209,10 @@ CourseProgram entity
 
         CourseProgram entity = repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("CourseProgram not found"));
+
+        if (entity.getCohort() != null) {
+            cohortOperationalGuard.assertActive(entity.getCohort());
+        }
 
                 if (request.getTermCode() != null) {
     entity.setTermCode(
@@ -365,6 +384,10 @@ public CourseProgramResponse assignSyllabus(
     CourseProgram courseProgram = repository.findById(courseProgramId)
             .orElseThrow(() ->
                     new ResourceNotFoundException("CourseProgram not found"));
+
+    if (courseProgram.getCohort() != null) {
+        cohortOperationalGuard.assertActive(courseProgram.getCohort());
+    }
 
     Syllabus syllabus = syllabusRepository.findById(syllabusId)
             .orElseThrow(() ->

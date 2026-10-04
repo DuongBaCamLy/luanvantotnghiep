@@ -79,7 +79,7 @@ private Integer creditLab;
 
     private String academicYear;
 
-
+private String targetTemplateProfile;
 
 
 

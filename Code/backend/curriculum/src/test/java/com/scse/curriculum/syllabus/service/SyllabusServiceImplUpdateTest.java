@@ -1,5 +1,6 @@
 package com.scse.curriculum.syllabus.service;
-
+import org.mockito.Spy;
+import com.scse.curriculum.syllabus.template.TargetTemplateProfileResolver;
 import com.scse.curriculum.approval.repository.ApprovalRequestRepository;
 import com.scse.curriculum.assessment.entity.AssessmentComponent;
 import com.scse.curriculum.assessment.repository.AssessmentCloRepository;
@@ -78,6 +79,10 @@ class SyllabusServiceImplUpdateTest {
 
     @Mock private com.scse.curriculum.syllabus.service.SyllabusIdentityService syllabusIdentityService;
     @Mock private com.scse.curriculum.syllabus.history.SyllabusHistoryService syllabusHistoryService;
+    @Mock private com.scse.curriculum.cohort.service.CohortOperationalGuard cohortOperationalGuard;
+   @Spy
+private TargetTemplateProfileResolver targetTemplateProfileResolver =
+        new TargetTemplateProfileResolver();
     @InjectMocks
     private SyllabusServiceImpl service;
 

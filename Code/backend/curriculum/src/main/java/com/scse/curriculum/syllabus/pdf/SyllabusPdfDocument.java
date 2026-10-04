@@ -12,6 +12,7 @@ public record SyllabusPdfDocument(
         String departmentCode,
         String departmentName,
         String academicYear,
+        String targetTemplateProfile,
         String semester,
         Integer versionNumber,
         String versionLabel,

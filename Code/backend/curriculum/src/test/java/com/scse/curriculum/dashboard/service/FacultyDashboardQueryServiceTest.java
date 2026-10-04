@@ -28,8 +28,6 @@ import com.scse.curriculum.deadline.entity.SyllabusDeadline;
 import com.scse.curriculum.deadline.repository.SyllabusDeadlineRepository;
 import com.scse.curriculum.deadline.service.DeadlineReminderProperties;
 import com.scse.curriculum.department.entity.Department;
-import com.scse.curriculum.instructor.entity.Instructor;
-import com.scse.curriculum.instructor.repository.InstructorRepository;
 import com.scse.curriculum.syllabus.entity.Syllabus;
 import com.scse.curriculum.syllabus.entity.SyllabusStatus;
 import com.scse.curriculum.user.entity.UserAccount;
@@ -48,8 +46,6 @@ class FacultyDashboardQueryServiceTest {
     @Mock
     private UserAccountRepository userAccountRepository;
     @Mock
-    private InstructorRepository instructorRepository;
-    @Mock
     private ClassSectionRepository classSectionRepository;
     @Mock
     private SyllabusDeadlineRepository syllabusDeadlineRepository;
@@ -62,7 +58,6 @@ class FacultyDashboardQueryServiceTest {
     private FacultyDashboardQueryService service;
 
     private Department department;
-    private Instructor instructor;
     private UserAccount faculty;
 
     @BeforeEach
@@ -75,21 +70,12 @@ class FacultyDashboardQueryServiceTest {
                 .isActive(true)
                 .build();
 
-        instructor = Instructor.builder()
-                .id(50)
-                .staffCode("GV050")
-                .fullName("Nguyễn Văn An")
-                .email("an@hcmiu.edu.vn")
-                .department(department)
-                .isActive(true)
-                .build();
-
         faculty = UserAccount.builder()
                 .id(10)
+                .fullName("Nguyễn Văn An")
                 .username("faculty.an")
                 .email("an@hcmiu.edu.vn")
                 .role(UserRole.INSTRUCTOR)
-                .instructorId(50)
                 .isActive(true)
                 .build();
     }
@@ -228,7 +214,7 @@ class FacultyDashboardQueryServiceTest {
     void instructorCanReadOwnIdWithEmptyAssignments() {
         mockCurrentFaculty(List.of(), List.of());
         assertThat(service.getForRequestedUser(faculty.getId()).getAssignedCourses()).isZero();
-        org.mockito.Mockito.verify(classSectionRepository).findActiveByInstructorId(50);
+        org.mockito.Mockito.verify(classSectionRepository).findActiveByInstructorUserId(10);
     }
 
     @Test
@@ -248,11 +234,19 @@ class FacultyDashboardQueryServiceTest {
     }
 
     @Test
-    void missingInstructorProfileIsReportedClearly() {
-        faculty.setInstructorId(null);
-        when(currentUserService.getCurrentUser()).thenReturn(faculty);
+    void selfDashboardRequiresInstructorAccount() {
+        UserAccount nonInstructor = UserAccount.builder()
+                .id(11)
+                .fullName("Department Head")
+                .username("dept.head")
+                .role(UserRole.DEPT_HEAD)
+                .isActive(true)
+                .build();
+
+        when(currentUserService.getCurrentUser()).thenReturn(nonInstructor);
+
         assertThatThrownBy(service::getMyDashboard)
-                .isInstanceOf(ForbiddenOperationException.class).hasMessageContaining("Instructor");
+                .isInstanceOf(ForbiddenOperationException.class);
     }
 
     @org.junit.jupiter.params.ParameterizedTest
@@ -279,9 +273,7 @@ class FacultyDashboardQueryServiceTest {
             List<ClassSection> assignments,
             List<SyllabusDeadline> deadlines) {
         when(currentUserService.getCurrentUser()).thenReturn(faculty);
-        when(instructorRepository.findById(50))
-                .thenReturn(Optional.of(instructor));
-        when(classSectionRepository.findActiveByInstructorId(50))
+        when(classSectionRepository.findActiveByInstructorUserId(faculty.getId()))
                 .thenReturn(assignments);
         when(syllabusDeadlineRepository
                 .findByActiveTrueOrderByDeadlineAtAsc())
@@ -334,7 +326,7 @@ class FacultyDashboardQueryServiceTest {
                 .id(id)
                 .course(course)
                 .syllabus(syllabus)
-                .instructor(instructor)
+                .instructorUser(faculty)
                 .semester(semester)
                 .academicYear(academicYear)
                 .groupNumber(group)

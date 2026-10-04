@@ -13,29 +13,37 @@ export async function getUsers(): Promise<UserAccountResponse[]> {
 }
 
 export async function createUser(
-  payload: CreateUserRequest
+  payload: CreateUserRequest,
 ): Promise<UserAccountResponse> {
-  const { data } = await api.post<UserAccountResponse>(BASE, payload)
+  const { data } = await api.post<UserAccountResponse>(
+    BASE,
+    payload,
+  )
   return data
 }
 
 export async function updateUser(
   id: number,
-  payload: UpdateUserRequest
+  payload: UpdateUserRequest,
 ): Promise<UserAccountResponse> {
-  const { data } = await api.put<UserAccountResponse>(`${BASE}/${id}`, payload)
-  return data
-}
-
-export async function toggleUserActive(
-  id: number
-): Promise<UserAccountResponse> {
-  const { data } = await api.patch<UserAccountResponse>(
-    `${BASE}/${id}/toggle-active`
+  const { data } = await api.put<UserAccountResponse>(
+    `${BASE}/${id}`,
+    payload,
   )
   return data
 }
 
-export async function deleteUser(id: number): Promise<void> {
+export async function toggleUserActive(
+  id: number,
+): Promise<UserAccountResponse> {
+  const { data } = await api.patch<UserAccountResponse>(
+    `${BASE}/${id}/toggle-active`,
+  )
+  return data
+}
+
+export async function deleteUser(
+  id: number,
+): Promise<void> {
   await api.delete(`${BASE}/${id}`)
 }

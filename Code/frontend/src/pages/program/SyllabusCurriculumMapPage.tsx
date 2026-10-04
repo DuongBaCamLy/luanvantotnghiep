@@ -1,13 +1,18 @@
-import { useMemo } from "react"
+﻿import { useMemo, type ReactNode } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { ArrowLeft, GitBranch, Loader2, Printer, RefreshCw } from "lucide-react"
-import { useNavigate, useSearchParams } from "react-router-dom"
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom"
 
 import { cohortApi } from "@/api/cohortApi"
-import { curriculumMapApi, type CurriculumMapCourse } from "@/api/curriculumMapApi"
+import {
+  curriculumMapApi,
+  type CurriculumMapCourse,
+  type CurriculumMapRelation,
+} from "@/api/curriculumMapApi"
 import { programApi } from "@/api/programApi"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { getSyllabusBasePath } from "@/lib/programContext"
 import { cn } from "@/lib/utils"
 import {
   formatSyllabusFilterStatus,
@@ -18,7 +23,7 @@ import {
 } from "@/lib/syllabusCatalogFilters"
 
 const COLUMN_WIDTH = 190
-const COLUMN_GAP = 32
+const COLUMN_GAP = 80
 const COLUMN_PITCH = COLUMN_WIDTH + COLUMN_GAP
 const NODE_WIDTH = 178
 const NODE_HEIGHT = 84
@@ -37,8 +42,47 @@ function relationLabel(type: string) {
   return "Prerequisite"
 }
 
+const relationKey = (
+  relation: CurriculumMapRelation,
+  index: number,
+) => `${relation.fromCourseId}-${relation.toCourseId}-${relation.relationType}-${index}`
+
+const relationBucketKey = (
+  relation: CurriculumMapRelation,
+  positions: Map<number, { x: number; y: number }>,
+) => {
+  const start = positions.get(relation.fromCourseId)
+  const end = positions.get(relation.toCourseId)
+  if (!start || !end) return "missing"
+
+  const direction = end.x >= start.x ? 1 : -1
+  const left = Math.min(start.x, end.x)
+  const right = Math.max(start.x, end.x)
+
+  return `${direction}:${Math.round(left)}:${Math.round(right)}`
+}
+
+const orthogonalRelationPath = (
+  start: { x: number; y: number },
+  end: { x: number; y: number },
+  laneOffset: number,
+) => {
+  const direction = end.x >= start.x ? 1 : -1
+  const sameColumn = Math.abs(end.x - start.x) < 8
+  const startX = start.x + direction * (NODE_WIDTH / 2)
+  const endX = sameColumn
+    ? end.x + direction * (NODE_WIDTH / 2)
+    : end.x - direction * (NODE_WIDTH / 2 + 5)
+  const laneX = sameColumn
+    ? startX + direction * (46 + Math.abs(laneOffset))
+    : (startX + endX) / 2 + laneOffset
+
+  return `M ${startX} ${start.y} H ${laneX} V ${end.y} H ${endX}`
+}
+
 export default function SyllabusCurriculumMapPage() {
   const navigate = useNavigate()
+  const location = useLocation()
   const [searchParams, setSearchParams] = useSearchParams()
   const filter = useMemo(() => readSyllabusFilter(searchParams), [searchParams])
   const requestedProgramId = filter.programId
@@ -119,6 +163,51 @@ export default function SyllabusCurriculumMapPage() {
       height: NODE_TOP + maximumRows * NODE_PITCH + 40,
     }
   }, [semesterMap, visibleGroups])
+
+  const relationLaneOffsets = useMemo(() => {
+    const offsets = new Map<string, number>()
+    const buckets = new Map<string, Array<{ relation: CurriculumMapRelation; index: number }>>()
+
+    ;(mapQuery.data?.relations ?? []).forEach((relation, index) => {
+      const start = graphLayout.positions.get(relation.fromCourseId)
+      const end = graphLayout.positions.get(relation.toCourseId)
+      if (!start || !end) return
+
+      const bucketKey = relationBucketKey(relation, graphLayout.positions)
+      const bucket = buckets.get(bucketKey) ?? []
+      bucket.push({ relation, index })
+      buckets.set(bucketKey, bucket)
+    })
+
+    buckets.forEach((items) => {
+      const laneStep = 12
+      items.forEach((item, laneIndex) => {
+        offsets.set(
+          relationKey(item.relation, item.index),
+          (laneIndex - (items.length - 1) / 2) * laneStep,
+        )
+      })
+    })
+
+    return offsets
+  }, [graphLayout.positions, mapQuery.data?.relations])
+
+  const openCourseSyllabus = (course: CurriculumMapCourse) => {
+    if (!course.syllabusId) return
+
+    const params = new URLSearchParams(searchParams)
+    params.set("courseId", String(course.courseId))
+    params.set("courseCode", course.courseCode)
+    if (filter.programId) params.set("programId", String(filter.programId))
+    if (filter.cohortId) params.set("cohortId", String(filter.cohortId))
+    if (selectedProgram?.code) params.set("programCode", selectedProgram.code)
+    if (selectedCohort?.name) params.set("cohort", selectedCohort.name)
+
+    navigate({
+      pathname: `${getSyllabusBasePath(location.pathname)}/${course.syllabusId}`,
+      search: params.toString(),
+    })
+  }
 
   const setMajor = (value: string) => {
     const next = new URLSearchParams(searchParams)
@@ -231,15 +320,16 @@ export default function SyllabusCurriculumMapPage() {
                     const start = graphLayout.positions.get(relation.fromCourseId)
                     const end = graphLayout.positions.get(relation.toCourseId)
                     if (!start || !end) return null
-                    const direction = end.x >= start.x ? 1 : -1
-                    const startX = start.x + direction * (NODE_WIDTH / 2)
-                    const endX = end.x - direction * (NODE_WIDTH / 2 + 5)
-                    const bend = Math.max(38, Math.abs(endX - startX) * 0.42)
+
+                    const key = relationKey(relation, index)
                     const color = relation.relationType === "COREQUISITE" ? "#0f766e" : "#475569"
                     const dash = relation.relationType === "RECOMMENDED" ? "7 5" : relation.relationType === "COREQUISITE" ? "2 3" : undefined
-                    return <g key={`${relation.fromCourseId}-${relation.toCourseId}-${relation.relationType}-${index}`}>
+                    const laneOffset = relationLaneOffsets.get(key) ?? 0
+                    const path = orthogonalRelationPath(start, end, laneOffset)
+
+                    return <g key={key}>
                       <title>{`${relation.fromCourseCode} → ${relation.toCourseCode}: ${relationLabel(relation.relationType)}`}</title>
-                      <path d={`M ${startX} ${start.y} C ${startX + direction * bend} ${start.y}, ${endX - direction * bend} ${end.y}, ${endX} ${end.y}`} fill="none" stroke={color} strokeWidth="1.35" strokeDasharray={dash} markerEnd={relation.relationType === "COREQUISITE" ? "url(#curriculum-arrow-teal)" : "url(#curriculum-arrow)"} />
+                      <path d={path} fill="none" stroke={color} strokeWidth="1.35" strokeLinejoin="round" strokeLinecap="square" strokeDasharray={dash} markerEnd={relation.relationType === "COREQUISITE" ? "url(#curriculum-arrow-teal)" : "url(#curriculum-arrow)"} />
                     </g>
                   })}
                 </svg>
@@ -250,7 +340,7 @@ export default function SyllabusCurriculumMapPage() {
                     <div className="absolute top-0 z-20 border-b-2 border-[#007d84] bg-white pb-2 text-center" style={{ left, width: COLUMN_WIDTH }}>
                       <h3 className="text-sm font-bold text-[#17343d]">{semester}</h3><span className="text-[11px] text-slate-400">{courses.length} courses</span>
                     </div>
-                    {courses.map((course, rowIndex) => <div key={course.courseId} className="absolute z-10" style={{ left: left + (COLUMN_WIDTH - NODE_WIDTH) / 2, top: NODE_TOP + rowIndex * NODE_PITCH }}><CourseMapNode course={course} /></div>)}
+                    {courses.map((course, rowIndex) => <div key={course.courseId} className="absolute z-10" style={{ left: left + (COLUMN_WIDTH - NODE_WIDTH) / 2, top: NODE_TOP + rowIndex * NODE_PITCH }}><CourseMapNode course={course} onOpen={openCourseSyllabus} /></div>)}
                     {courses.length === 0 && <div className="absolute flex h-16 items-center justify-center rounded-lg border border-dashed border-slate-200 text-xs text-slate-300" style={{ left, top: NODE_TOP, width: COLUMN_WIDTH }}>No courses</div>}
                   </div>
                 })}
@@ -262,19 +352,37 @@ export default function SyllabusCurriculumMapPage() {
   )
 }
 
-function MapSelect({ label, value, placeholder, width, onChange, disabled, children }: { label: string; value: string; placeholder: string; width: string; onChange: (value: string) => void; disabled?: boolean; children: React.ReactNode }) {
+function MapSelect({ label, value, placeholder, width, onChange, disabled, children }: { label: string; value: string; placeholder: string; width: string; onChange: (value: string) => void; disabled?: boolean; children: ReactNode }) {
   return <label className="space-y-1 text-[10px] font-semibold uppercase tracking-wider text-slate-500"><span>{label}</span><Select value={value} onValueChange={onChange} disabled={disabled}><SelectTrigger className={cn(width, "bg-white normal-case tracking-normal")}><SelectValue placeholder={placeholder} /></SelectTrigger><SelectContent>{children}</SelectContent></Select></label>
 }
 
-function CourseMapNode({ course }: { course: CurriculumMapCourse }) {
+function CourseMapNode({ course, onOpen }: { course: CurriculumMapCourse; onOpen: (course: CurriculumMapCourse) => void }) {
   const isGeneral = /general|đại cương/i.test(course.courseTypes ?? "")
-  return <div id={nodeId(course.courseId)} className={cn("relative z-10 flex h-[84px] w-[178px] flex-col justify-center rounded-md border px-3 py-2 text-center shadow-sm transition hover:-translate-y-0.5 hover:shadow-md", isGeneral ? "border-slate-400 bg-white" : "border-sky-300 bg-sky-100")} title={`${course.courseCode} · ${course.courseName}\n${course.courseTypes || "Course type not assigned"}`}>
+  const hasSyllabus = Number.isInteger(course.syllabusId) && Number(course.syllabusId) > 0
+
+  return <button
+    type="button"
+    id={nodeId(course.courseId)}
+    className={cn(
+      "relative z-10 flex h-[84px] w-[178px] flex-col justify-center rounded-md border px-3 py-2 text-center shadow-sm transition focus:outline-none focus:ring-2 focus:ring-[#007d84] focus:ring-offset-2",
+      hasSyllabus ? "cursor-pointer hover:-translate-y-0.5 hover:shadow-md" : "cursor-not-allowed opacity-70",
+      isGeneral ? "border-slate-400 bg-white" : "border-sky-300 bg-sky-100",
+    )}
+    title={hasSyllabus
+      ? `${course.courseCode} · ${course.courseName}\nOpen linked syllabus ${course.syllabusVersion || ""}`.trim()
+      : `${course.courseCode} · ${course.courseName}\nNo linked syllabus in the selected filter.`}
+    disabled={!hasSyllabus}
+    onClick={() => onOpen(course)}
+  >
     <div className="font-mono text-[11px] font-bold text-[#006d73]">{course.courseCode} ({course.creditTheory ?? 0},{course.creditLab ?? 0})</div>
     <div className="mt-1 text-[11px] font-medium leading-4 text-slate-800">{course.courseName}</div>
     {course.syllabusVersion && <div className="mt-1 text-[9px] text-slate-400">{course.syllabusVersion}</div>}
-  </div>
+  </button>
 }
 
-function Status({ children }: { children: React.ReactNode }) { return <div className="flex min-h-[460px] items-center justify-center gap-2 px-6 text-center text-sm text-slate-500">{children}</div> }
+function Status({ children }: { children: ReactNode }) { return <div className="flex min-h-[460px] items-center justify-center gap-2 px-6 text-center text-sm text-slate-500">{children}</div> }
 function LegendNode({ className, label }: { className: string; label: string }) { return <span className="inline-flex items-center gap-1.5"><i className={cn("h-4 w-6 rounded-sm border", className)} />{label}</span> }
 function LegendLine({ label, dashed, dotted }: { label: string; dashed?: boolean; dotted?: boolean }) { return <span className="inline-flex items-center gap-1.5"><i className={cn("block w-7 border-t-2 border-slate-500", dashed && "border-dashed", dotted && "border-dotted")} />{label}</span> }
+
+
+

@@ -738,6 +738,7 @@ public class InstructorExcelExportService {
         ) {
             case ADMIN -> "Administrator";
             case DEAN -> "Dean";
+            case DEAN_SECRETARY -> "Dean Secretary";
             case DEPT_HEAD -> "Head of Department";
             case INSTRUCTOR -> "Instructor";
             default -> instructor

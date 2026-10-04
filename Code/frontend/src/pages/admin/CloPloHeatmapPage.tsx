@@ -25,6 +25,7 @@ import {
 
 import { cohortApi } from "@/api/cohortApi"
 import { courseTypeApi } from "@/api/courseTypeApi"
+import { useAuthStore } from "@/store/authStore"
 import {
   dashboardApi,
   type HeatmapCellCoverage,
@@ -606,6 +607,16 @@ function AdditionalWarning({
 export function LiveCloPloHeatmapPage() {
   const location = useLocation()
   const navigate = useNavigate()
+
+  const currentRole = useAuthStore(
+    (state) => state.user?.role,
+  )
+
+  const canUseExport =
+  currentRole === "ADMIN"
+  || currentRole === "DEAN"
+  || currentRole === "DEAN_SECRETARY"
+
   const [searchParams, setSearchParams] =
     useSearchParams()
 
@@ -671,7 +682,9 @@ export function LiveCloPloHeatmapPage() {
     ? "/dean"
     : location.pathname.startsWith("/dept-head")
       ? "/dept-head"
-      : "/admin"
+      : location.pathname.startsWith("/instructor")
+        ? "/instructor"
+        : "/admin"
 
   const {
     data: programs = [],
@@ -1444,51 +1457,57 @@ if (
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              disabled={
-                !canExport
-                || exporting !== null
-              }
-              title={
-                canExport
-                  ? "Export the exact current matrix scope to Excel."
-                  : "Export becomes available when the selected scope contains curriculum courses and PLOs."
-              }
-              onClick={() =>
-                exportMatrix("excel")
-              }
-            >
-              <FileSpreadsheet className="size-4" />
-              {exporting === "excel"
-                ? "Exporting..."
-                : "Export Excel"}
-            </Button>
+          {canUseExport && (
+  <div className="flex flex-wrap gap-2">
+    <Button
+      type="button"
+      variant="outline"
+      disabled={
+        !canExport
+        || exporting !== null
+      }
+      title={
+        canExport
+          ? "Export the exact current matrix scope to Excel."
+          : "Export becomes available when the selected scope contains curriculum courses and PLOs."
+      }
+      onClick={() =>
+        exportMatrix("excel")
+      }
+    >
+      <FileSpreadsheet className="size-4" />
 
-            <Button
-              type="button"
-              variant="outline"
-              disabled={
-                !canExport
-                || exporting !== null
-              }
-              title={
-                canExport
-                  ? "Export the exact current matrix scope to PDF."
-                  : "Export becomes available when the selected scope contains curriculum courses and PLOs."
-              }
-              onClick={() =>
-                exportMatrix("pdf")
-              }
-            >
-              <FileText className="size-4" />
-              {exporting === "pdf"
-                ? "Exporting..."
-                : "Export PDF"}
-            </Button>
-          </div>
+      {exporting === "excel"
+        ? "Exporting..."
+        : "Export Excel"}
+    </Button>
+
+    <Button
+      type="button"
+      variant="outline"
+      disabled={
+        !canExport
+        || exporting !== null
+      }
+      title={
+        canExport
+          ? "Export the exact current matrix scope to PDF."
+          : "Export becomes available when the selected scope contains curriculum courses and PLOs."
+      }
+      onClick={() =>
+        exportMatrix("pdf")
+      }
+    >
+      <FileText className="size-4" />
+
+      {exporting === "pdf"
+        ? "Exporting..."
+        : "Export PDF"}
+    </Button>
+  </div>
+)}
+
+
         </div>
       </section>
 

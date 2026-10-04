@@ -13,6 +13,22 @@ import com.scse.curriculum.approval.entity.ApprovalStep;
 public interface ApprovalRequestRepository
         extends JpaRepository<ApprovalRequest, Integer> {
 
+    @Query("""
+        SELECT COUNT(ar)
+        FROM ApprovalRequest ar
+        WHERE ar.status = :status
+          AND EXISTS (
+            SELECT cp.id
+            FROM CourseProgram cp
+            WHERE cp.syllabus.id = ar.syllabus.id
+              AND cp.cohort.id = :cohortId
+          )
+        """)
+    long countByCohortIdAndStatus(
+            @Param("cohortId") Integer cohortId,
+            @Param("status") ApprovalStatus status);
+
+
 
     boolean existsBySyllabus_Course_IdAndSyllabus_ProgramAndSyllabus_AcademicYearAndSyllabus_SemesterAndStatus(
             Integer courseId, String program, String academicYear, String semester, ApprovalStatus status);

@@ -98,13 +98,17 @@ public class SyllabusPdfRenderer {
             document.open();
 
             addInstitutionHeader(document, data);
-            addGeneralInformation(document, data);
 
-            addLearningOutcomesMatrix(document, writer, data);
-            addPlannedLearningActivities(document, data);
-            addAssessmentPlan(document, data);
-            addRubrics(document, data);
-            addRevisionAndApproval(document, data);
+            if (isNew2027Target(data)) {
+                renderNew2027Target(document, writer, data, mode);
+            } else {
+                addGeneralInformation(document, data);
+                addLearningOutcomesMatrix(document, writer, data);
+                addPlannedLearningActivities(document, data);
+                addAssessmentPlan(document, data);
+                addRubrics(document, data);
+                addRevisionAndApproval(document, data);
+            }
 
             document.close();
             return output.toByteArray();
@@ -235,6 +239,526 @@ public class SyllabusPdfRenderer {
         document.add(table);
     }
 
+    /* PATCH_3_4A_NEW_2027_EXPORT */
+    private static boolean isNew2027Target(SyllabusPdfDocument data) {
+        return data != null
+                && "NEW_2027".equalsIgnoreCase(
+                        safeForCell(data.targetTemplateProfile()));
+    }
+
+    private void renderNew2027Target(
+            Document document,
+            PdfWriter writer,
+            SyllabusPdfDocument data,
+            SyllabusPdfMode mode)
+            throws DocumentException {
+
+        addIdentityCard(document, data, mode);
+        addNew2027GeneralInformation(document, data);
+        addNew2027Objectives(document, data);
+        addNew2027Clos(document, data);
+        addNew2027Content(document, data);
+        addNew2027CloPlo(document, writer, data);
+        addNew2027CloLlo(document);
+        addNew2027Examination(document, data);
+        addNew2027StudyRequirements(document, data);
+        addNew2027PlannedActivities(document, data);
+        addNew2027Assessment(document, data);
+        addNew2027Rubrics(document, data);
+        addNew2027Readings(document, data);
+    }
+
+    private void addNew2027GeneralInformation(
+            Document document,
+            SyllabusPdfDocument data)
+            throws DocumentException {
+
+        addSectionTitle(document, "1. General Information");
+
+        PdfPTable table = new PdfPTable(2);
+        table.setWidthPercentage(100);
+        table.setWidths(new float[]{29, 71});
+        table.setSpacingAfter(8);
+        table.setSplitLate(false);
+        table.setSplitRows(true);
+
+        addGeneralRow(table, "Course Code", data.courseCode());
+        addGeneralRow(table, "Course Name", data.courseName());
+        addGeneralRow(table, "Course Designation", data.courseDesignation());
+        addGeneralRow(table, "Course Type", data.courseTypes());
+        addGeneralRow(table, "Semester", data.semester());
+        addGeneralRow(table, "Person Responsible", responsiblePersons(data));
+        addGeneralRow(table, "Language", data.language());
+        addGeneralRow(table, "Relation to Curriculum", data.relation());
+        addGeneralRow(table, "Teaching Methods", data.teachingMethods());
+        addGeneralRow(table, "Total Workload", data.workloadTotal());
+        addGeneralRow(table, "Contact Hours", data.workloadContact());
+        addGeneralRow(table, "Self-study Hours", data.workloadPrivate());
+        addGeneralRow(table, "Credit Points", importedNoteText(data, "creditPoints"));
+        addGeneralRow(table, "Theory / Lecture Credits", importedNoteText(data, "lectureCredits"));
+        addGeneralRow(table, "Practice / Laboratory Credits", importedNoteText(data, "laboratoryCredits"));
+        addGeneralRow(table, "Prerequisites", data.prerequisites());
+
+        document.add(table);
+    }
+
+    private void addNew2027Objectives(
+            Document document,
+            SyllabusPdfDocument data)
+            throws DocumentException {
+        addSectionTitle(document, "2. Course Objectives");
+        addTextOrEmpty(document, data.objectives(), "No course objectives are available in the source.");
+    }
+
+    private void addNew2027Clos(
+            Document document,
+            SyllabusPdfDocument data)
+            throws DocumentException {
+        addSectionTitle(document, "3. Course Learning Outcomes (CLO)");
+
+        if (data.clos().isEmpty()) {
+            addEmptyState(document, "No course learning outcomes are available in the source.");
+            return;
+        }
+
+        Map<Integer, String> ploCodeById = data.plos().stream()
+                .filter(plo -> plo.id() != null)
+                .collect(Collectors.toMap(
+                        SyllabusPdfDocument.PloColumn::id,
+                        plo -> safeForCell(plo.code()),
+                        (left, ignored) -> left,
+                        LinkedHashMap::new));
+
+        PdfPTable table = new PdfPTable(5);
+        table.setWidthPercentage(100);
+        table.setWidths(new float[]{13, 12, 27, 33, 15});
+        table.setHeaderRows(1);
+        table.setSplitLate(false);
+        table.setSplitRows(true);
+        table.setSpacingAfter(8);
+
+        addHeaderCell(table, "Competency Level");
+        addHeaderCell(table, "CLO Code");
+        addHeaderCell(table, "CLO — Vietnamese");
+        addHeaderCell(table, "CLO — English");
+        addHeaderCell(table, "Mapped PLOs");
+
+        for (SyllabusPdfDocument.CloRow clo : data.clos()) {
+            String mappedPlos = data.cloPloCells().stream()
+                    .filter(cell -> Objects.equals(cell.cloId(), clo.id()))
+                    .map(cell -> ploCodeById.get(cell.ploId()))
+                    .filter(value -> value != null && !value.isBlank())
+                    .distinct()
+                    .collect(Collectors.joining(", "));
+
+            addBodyCell(table, titleCase(clo.competencyLevel()), Element.ALIGN_LEFT);
+            addBodyCell(table, clo.code(), Element.ALIGN_CENTER);
+            addBodyCell(table, clo.descriptionVn(), Element.ALIGN_LEFT);
+            addBodyCell(table, clo.description(), Element.ALIGN_LEFT);
+            addBodyCell(table, mappedPlos, Element.ALIGN_CENTER);
+        }
+
+        document.add(table);
+    }
+
+    private void addNew2027Content(
+            Document document,
+            SyllabusPdfDocument data)
+            throws DocumentException {
+        addSectionTitle(document, "4. Course Content");
+
+        if (data.topics().isEmpty()) {
+            addEmptyState(document, "No course-content rows are available in the source.");
+            return;
+        }
+
+        PdfPTable table = new PdfPTable(5);
+        table.setWidthPercentage(100);
+        table.setWidths(new float[]{25, 30, 14, 14, 17});
+        table.setHeaderRows(1);
+        table.setSplitLate(false);
+        table.setSplitRows(true);
+        table.setSpacingAfter(8);
+
+        addHeaderCell(table, "Topic — Vietnamese");
+        addHeaderCell(table, "Topic — English");
+        addHeaderCell(table, "Weight");
+        addHeaderCell(table, "Level (I/T/U)");
+        addHeaderCell(table, "Related CLOs");
+
+        for (SyllabusPdfDocument.TopicRow topic : data.topics()) {
+            addBodyCell(table, topic.nameVn(), Element.ALIGN_LEFT);
+            addBodyCell(table, topic.name(), Element.ALIGN_LEFT);
+            addBodyCell(table, topicMetadataText(topic, "contentWeight"), Element.ALIGN_CENTER);
+            addBodyCell(table, topicMetadataText(topic, "contentLevel"), Element.ALIGN_CENTER);
+            addBodyCell(
+                    table,
+                    topic.cloCodes() == null ? "" : String.join(", ", topic.cloCodes()),
+                    Element.ALIGN_CENTER);
+        }
+
+        document.add(table);
+    }
+
+    private void addNew2027CloPlo(
+            Document document,
+            PdfWriter writer,
+            SyllabusPdfDocument data)
+            throws DocumentException {
+        addSectionTitle(document, "5. Course CLO–PLO Alignment");
+
+        if (data.plos().isEmpty()) {
+            addEmptyState(document, "No source CLO-PLO alignment is available.");
+            return;
+        }
+
+        PdfPTable table = new PdfPTable(4);
+        table.setWidthPercentage(100);
+        table.setWidths(new float[]{14, 18, 43, 25});
+        table.setHeaderRows(1);
+        table.setSplitLate(false);
+        table.setSplitRows(true);
+        table.setSpacingAfter(8);
+
+        addHeaderCell(table, "PLO");
+        addHeaderCell(table, "PLO Group");
+        addHeaderCell(table, "PLO Description");
+        addHeaderCell(table, "Contributing CLOs");
+
+        Map<Integer, String> cloCodeById = data.clos().stream()
+                .filter(clo -> clo.id() != null)
+                .collect(Collectors.toMap(
+                        SyllabusPdfDocument.CloRow::id,
+                        clo -> safeForCell(clo.code()),
+                        (left, ignored) -> left,
+                        LinkedHashMap::new));
+
+        for (SyllabusPdfDocument.PloColumn plo : data.plos()) {
+            String contributingClos = data.cloPloCells().stream()
+                    .filter(cell -> Objects.equals(cell.ploId(), plo.id()))
+                    .map(cell -> cloCodeById.get(cell.cloId()))
+                    .filter(value -> value != null && !value.isBlank())
+                    .distinct()
+                    .collect(Collectors.joining(", "));
+
+            addBodyCell(table, plo.code(), Element.ALIGN_CENTER);
+            addBodyCell(table, "", Element.ALIGN_CENTER);
+            addBodyCell(table, plo.description(), Element.ALIGN_LEFT);
+            addBodyCell(table, contributingClos, Element.ALIGN_CENTER);
+        }
+
+        document.add(table);
+    }
+
+    private void addNew2027CloLlo(Document document)
+            throws DocumentException {
+        addSectionTitle(document, "6. Detailed CLO–LLO Table");
+        addEmptyState(
+                document,
+                "No source LLO data is available. LLO values are not generated.");
+    }
+
+    private void addNew2027Examination(
+            Document document,
+            SyllabusPdfDocument data)
+            throws DocumentException {
+        addSectionTitle(document, "7. Examination Forms");
+        addTextOrEmpty(document, data.examForms(), "No examination-form data is available in the source.");
+    }
+
+    private void addNew2027StudyRequirements(
+            Document document,
+            SyllabusPdfDocument data)
+            throws DocumentException {
+        addSectionTitle(document, "8. Study and Examination Requirements");
+
+        PdfPTable table = new PdfPTable(2);
+        table.setWidthPercentage(100);
+        table.setWidths(new float[]{31, 69});
+        table.setSpacingAfter(8);
+        table.setSplitLate(false);
+
+        addGeneralRow(table, "Study / Examination Requirements", data.examRequirements());
+        addGeneralRow(table, "Passing Requirement", importedNoteText(data, "assessmentPassNote"));
+        document.add(table);
+    }
+
+    private void addNew2027PlannedActivities(
+            Document document,
+            SyllabusPdfDocument data)
+            throws DocumentException {
+        addSectionTitle(document, "9. Planned Learning Activities and Teaching Methods");
+
+        JsonNode planned = importedNotes(data).path("plannedActivities");
+        boolean hasImportedPlan = planned.isArray() && planned.size() > 0;
+
+        if (!hasImportedPlan && data.topics().isEmpty()) {
+            addEmptyState(document, "No planned-learning-activity data is available in the source.");
+            return;
+        }
+
+        PdfPTable table = new PdfPTable(6);
+        table.setWidthPercentage(100);
+        table.setWidths(new float[]{8, 31, 11, 18, 18, 14});
+        table.setHeaderRows(1);
+        table.setSplitLate(false);
+        table.setSplitRows(true);
+        table.setSpacingAfter(8);
+
+        addHeaderCell(table, "Week");
+        addHeaderCell(table, "Topic");
+        addHeaderCell(table, "CLO");
+        addHeaderCell(table, "Activities");
+        addHeaderCell(table, "Assessment");
+        addHeaderCell(table, "Resources");
+
+        if (hasImportedPlan) {
+            for (JsonNode row : planned) {
+                addBodyCell(table, row.path("week").asText(""), Element.ALIGN_CENTER);
+                addBodyCell(table, row.path("topic").asText(""), Element.ALIGN_LEFT);
+                addBodyCell(table, row.path("clo").asText(""), Element.ALIGN_CENTER);
+                addBodyCell(table, row.path("learningActivities").asText(""), Element.ALIGN_LEFT);
+                addBodyCell(table, row.path("assessments").asText(""), Element.ALIGN_LEFT);
+                addBodyCell(table, row.path("resources").asText(""), Element.ALIGN_LEFT);
+            }
+        } else {
+            for (SyllabusPdfDocument.TopicRow topic : data.topics()) {
+                addBodyCell(table, safeNumber(topic.weekNumber()), Element.ALIGN_CENTER);
+                addBodyCell(table, bilingual(topic.name(), topic.nameVn()), Element.ALIGN_LEFT);
+                addBodyCell(
+                        table,
+                        topic.cloCodes() == null ? "" : String.join(", ", topic.cloCodes()),
+                        Element.ALIGN_CENTER);
+                addBodyCell(
+                        table,
+                        joinNonBlank(", ", topic.teachingMethod(), topic.learningActivity()),
+                        Element.ALIGN_LEFT);
+                addBodyCell(table, assessmentsForTopic(topic, data.assessments()), Element.ALIGN_LEFT);
+                addBodyCell(table, "", Element.ALIGN_LEFT);
+            }
+        }
+
+        document.add(table);
+    }
+
+    private void addNew2027Assessment(
+            Document document,
+            SyllabusPdfDocument data)
+            throws DocumentException {
+        addSectionTitle(document, "10. Assessment Plan");
+
+        if (data.assessments().isEmpty()) {
+            addEmptyState(document, "No assessment-plan data is available in the source.");
+            return;
+        }
+
+        PdfPTable table = new PdfPTable(4);
+        table.setWidthPercentage(100);
+        table.setWidths(new float[]{42, 16, 20, 22});
+        table.setHeaderRows(1);
+        table.setSplitLate(false);
+        table.setSplitRows(true);
+        table.setSpacingAfter(8);
+
+        addHeaderCell(table, "Assessment");
+        addHeaderCell(table, "Weight (%)");
+        addHeaderCell(table, "CLO");
+        addHeaderCell(table, "Contribution (%)");
+
+        for (SyllabusPdfDocument.AssessmentRow assessment : data.assessments()) {
+            if (assessment.cloContributions() == null || assessment.cloContributions().isEmpty()) {
+                addBodyCell(table, firstNonBlankOrEmpty(assessment.name(), assessment.nameVn()), Element.ALIGN_LEFT);
+                addBodyCell(table, numberOrEmpty(assessment.weightPercent()), Element.ALIGN_CENTER);
+                addBodyCell(table, "", Element.ALIGN_CENTER);
+                addBodyCell(table, "", Element.ALIGN_CENTER);
+                continue;
+            }
+
+            boolean first = true;
+            for (SyllabusPdfDocument.AssessmentCloRow contribution : assessment.cloContributions()) {
+                addBodyCell(
+                        table,
+                        first ? firstNonBlankOrEmpty(assessment.name(), assessment.nameVn()) : "",
+                        Element.ALIGN_LEFT);
+                addBodyCell(
+                        table,
+                        first ? numberOrEmpty(assessment.weightPercent()) : "",
+                        Element.ALIGN_CENTER);
+                addBodyCell(table, contribution.cloCode(), Element.ALIGN_CENTER);
+                addBodyCell(table, numberOrEmpty(contribution.contributionPercent()), Element.ALIGN_CENTER);
+                first = false;
+            }
+        }
+
+        document.add(table);
+    }
+
+    private void addNew2027Rubrics(
+            Document document,
+            SyllabusPdfDocument data)
+            throws DocumentException {
+        addSectionTitle(document, "11. Assignment Description and Rubric Summary");
+
+        String raw = data.rubrics();
+        if (raw == null || raw.isBlank()) {
+            addEmptyState(document, "No assignment/rubric data is available in the source.");
+            return;
+        }
+
+        try {
+            JsonNode root = objectMapper.readTree(raw);
+            JsonNode rubrics = root.path("rubrics");
+            if (!rubrics.isArray() || rubrics.isEmpty()) {
+                addTextOrEmpty(document, raw, "No assignment/rubric data is available in the source.");
+                return;
+            }
+
+            int rubricNumber = 1;
+            for (JsonNode rubric : rubrics) {
+                String title = rubric.path("title").asText("Rubric " + rubricNumber);
+                Paragraph heading = new Paragraph(
+                        "11." + rubricNumber + ". " + title,
+                        fonts.bold(9, NAVY));
+                heading.setSpacingBefore(4);
+                heading.setSpacingAfter(4);
+                document.add(heading);
+
+                JsonNode labels = rubric.path("scaleLabels");
+                JsonNode criteria = rubric.path("criteria");
+                int scaleCount = labels.isArray() ? labels.size() : 0;
+                if (scaleCount == 0 || !criteria.isArray() || criteria.isEmpty()) {
+                    addEmptyState(document, "No rubric criteria are available in the source.");
+                    rubricNumber++;
+                    continue;
+                }
+
+                PdfPTable table = new PdfPTable(scaleCount + 1);
+                table.setWidthPercentage(100);
+                float[] widths = new float[scaleCount + 1];
+                widths[0] = 30;
+                for (int index = 1; index < widths.length; index++) {
+                    widths[index] = 70f / scaleCount;
+                }
+                table.setWidths(widths);
+                table.setHeaderRows(1);
+                table.setSplitLate(false);
+                table.setSplitRows(true);
+                table.setSpacingAfter(8);
+
+                addHeaderCell(table, "Criterion");
+                for (JsonNode label : labels) {
+                    addHeaderCell(table, label.asText("Level"));
+                }
+
+                for (JsonNode criterion : criteria) {
+                    addBodyCell(table, criterion.path("criterion").asText(""), Element.ALIGN_LEFT);
+                    JsonNode levels = criterion.path("levels");
+                    for (int index = 0; index < scaleCount; index++) {
+                        addBodyCell(
+                                table,
+                                levels.isArray() && index < levels.size()
+                                        ? levels.get(index).asText("")
+                                        : "",
+                                Element.ALIGN_LEFT);
+                    }
+                }
+                document.add(table);
+                rubricNumber++;
+            }
+        } catch (Exception ignored) {
+            addTextOrEmpty(document, raw, "No assignment/rubric data is available in the source.");
+        }
+    }
+
+    private void addNew2027Readings(
+            Document document,
+            SyllabusPdfDocument data)
+            throws DocumentException {
+        addSectionTitle(document, "12. Reading List");
+
+        if (data.books().isEmpty()) {
+            addEmptyState(document, "No reading-list data is available in the source.");
+            return;
+        }
+
+        PdfPTable table = new PdfPTable(5);
+        table.setWidthPercentage(100);
+        table.setWidths(new float[]{31, 22, 12, 23, 12});
+        table.setHeaderRows(1);
+        table.setSplitLate(false);
+        table.setSplitRows(true);
+        table.setSpacingAfter(8);
+
+        addHeaderCell(table, "Title");
+        addHeaderCell(table, "Author");
+        addHeaderCell(table, "Publication Year");
+        addHeaderCell(table, "Publisher");
+        addHeaderCell(table, "Usage Type");
+
+        for (SyllabusPdfDocument.BookRow book : data.books()) {
+            addBodyCell(table, book.title(), Element.ALIGN_LEFT);
+            addBodyCell(table, book.author(), Element.ALIGN_LEFT);
+            addBodyCell(table, book.year() == null ? "" : String.valueOf(book.year()), Element.ALIGN_CENTER);
+            addBodyCell(table, book.publisher(), Element.ALIGN_LEFT);
+            addBodyCell(table, titleCase(book.usageType()), Element.ALIGN_CENTER);
+        }
+
+        document.add(table);
+    }
+
+    private void addTextOrEmpty(
+            Document document,
+            String value,
+            String emptyMessage)
+            throws DocumentException {
+        if (isBlank(value)) {
+            addEmptyState(document, emptyMessage);
+            return;
+        }
+
+        Paragraph paragraph = new Paragraph(value.trim(), fonts.regular(8.2f, TEXT));
+        paragraph.setLeading(11.5f);
+        paragraph.setSpacingAfter(8);
+        document.add(paragraph);
+    }
+
+    private JsonNode importedNotes(SyllabusPdfDocument data) {
+        if (data == null || isBlank(data.notes())) {
+            return objectMapper.createObjectNode();
+        }
+        try {
+            JsonNode root = objectMapper.readTree(data.notes());
+            return root != null && root.isObject()
+                    ? root
+                    : objectMapper.createObjectNode();
+        } catch (Exception ignored) {
+            return objectMapper.createObjectNode();
+        }
+    }
+
+    private String importedNoteText(
+            SyllabusPdfDocument data,
+            String field) {
+        return importedNotes(data).path(field).asText("").trim();
+    }
+
+    private String topicMetadataText(
+            SyllabusPdfDocument.TopicRow topic,
+            String field) {
+        if (topic == null || isBlank(topic.notes())) {
+            return "";
+        }
+        try {
+            JsonNode root = objectMapper.readTree(topic.notes());
+            return root.path(field).asText("").trim();
+        } catch (Exception ignored) {
+            return "";
+        }
+    }
+
+    private static String numberOrEmpty(Number value) {
+        return value == null ? "" : number(value);
+    }
     private void addGeneralInformation(
             Document document,
             SyllabusPdfDocument data)

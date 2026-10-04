@@ -254,14 +254,44 @@ export default function ProgramCurriculumPage() {
     [cohorts],
   )
 
-  const selectedCohortId = chosenCohortId || (activeCohorts[0] ? String(activeCohorts[0].id) : "")
+  /*
+   * A cohort requested explicitly through cohortId may be archived.
+   * Preserve that exact Cohort identity for historical read-only view.
+   * Normal curriculum management continues to use active Cohorts only.
+   */
+  const requestedCohort =
+    chosenCohortId
+      ? cohorts.find(
+          (cohort) =>
+            String(cohort.id)
+            === chosenCohortId,
+        )
+      : undefined
 
   const selectedCohort =
-    activeCohorts.find(
-      (cohort) =>
-        String(cohort.id)
-        === selectedCohortId,
-    )
+    requestedCohort
+    ?? activeCohorts[0]
+
+  const selectedCohortId =
+    selectedCohort
+      ? String(selectedCohort.id)
+      : ""
+
+  const isArchivedCohort =
+    selectedCohort?.isActive === false
+
+  /*
+   * Archive View is intentionally locked to the archived Cohort.
+   * Active curriculum management keeps its normal active-only selector.
+   */
+  const selectableCohorts =
+    isArchivedCohort && selectedCohort
+      ? [selectedCohort]
+      : activeCohorts
+
+  const canManageCurriculum =
+    isAdmin
+    && !isArchivedCohort
 
   const srsCourseTypes = useMemo(
     () =>
@@ -576,7 +606,7 @@ export default function ProgramCurriculumPage() {
   }
 
   const openAddDialog = () => {
-    if (!isAdmin) return
+    if (!canManageCurriculum) return
     resetAddForm()
     setNotice(null)
     setAddOpen(true)
@@ -585,7 +615,7 @@ export default function ProgramCurriculumPage() {
   const openEditDialog = (
     item: CourseProgramItem,
   ) => {
-    if (!isAdmin) return
+    if (!canManageCurriculum) return
     setEditingItem(item)
     setEditCourseTypeId(
       item.courseTypeId
@@ -892,7 +922,7 @@ export default function ProgramCurriculumPage() {
   const confirmDelete = (
     item: CourseProgramItem,
   ) => {
-    if (!isAdmin) return
+    if (!canManageCurriculum) return
     const isShared =
       item.cohortId == null
 
@@ -950,7 +980,7 @@ export default function ProgramCurriculumPage() {
             </p>
 
             <h1 className="mt-1 text-2xl font-bold text-slate-900">
-              {isAdmin ? "Manage Curriculum" : "Curriculum Structure"}
+              {isArchivedCohort ? "Archived Curriculum" : isAdmin ? "Manage Curriculum" : "Curriculum Structure"}
             </h1>
 
             <p className="mt-1 text-sm text-slate-500">
@@ -973,7 +1003,7 @@ export default function ProgramCurriculumPage() {
             Back
           </Button>
 
-          {isAdmin && <Button
+          {canManageCurriculum && <Button
             type="button"
             disabled={
               !selectedCohortId
@@ -1017,7 +1047,7 @@ export default function ProgramCurriculumPage() {
               setSelectedCohortId
             }
             disabled={
-              activeCohorts.length
+              selectableCohorts.length
               === 0
             }
           >
@@ -1026,7 +1056,7 @@ export default function ProgramCurriculumPage() {
             </SelectTrigger>
 
             <SelectContent>
-              {activeCohorts.map(
+              {selectableCohorts.map(
                 (cohort) => (
                   <SelectItem
                     key={cohort.id}
@@ -1078,7 +1108,16 @@ export default function ProgramCurriculumPage() {
         />
       </div>
 
-      {activeCohorts.length === 0 && !isCohortsLoading && (
+      {isArchivedCohort && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+          <span className="font-semibold">
+            {selectedCohort?.name}
+          </span>
+          {" "}is archived and read-only. Restore it from Curriculum Archive before making operational changes.
+        </div>
+      )}
+
+      {selectableCohorts.length === 0 && !isCohortsLoading && (
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
           This program has no active cohort. Create a cohort before adding cohort-specific curriculum courses.
         </div>
@@ -1208,7 +1247,7 @@ export default function ProgramCurriculumPage() {
                 <TableHead className="min-w-[130px]">
                   Scope
                 </TableHead>
-                {isAdmin && <TableHead className="min-w-[190px] text-right">
+                {canManageCurriculum && <TableHead className="min-w-[190px] text-right">
                   Actions
                 </TableHead>}
               </TableRow>
@@ -1218,7 +1257,7 @@ export default function ProgramCurriculumPage() {
               {loading ? (
                 <TableRow>
                   <TableCell
-                    colSpan={isAdmin ? 10 : 9}
+                    colSpan={canManageCurriculum ? 10 : 9}
                     className="py-12 text-center text-sm text-slate-500"
                   >
                     Loading curriculum...
@@ -1227,7 +1266,7 @@ export default function ProgramCurriculumPage() {
               ) : !selectedCohortId ? (
                 <TableRow>
                   <TableCell
-                    colSpan={isAdmin ? 10 : 9}
+                    colSpan={canManageCurriculum ? 10 : 9}
                     className="py-12 text-center text-sm text-slate-500"
                   >
                     Select a cohort to view its curriculum.
@@ -1236,7 +1275,7 @@ export default function ProgramCurriculumPage() {
               ) : filteredCurriculum.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={isAdmin ? 10 : 9}
+                    colSpan={canManageCurriculum ? 10 : 9}
                     className="py-12 text-center text-sm text-slate-500"
                   >
                     No curriculum courses match the current filters.
@@ -1346,7 +1385,7 @@ export default function ProgramCurriculumPage() {
                           )}
                         </TableCell>
 
-                        {isAdmin && <TableCell>
+                        {canManageCurriculum && <TableCell>
                           <div className="flex justify-end gap-2">
                             <Button
                               type="button"
@@ -1398,7 +1437,7 @@ export default function ProgramCurriculumPage() {
         </div>
       </div>
 
-      {isAdmin && <Dialog
+      {canManageCurriculum && <Dialog
         open={addOpen}
         onOpenChange={(open) => {
           setAddOpen(open)
@@ -1575,7 +1614,7 @@ export default function ProgramCurriculumPage() {
         </DialogContent>
       </Dialog>}
 
-      {isAdmin && <Dialog
+      {canManageCurriculum && <Dialog
         open={Boolean(editingItem)}
         onOpenChange={(open) => {
           if (!open) {
@@ -1829,7 +1868,7 @@ export default function ProgramCurriculumPage() {
         </DialogContent>
       </Dialog>}
 
-      {!isAdmin && <Dialog open={Boolean(editingItem)} onOpenChange={(open) => { if (!open) setEditingItem(null) }}>
+      {!canManageCurriculum && <Dialog open={Boolean(editingItem)} onOpenChange={(open) => { if (!open) setEditingItem(null) }}>
         <DialogContent className="bg-white sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>Prerequisites</DialogTitle>

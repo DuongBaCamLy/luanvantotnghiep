@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react"
+﻿import { useMemo, useState } from "react"
 import {
   useMutation,
   useQuery,
@@ -7,7 +7,6 @@ import {
 import {
   Clock3,
   KeyRound,
-  Link2,
   Trash2,
   MoreHorizontal,
   Plus,
@@ -22,7 +21,6 @@ import {
   getUsers,
   toggleUserActive,
 } from "@/api/userApi"
-import { instructorApi } from "@/api/instructorApi"
 import UserFormDialog from "@/components/UserFormDialog"
 import DeleteUserDialog from "@/components/DeleteUserDialog"
 import { Badge } from "@/components/ui/badge"
@@ -53,7 +51,6 @@ import {
 import { formatDateTime } from "@/i18n"
 import { useAuthStore } from "@/store/authStore"
 import type { UserRole } from "@/types/auth"
-import type { Instructor } from "@/types/instructor"
 import type { UserAccountResponse } from "@/types/user"
 
 const ALL = "__all__"
@@ -61,6 +58,7 @@ const ALL = "__all__"
 const SRS_ROLES: UserRole[] = [
   "ADMIN",
   "DEAN",
+  "DEAN_SECRETARY",
   "DEPT_HEAD",
   "INSTRUCTOR",
 ]
@@ -68,6 +66,7 @@ const SRS_ROLES: UserRole[] = [
 const ROLE_LABELS: Partial<Record<UserRole, string>> = {
   ADMIN: "Administrator",
   DEAN: "Dean",
+  DEAN_SECRETARY: "Dean Secretary",
   DEPT_HEAD: "Head of Department",
   INSTRUCTOR: "Instructor",
 }
@@ -80,9 +79,12 @@ const getRoleBadgeClass = (role: UserRole) => {
     return "border-violet-200 bg-violet-50 text-violet-700"
   }
 
-  if (role === "DEAN") {
-    return "border-blue-200 bg-blue-50 text-blue-700"
-  }
+  if (
+  role === "DEAN"
+  || role === "DEAN_SECRETARY"
+) {
+  return "border-blue-200 bg-blue-50 text-blue-700"
+}
 
   if (role === "DEPT_HEAD") {
     return "border-cyan-200 bg-cyan-50 text-cyan-700"
@@ -93,17 +95,6 @@ const getRoleBadgeClass = (role: UserRole) => {
   }
 
   return "border-amber-200 bg-amber-50 text-amber-700"
-}
-
-const getInstructorLabel = (instructor: Instructor) => {
-  const staffCode = instructor.staffCode?.trim()
-  const fullName = instructor.fullName?.trim()
-
-  if (staffCode && fullName) {
-    return `${staffCode} — ${fullName}`
-  }
-
-  return fullName || staffCode || `Instructor #${instructor.id}`
 }
 
 const getErrorMessage = (error: unknown) => {
@@ -145,15 +136,14 @@ export default function UserManagementPage() {
 
   const [searchTerm, setSearchTerm] = useState("")
   const [roleFilter, setRoleFilter] = useState(ALL)
-  const [statusFilter, setStatusFilter] = useState(ALL)
+  const [statusFilter, setStatusFilter] = useState("ACTIVE")
   const [formOpen, setFormOpen] = useState(false)
   const [editingUser, setEditingUser] =
     useState<UserAccountResponse | null>(null)
-    const [deletingUser, setDeletingUser] =
-  useState<UserAccountResponse | null>(null)
-
-const [deleteOpen, setDeleteOpen] =
-  useState(false)
+  const [deletingUser, setDeletingUser] =
+    useState<UserAccountResponse | null>(null)
+  const [deleteOpen, setDeleteOpen] =
+    useState(false)
   const [notice, setNotice] =
     useState<
       | {
@@ -171,11 +161,6 @@ const [deleteOpen, setDeleteOpen] =
   } = useQuery({
     queryKey: ["users"],
     queryFn: getUsers,
-  })
-
-  const { data: instructors = [] } = useQuery({
-    queryKey: ["instructors"],
-    queryFn: instructorApi.getAll,
   })
 
   const toggleMutation = useMutation({
@@ -201,17 +186,6 @@ const [deleteOpen, setDeleteOpen] =
       })
     },
   })
-
-  const instructorById = useMemo(
-    () =>
-      new Map(
-        instructors.map((instructor) => [
-          instructor.id,
-          instructor,
-        ]),
-      ),
-    [instructors],
-  )
 
   const stats = useMemo(() => {
     const active = users.filter((user) => user.isActive).length
@@ -255,17 +229,11 @@ const [deleteOpen, setDeleteOpen] =
         return true
       }
 
-      const linkedInstructor = user.instructorId
-        ? instructorById.get(user.instructorId)
-        : undefined
-
       const searchable = [
+        user.fullName ?? "",
         user.username,
         user.email,
         getRoleLabel(user.role),
-        linkedInstructor
-          ? getInstructorLabel(linkedInstructor)
-          : "",
         user.managedMajorCode,
         user.managedMajorName,
       ]
@@ -275,7 +243,6 @@ const [deleteOpen, setDeleteOpen] =
       return searchable.includes(keyword)
     })
   }, [
-    instructorById,
     roleFilter,
     searchTerm,
     statusFilter,
@@ -297,12 +264,12 @@ const [deleteOpen, setDeleteOpen] =
   }
 
   const openDelete = (
-  user: UserAccountResponse,
-) => {
-  setDeletingUser(user)
-  setDeleteOpen(true)
-  setNotice(null)
-}
+    user: UserAccountResponse,
+  ) => {
+    setDeletingUser(user)
+    setDeleteOpen(true)
+    setNotice(null)
+  }
 
   const handleToggle = (user: UserAccountResponse) => {
     if (
@@ -334,7 +301,7 @@ const [deleteOpen, setDeleteOpen] =
   const clearFilters = () => {
     setSearchTerm("")
     setRoleFilter(ALL)
-    setStatusFilter(ALL)
+    setStatusFilter("ACTIVE")
   }
 
   return (
@@ -436,7 +403,7 @@ const [deleteOpen, setDeleteOpen] =
                   onChange={(event) =>
                     setSearchTerm(event.target.value)
                   }
-                  placeholder="Search username, email, or instructor..."
+                  placeholder="Search full name, username, email, or role..."
                   className="pl-9"
                 />
               </div>
@@ -510,14 +477,14 @@ const [deleteOpen, setDeleteOpen] =
         )}
 
         <div className="overflow-x-auto">
-          <Table className="min-w-[1280px]">
+          <Table className="min-w-[1220px]">
             <TableHeader className="bg-slate-50">
               <TableRow>
+                <TableHead>Full Name</TableHead>
                 <TableHead>Username</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Role</TableHead>
                 <TableHead>Managed Major / Scope</TableHead>
-                <TableHead>Linked Instructor</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Last Login</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
@@ -551,9 +518,7 @@ const [deleteOpen, setDeleteOpen] =
                 </TableRow>
               ) : (
                 filteredUsers.map((user) => {
-                  const linkedInstructor = user.instructorId
-                    ? instructorById.get(user.instructorId)
-                    : undefined
+                
 
                   const isSelf = user.id === currentUserId
 
@@ -566,6 +531,12 @@ const isAdministrator =
                       key={user.id}
                       className="hover:bg-[#f8fbfb]"
                     >
+                      <TableCell>
+                        <span className="font-semibold text-slate-900">
+                          {user.fullName?.trim() || "—"}
+                        </span>
+                      </TableCell>
+
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <span className="font-semibold text-slate-900">
@@ -599,45 +570,14 @@ const isAdministrator =
                       <TableCell>
                         {user.role === "ADMIN" ? (
                           <span className="font-medium text-violet-700">System-wide</span>
-                        ) : user.role === "DEAN" ? (
+                        ) : user.role === "DEAN"
+  || user.role === "DEAN_SECRETARY" ? (
                           <span className="font-medium text-blue-700">SCSE / All Majors</span>
                         ) : user.role === "DEPT_HEAD" ? (
                           user.managedMajorId ? (
                             <div><p className="font-semibold text-slate-800">{user.managedMajorCode} — {user.managedMajorName}</p></div>
                           ) : <span className="font-medium text-rose-700">Managed Major required</span>
                         ) : <span className="text-slate-400">—</span>}
-                      </TableCell>
-
-                      <TableCell>
-                        {linkedInstructor ? (
-                          <div className="flex items-start gap-2">
-                            <Link2 className="mt-0.5 size-4 shrink-0 text-[#007d84]" />
-
-                            <div>
-                              <p className="font-medium text-slate-800">
-                                {getInstructorLabel(linkedInstructor)}
-                              </p>
-
-                              <p className="mt-0.5 text-xs text-slate-400">
-                                Profile #{linkedInstructor.id}
-                              </p>
-                            </div>
-                          </div>
-                        ) : (
-                          <span
-                            className={
-                              user.role === "INSTRUCTOR"
-                              || user.role === "DEPT_HEAD"
-                                ? "font-medium text-amber-700"
-                                : "text-slate-400"
-                            }
-                          >
-                            {user.role === "INSTRUCTOR"
-                            || user.role === "DEPT_HEAD"
-                              ? "Profile required"
-                              : "Not required"}
-                          </span>
-                        )}
                       </TableCell>
 
                       <TableCell>
@@ -712,21 +652,19 @@ const isAdministrator =
               : "Activate Account"}
           </DropdownMenuItem>
 
-          {!user.isActive && (
-            <>
-              <DropdownMenuSeparator />
+          <>
+            <DropdownMenuSeparator />
 
-              <DropdownMenuItem
-                className="text-rose-700 focus:bg-rose-50 focus:text-rose-700"
-                onClick={() =>
-                  openDelete(user)
-                }
-              >
-                <Trash2 className="mr-2 size-4" />
-                Delete User
-              </DropdownMenuItem>
-            </>
-          )}
+            <DropdownMenuItem
+              className="text-rose-700 focus:bg-rose-50 focus:text-rose-700"
+              onClick={() =>
+                openDelete(user)
+              }
+            >
+              <Trash2 className="mr-2 size-4" />
+              Delete User
+            </DropdownMenuItem>
+          </>
         </>
       )}
     </DropdownMenuContent>
@@ -797,3 +735,4 @@ function MetricCard({
     </div>
   )
 }
+

@@ -156,7 +156,7 @@ public class SyllabusDeadlineService {
                         target.user().getId(),
                         target.user().getUsername(),
                         target.user().getEmail(),
-                        target.instructorId(),
+                        target.instructorUserId(),
                         target.instructorName(),
                         target.missingCourses().stream()
                                 .map(course -> new DeadlinePreviewResponse.MissingCourse(

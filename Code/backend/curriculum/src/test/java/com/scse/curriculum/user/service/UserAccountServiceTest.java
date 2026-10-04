@@ -92,6 +92,7 @@ class UserAccountServiceTest {
         request.setPassword("secret1");
         request.setRole(role);
         request.setManagedMajorId(managedMajorId);
+        request.setFullName("Test User");
         return request;
     }
 }
