@@ -15,6 +15,7 @@ public class SyllabusContentGuard {
 
     private final SyllabusRepository syllabusRepository;
     private final SyllabusAccessService syllabusAccessService;
+    private final com.scse.curriculum.cohort.service.CohortOperationalGuard cohortOperationalGuard;
 
     public void assertCanView(Integer syllabusId) {
         Syllabus syllabus = getSyllabus(syllabusId);
@@ -30,6 +31,8 @@ public class SyllabusContentGuard {
         Syllabus syllabus = getSyllabus(syllabusId);
 
         syllabusAccessService.assertCanModify(syllabus);
+
+        cohortOperationalGuard.assertSyllabusNotArchived(syllabusId);
 
         if (syllabus.getStatus() != SyllabusStatus.DRAFT
                 && syllabus.getStatus() != SyllabusStatus.REVISION_REQUESTED) {

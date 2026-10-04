@@ -18,7 +18,7 @@ import { cohortApi } from "@/api/cohortApi"
 import { departmentApi } from "@/api/departmentApi"
 import { programApi as progApi } from "@/api/programApi"
 import { useAuthStore } from "@/store/authStore"
-import { prefixFor } from "@/config/navConfig"
+
 import type { Cohort, Program, ProgramArchiveValidation, ProgramCreditValidation, UpdateProgramRequest } from "@/types/admin"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
@@ -85,10 +85,11 @@ export default function ProgramManagementPage() {
 
   const user = useAuthStore((state) => state.user)
   const role = user?.role
-  const roleBase = role ? prefixFor(role) : ""
 
   const isAdmin = role === "ADMIN"
-  const isDean = role === "DEAN"
+  const isDean =
+  role === "DEAN"
+  || role === "DEAN_SECRETARY"
   const [open, setOpen] = useState(false)
   const [cohortFilter, setCohortFilter] = useState("all")
   const [majorFilter, setMajorFilter] = useState("all")
@@ -155,6 +156,33 @@ export default function ProgramManagementPage() {
     return cohorts.filter((c) => c.programId === selectedProgram.id)
   }, [cohorts, selectedProgram])
 
+  const activeCohortsForSelectedProgram = useMemo(() =>
+    cohortsForSelectedProgram.filter((cohort) => cohort.isActive !== false),
+    [cohortsForSelectedProgram],
+  )
+const latestCohortForSelectedProgram = useMemo(() => {
+  return activeCohortsForSelectedProgram
+    .slice()
+    .sort((a, b) => b.entryYear - a.entryYear)[0] ?? null
+}, [activeCohortsForSelectedProgram])
+
+const sourceCohortOptions = useMemo(() => {
+  if (!latestCohortForSelectedProgram) {
+    return []
+  }
+
+  return activeCohortsForSelectedProgram
+    .filter(
+      (cohort) =>
+        cohort.id !== latestCohortForSelectedProgram.id
+        && cohort.entryYear < latestCohortForSelectedProgram.entryYear
+    )
+    .slice()
+    .sort((a, b) => b.entryYear - a.entryYear)
+}, [
+  activeCohortsForSelectedProgram,
+  latestCohortForSelectedProgram,
+])
   const cohortFilterOptions = useMemo(() => {
     return cohorts
       .slice()
@@ -449,23 +477,45 @@ export default function ProgramManagementPage() {
       }),
   })
 
-  const cohortStatusMutation = useMutation({
-    mutationFn: (cohort: Cohort) =>
-      cohort.isActive ? cohortApi.archive(cohort.id) : cohortApi.reactivate(cohort.id),
-    onSuccess: (cohort) => {
-      queryClient.invalidateQueries({ queryKey: ["cohorts"] })
-      queryClient.invalidateQueries({ queryKey: ["course-programs"] })
+  const cohortArchiveMutation = useMutation({
+    mutationFn: (cohort: Cohort) => {
+      if (cohort.isActive === false) {
+        throw new Error("This cohort is already archived.")
+      }
+
+      return cohortApi.archive(cohort.id)
+    },
+
+    onSuccess: async (cohort) => {
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: ["cohorts"],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["cohorts", "archived"],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["course-programs"],
+        }),
+      ])
+
       setSyllabiProgram(null)
       setSyllabiCohortId("")
+
       setNotice({
         type: "success",
-        message: `${cohort.name} has been ${cohort.isActive ? "reactivated" : "archived"}. The Program and curriculum data were preserved.`,
+        message: `${cohort.name} has been archived. The Program and all curriculum data were preserved.`,
       })
     },
-    onError: (error: unknown) => setNotice({
-      type: "error",
-      message: getErrorMessage(error, "Unable to update the selected cohort status."),
-    }),
+
+    onError: (error: unknown) =>
+      setNotice({
+        type: "error",
+        message: getErrorMessage(
+          error,
+          "Unable to archive the selected cohort.",
+        ),
+      }),
   })
 
   const createCohortMutation = useMutation({
@@ -483,12 +533,27 @@ export default function ProgramManagementPage() {
   })
 
   const openCloneDialog = (program: Program) => {
-    setSelectedProgram(program)
-    setSourceCohortId("")
-    setTargetCohortId("")
-    setOverwriteExisting(false)
-    setCloneDialogOpen(true)
-  }
+  const programCohorts = cohorts
+    .filter(
+      (cohort) =>
+        cohort.programId === program.id
+        && cohort.isActive !== false
+    )
+    .slice()
+    .sort((a, b) => b.entryYear - a.entryYear)
+
+  const newestCohort = programCohorts[0]
+
+  setSelectedProgram(program)
+  setSourceCohortId("")
+  setTargetCohortId(
+    newestCohort
+      ? String(newestCohort.id)
+      : ""
+  )
+  setOverwriteExisting(false)
+  setCloneDialogOpen(true)
+}
 
   const goToProgramDiff = (program: Program) => {
     const basePath = location.pathname.includes("/programs")
@@ -817,24 +882,24 @@ export default function ProgramManagementPage() {
                             <span className="text-xs text-slate-400">No cohorts</span>
                           ) : (
                             <>
-                            {visibleCohorts.map((cohort) => (
-                              <Badge
-                                key={cohort.id}
-                                variant="outline"
-                                className="border-slate-200 bg-slate-50 text-slate-600"
-                              >
-                                {cohort.name}
-                              </Badge>
-                            ))}
+                              {visibleCohorts.map((cohort) => (
+                                <Badge
+                                  key={cohort.id}
+                                  variant="outline"
+                                  className="border-slate-200 bg-slate-50 text-slate-600"
+                                >
+                                  {cohort.name}
+                                </Badge>
+                              ))}
 
-                            {remainingCohorts > 0 && (
-                              <Badge
-                                variant="outline"
-                                className="border-slate-200 bg-white text-slate-500"
-                              >
-                                +{remainingCohorts}
-                              </Badge>
-                            )}
+                              {remainingCohorts > 0 && (
+                                <Badge
+                                  variant="outline"
+                                  className="border-slate-200 bg-white text-slate-500"
+                                >
+                                  +{remainingCohorts}
+                                </Badge>
+                              )}
                             </>
                           )}
                           {isAdmin && (
@@ -903,15 +968,6 @@ export default function ProgramManagementPage() {
                             View Syllabi
                           </Button>
 
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => navigate(`${roleBase}/programs/${prog.id}/curriculum`)}
-                          >
-                            <MapIcon className="size-3.5" />
-                            {isAdmin ? "Manage Curriculum" : "View Curriculum"}
-                          </Button>
 
                           <Button
                             type="button"
@@ -1097,275 +1153,282 @@ export default function ProgramManagementPage() {
       </Dialog>
 
       {isAdmin && (
-      <Dialog open={cloneDialogOpen} onOpenChange={setCloneDialogOpen}>
-        <DialogContent className="sm:max-w-xl bg-white">
-          <DialogHeader>
-            <DialogTitle className="text-xl text-[#006f76]">Clone Cohort</DialogTitle>
-            <DialogDescription>{selectedProgram?.code}</DialogDescription>
-          </DialogHeader>
+        <Dialog open={cloneDialogOpen} onOpenChange={setCloneDialogOpen}>
+          <DialogContent className="sm:max-w-xl bg-white">
+            <DialogHeader>
+              <DialogTitle className="text-xl text-[#006f76]">Clone Cohort</DialogTitle>
+              <DialogDescription>{selectedProgram?.code}</DialogDescription>
+            </DialogHeader>
 
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="flex flex-col gap-1.5">
-                <Label>From</Label>
-                <Select value={sourceCohortId} onValueChange={setSourceCohortId}>
-                  <SelectTrigger><SelectValue placeholder="Select source..." /></SelectTrigger>
-                  <SelectContent>
-                    {cohortsForSelectedProgram.map((c) => (
-                      <SelectItem key={c.id} value={String(c.id)}>{c.name} — {c.entryYear}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex flex-col gap-1.5">
+                  <Label>From</Label>
+                  <Select value={sourceCohortId} onValueChange={setSourceCohortId}>
+                    <SelectTrigger><SelectValue placeholder="Select source..." /></SelectTrigger>
+                    <SelectContent>
+                      {sourceCohortOptions.map((c) => (
+  <SelectItem
+    key={c.id}
+    value={String(c.id)}
+  >
+    {c.name}
+  </SelectItem>
+))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex flex-col gap-1.5">
+  <Label>To</Label>
+
+  <div className="flex h-10 items-center rounded-md border border-slate-200 bg-slate-50 px-3 text-sm font-medium text-slate-900">
+    {latestCohortForSelectedProgram
+      ? latestCohortForSelectedProgram.name
+      : "No target cohort available"}
+  </div>
+
+  <p className="text-xs text-slate-500">
+    Latest cohort — selected automatically.
+  </p>
+</div>
               </div>
-              <div className="flex flex-col gap-1.5">
-                <Label>To</Label>
-                <Select value={targetCohortId} onValueChange={setTargetCohortId}>
-                  <SelectTrigger><SelectValue placeholder="Select target..." /></SelectTrigger>
-                  <SelectContent>
-                    {cohortsForSelectedProgram.map((c) => (
-                      <SelectItem key={c.id} value={String(c.id)}>{c.name} — {c.entryYear}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
 
-            <label className="flex items-start gap-2 rounded-lg border p-3 text-sm">
-              <input
-                type="checkbox"
-                checked={overwriteExisting}
-                onChange={(e) => setOverwriteExisting(e.target.checked)}
-                className="mt-1"
-              />
-              <span>
-                <span className="block font-semibold">Replace existing curriculum</span>
-                <span className="text-slate-500">Clear the target before cloning.</span>
-              </span>
-            </label>
-          </div>
-
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setCloneDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              disabled={
-                !selectedProgram ||
-                !sourceCohortId ||
-                !targetCohortId ||
-                sourceCohortId === targetCohortId ||
-                cloneMutation.isPending
-              }
-              onClick={() => selectedProgram && cloneMutation.mutate({ programId: selectedProgram.id })}
-            >
-              {cloneMutation.isPending ? "Cloning..." : "Clone"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      )}
-
-      {isAdmin && (
-      <Dialog open={Boolean(editProgram)} onOpenChange={(open) => !open && setEditProgram(null)}>
-        <DialogContent className="sm:max-w-2xl bg-white max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Edit Curriculum Program Metadata</DialogTitle>
-            <DialogDescription>The program code cannot be changed. Other information will be updated after saving.</DialogDescription>
-          </DialogHeader>
-          {editProgram && metadata && (
-            <form onSubmit={(event) => { event.preventDefault(); updateMutation.mutate({ id: editProgram.id, data: metadata }) }} className="space-y-4">
-              <div className="rounded-md bg-slate-50 px-3 py-2 text-sm"><span className="text-slate-500">Program Code: </span><span className="font-mono font-semibold">{editProgram.code}</span></div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-1.5"><Label>Vietnamese Name</Label><Input value={metadata.nameVn} onChange={(e) => setMetadata({ ...metadata, nameVn: e.target.value })} /></div>
-                <div className="space-y-1.5"><Label>English Name</Label><Input required value={metadata.name} onChange={(e) => setMetadata({ ...metadata, name: e.target.value })} /></div>
-                <div className="space-y-1.5"><Label>Major</Label><Select value={String(metadata.majorId)} onValueChange={(value) => setMetadata({ ...metadata, majorId: Number(value) })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{majors?.map((major) => <SelectItem key={major.id} value={String(major.id)}>{major.code} - {major.nameVn}</SelectItem>)}</SelectContent></Select></div>
-                <div className="space-y-1.5"><Label>Program Type</Label><Select value={String(metadata.programTypeId)} onValueChange={(value) => setMetadata({ ...metadata, programTypeId: Number(value) })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{programTypes?.map((type) => <SelectItem key={type.id} value={String(type.id)}>{type.code} - {type.name}</SelectItem>)}</SelectContent></Select></div>
-                <div className="space-y-1.5"><Label>Responsible Department</Label><Select value={String(metadata.departmentId)} onValueChange={(value) => setMetadata({ ...metadata, departmentId: Number(value) })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{departments?.map((department) => <SelectItem key={department.id} value={String(department.id)}>{department.code} - {department.nameVn}</SelectItem>)}</SelectContent></Select></div>
-                <div className="space-y-1.5"><Label>Total Credits</Label><Input required min={1} type="number" value={metadata.totalCredits} onChange={(e) => setMetadata({ ...metadata, totalCredits: Number(e.target.value) })} /></div>
-                <div className="space-y-1.5"><Label>Duration (Years)</Label><Input required min={1} type="number" value={metadata.durationYears} onChange={(e) => setMetadata({ ...metadata, durationYears: Number(e.target.value) })} /></div>
-                <div className="space-y-1.5"><Label>Accreditation Standard</Label><Input value={metadata.accreditationBody || ""} onChange={(e) => setMetadata({ ...metadata, accreditationBody: e.target.value || null })} /></div>
-                <div className="space-y-1.5"><Label>Effective Date</Label><Input required type="date" value={metadata.validFrom} onChange={(e) => setMetadata({ ...metadata, validFrom: e.target.value })} /></div>
-                <div className="space-y-1.5"><Label>Expiration Date</Label><Input type="date" value={metadata.validTo || ""} onChange={(e) => setMetadata({ ...metadata, validTo: e.target.value || null })} /></div>
-              </div>
-              <DialogFooter><Button type="button" variant="outline" onClick={() => setEditProgram(null)}>Cancel</Button><Button type="submit" disabled={updateMutation.isPending}>{updateMutation.isPending ? "Saving..." : "Save Metadata"}</Button></DialogFooter>
-            </form>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      )}
-
-      {isAdmin && (
-      <Dialog open={Boolean(statusProgram)} onOpenChange={(open) => !open && setStatusProgram(null)}>
-        <DialogContent className="sm:max-w-lg bg-white">
-          <DialogHeader>
-            <DialogTitle>{statusProgram?.isActive ? "Archive Curriculum Program" : "Reactivate Curriculum Program"}</DialogTitle>
-            <DialogDescription>{statusProgram?.isActive ? "This action only archives the program. Cohorts, courses, syllabi, and related data will not be deleted." : "The curriculum program and all existing data will be reactivated without data loss."}</DialogDescription>
-          </DialogHeader>
-          {statusProgram?.isActive && !archiveValidation && <p className="text-sm text-slate-500">Checking archive conditions...</p>}
-          {statusProgram?.isActive && archiveValidation && (
-            archiveValidation.canArchive ? <Alert className="border-emerald-200 bg-emerald-50"><AlertTitle>Ready to Archive</AlertTitle><AlertDescription>Program metadata and cohort credit requirements are valid.</AlertDescription></Alert> :
-              <Alert className="border-rose-200 bg-rose-50"><AlertTitle>Cannot Archive</AlertTitle><AlertDescription><ul className="mt-2 list-disc pl-5">{archiveValidation.violations.map((violation) => <li key={violation}>{violation}</li>)}</ul></AlertDescription></Alert>
-          )}
-          <DialogFooter><Button type="button" variant="outline" onClick={() => setStatusProgram(null)}>Cancel</Button>{statusProgram && (statusProgram.isActive ? <Button className="bg-amber-600 hover:bg-amber-700" disabled={!archiveValidation?.canArchive || archiveMutation.isPending} onClick={() => archiveMutation.mutate(statusProgram.id)}>{archiveMutation.isPending ? "Archiving..." : "Confirm Archive"}</Button> : <Button disabled={reactivateMutation.isPending} onClick={() => reactivateMutation.mutate(statusProgram.id)}>{reactivateMutation.isPending ? "Reactivating..." : "Confirm Reactivation"}</Button>)}</DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      )}
-
-      {isAdmin && (
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="sm:max-w-xl bg-white max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-primary font-heading">Add New Curriculum Program</DialogTitle>
-            <DialogDescription>
-              Create a new curriculum framework for an academic major.
-            </DialogDescription>
-          </DialogHeader>
-
-          <form onSubmit={handleSubmit} className="space-y-4 pt-2">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="prog-code">Program Code</Label>
-                <Input
-                  id="prog-code"
-                  placeholder="e.g. CS-2021, IT-2021..."
-                  value={code}
-                  onChange={(e) => setCode(e.target.value)}
-                  required
+              <label className="flex items-start gap-2 rounded-lg border p-3 text-sm">
+                <input
+                  type="checkbox"
+                  checked={overwriteExisting}
+                  onChange={(e) => setOverwriteExisting(e.target.checked)}
+                  className="mt-1"
                 />
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="prog-year">Effective Date</Label>
-                <Input
-                  id="prog-year"
-                  type="date"
-                  value={validFrom}
-                  onChange={(e) => setValidFrom(e.target.value)}
-                  required
-                />
-              </div>
+                <span>
+                  <span className="block font-semibold">Replace existing curriculum</span>
+                  <span className="text-slate-500">Clear the target before cloning.</span>
+                </span>
+              </label>
             </div>
 
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="prog-name-vn">Curriculum Program Name (Vietnamese)</Label>
-              <Input
-                id="prog-name-vn"
-                placeholder="Example: Bachelor program name in Vietnamese..."
-                value={nameVn}
-                onChange={(e) => setNameVn(e.target.value)}
-                required
-              />
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="prog-name-en">English Name</Label>
-              <Input
-                id="prog-name-en"
-                placeholder="e.g. Bachelor of Science in Computer Science..."
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-              />
-            </div>
-
-            <div className="grid grid-cols-3 gap-4">
-              <div className="flex flex-col gap-1.5">
-                <Label>Major</Label>
-                <Select value={majorId} onValueChange={setMajorId}>
-                  <SelectTrigger className="bg-white border-slate-200">
-                    <SelectValue placeholder="Select major..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {majors?.map((m) => (
-                      <SelectItem key={m.id} value={String(m.id)}>
-                        {m.code} - {m.nameVn}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <Label>Program Type</Label>
-                <Select value={programTypeId} onValueChange={setProgramTypeId}>
-                  <SelectTrigger className="bg-white border-slate-200">
-                    <SelectValue placeholder="Select program type..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {programTypes?.map((pt) => (
-                      <SelectItem key={pt.id} value={String(pt.id)}>
-                        {pt.code} - {pt.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <Label>Responsible Department</Label>
-                <Select value={departmentId} onValueChange={setDepartmentId}>
-                  <SelectTrigger className="bg-white border-slate-200">
-                    <SelectValue placeholder="Select department..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {departments?.map((d) => (
-                      <SelectItem key={d.id} value={String(d.id)}>
-                        {d.code} - {d.nameVn}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-3 gap-4">
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="prog-credits">Total Credits</Label>
-                <Input
-                  id="prog-credits"
-                  type="number"
-                  value={totalCredits}
-                  onChange={(e) => setTotalCredits(e.target.value)}
-                  required
-                />
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="prog-duration">Duration (Years)</Label>
-                <Input
-                  id="prog-duration"
-                  type="number"
-                  value={durationYears}
-                  onChange={(e) => setDurationYears(e.target.value)}
-                  required
-                />
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="prog-accreditation">Accreditation Standard</Label>
-                <Input
-                  id="prog-accreditation"
-                  placeholder="e.g. ASIIN, ABET..."
-                  value={accreditationBody}
-                  onChange={(e) => setAccreditationBody(e.target.value)}
-                />
-              </div>
-            </div>
-
-            <DialogFooter className="pt-2">
-              <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setCloneDialogOpen(false)}>
                 Cancel
               </Button>
-              <Button type="submit" className="bg-primary text-white hover:bg-primary/90" disabled={createMutation.isPending}>
-                {createMutation.isPending ? "Saving..." : "Create Program"}
+              <Button
+                disabled={
+                  !selectedProgram ||
+                  !sourceCohortId ||
+                  !targetCohortId ||
+                  sourceCohortId === targetCohortId ||
+                  cloneMutation.isPending
+                }
+                onClick={() => selectedProgram && cloneMutation.mutate({ programId: selectedProgram.id })}
+              >
+                {cloneMutation.isPending ? "Cloning..." : "Clone"}
               </Button>
             </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>      )}
+          </DialogContent>
+        </Dialog>
+
+      )}
+
+      {isAdmin && (
+        <Dialog open={Boolean(editProgram)} onOpenChange={(open) => !open && setEditProgram(null)}>
+          <DialogContent className="sm:max-w-2xl bg-white max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Edit Curriculum Program Metadata</DialogTitle>
+              <DialogDescription>The program code cannot be changed. Other information will be updated after saving.</DialogDescription>
+            </DialogHeader>
+            {editProgram && metadata && (
+              <form onSubmit={(event) => { event.preventDefault(); updateMutation.mutate({ id: editProgram.id, data: metadata }) }} className="space-y-4">
+                <div className="rounded-md bg-slate-50 px-3 py-2 text-sm"><span className="text-slate-500">Program Code: </span><span className="font-mono font-semibold">{editProgram.code}</span></div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-1.5"><Label>Vietnamese Name</Label><Input value={metadata.nameVn} onChange={(e) => setMetadata({ ...metadata, nameVn: e.target.value })} /></div>
+                  <div className="space-y-1.5"><Label>English Name</Label><Input required value={metadata.name} onChange={(e) => setMetadata({ ...metadata, name: e.target.value })} /></div>
+                  <div className="space-y-1.5"><Label>Major</Label><Select value={String(metadata.majorId)} onValueChange={(value) => setMetadata({ ...metadata, majorId: Number(value) })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{majors?.map((major) => <SelectItem key={major.id} value={String(major.id)}>{major.code} - {major.nameVn}</SelectItem>)}</SelectContent></Select></div>
+                  <div className="space-y-1.5"><Label>Program Type</Label><Select value={String(metadata.programTypeId)} onValueChange={(value) => setMetadata({ ...metadata, programTypeId: Number(value) })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{programTypes?.map((type) => <SelectItem key={type.id} value={String(type.id)}>{type.code} - {type.name}</SelectItem>)}</SelectContent></Select></div>
+                  <div className="space-y-1.5"><Label>Responsible Department</Label><Select value={String(metadata.departmentId)} onValueChange={(value) => setMetadata({ ...metadata, departmentId: Number(value) })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{departments?.map((department) => <SelectItem key={department.id} value={String(department.id)}>{department.code} - {department.nameVn}</SelectItem>)}</SelectContent></Select></div>
+                  <div className="space-y-1.5"><Label>Total Credits</Label><Input required min={1} type="number" value={metadata.totalCredits} onChange={(e) => setMetadata({ ...metadata, totalCredits: Number(e.target.value) })} /></div>
+                  <div className="space-y-1.5"><Label>Duration (Years)</Label><Input required min={1} type="number" value={metadata.durationYears} onChange={(e) => setMetadata({ ...metadata, durationYears: Number(e.target.value) })} /></div>
+                  <div className="space-y-1.5"><Label>Accreditation Standard</Label><Input value={metadata.accreditationBody || ""} onChange={(e) => setMetadata({ ...metadata, accreditationBody: e.target.value || null })} /></div>
+                  <div className="space-y-1.5"><Label>Effective Date</Label><Input required type="date" value={metadata.validFrom} onChange={(e) => setMetadata({ ...metadata, validFrom: e.target.value })} /></div>
+                  <div className="space-y-1.5"><Label>Expiration Date</Label><Input type="date" value={metadata.validTo || ""} onChange={(e) => setMetadata({ ...metadata, validTo: e.target.value || null })} /></div>
+                </div>
+                <DialogFooter><Button type="button" variant="outline" onClick={() => setEditProgram(null)}>Cancel</Button><Button type="submit" disabled={updateMutation.isPending}>{updateMutation.isPending ? "Saving..." : "Save Metadata"}</Button></DialogFooter>
+              </form>
+            )}
+          </DialogContent>
+        </Dialog>
+
+      )}
+
+      {isAdmin && (
+        <Dialog open={Boolean(statusProgram)} onOpenChange={(open) => !open && setStatusProgram(null)}>
+          <DialogContent className="sm:max-w-lg bg-white">
+            <DialogHeader>
+              <DialogTitle>{statusProgram?.isActive ? "Archive Curriculum Program" : "Reactivate Curriculum Program"}</DialogTitle>
+              <DialogDescription>{statusProgram?.isActive ? "This action only archives the program. Cohorts, courses, syllabi, and related data will not be deleted." : "The curriculum program and all existing data will be reactivated without data loss."}</DialogDescription>
+            </DialogHeader>
+            {statusProgram?.isActive && !archiveValidation && <p className="text-sm text-slate-500">Checking archive conditions...</p>}
+            {statusProgram?.isActive && archiveValidation && (
+              archiveValidation.canArchive ? <Alert className="border-emerald-200 bg-emerald-50"><AlertTitle>Ready to Archive</AlertTitle><AlertDescription>Program metadata and cohort credit requirements are valid.</AlertDescription></Alert> :
+                <Alert className="border-rose-200 bg-rose-50"><AlertTitle>Cannot Archive</AlertTitle><AlertDescription><ul className="mt-2 list-disc pl-5">{archiveValidation.violations.map((violation) => <li key={violation}>{violation}</li>)}</ul></AlertDescription></Alert>
+            )}
+            <DialogFooter><Button type="button" variant="outline" onClick={() => setStatusProgram(null)}>Cancel</Button>{statusProgram && (statusProgram.isActive ? <Button className="bg-amber-600 hover:bg-amber-700" disabled={!archiveValidation?.canArchive || archiveMutation.isPending} onClick={() => archiveMutation.mutate(statusProgram.id)}>{archiveMutation.isPending ? "Archiving..." : "Confirm Archive"}</Button> : <Button disabled={reactivateMutation.isPending} onClick={() => reactivateMutation.mutate(statusProgram.id)}>{reactivateMutation.isPending ? "Reactivating..." : "Confirm Reactivation"}</Button>)}</DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+      )}
+
+      {isAdmin && (
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogContent className="sm:max-w-xl bg-white max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="text-primary font-heading">Add New Curriculum Program</DialogTitle>
+              <DialogDescription>
+                Create a new curriculum framework for an academic major.
+              </DialogDescription>
+            </DialogHeader>
+
+            <form onSubmit={handleSubmit} className="space-y-4 pt-2">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="prog-code">Program Code</Label>
+                  <Input
+                    id="prog-code"
+                    placeholder="e.g. CS-2021, IT-2021..."
+                    value={code}
+                    onChange={(e) => setCode(e.target.value)}
+                    required
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="prog-year">Effective Date</Label>
+                  <Input
+                    id="prog-year"
+                    type="date"
+                    value={validFrom}
+                    onChange={(e) => setValidFrom(e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="prog-name-vn">Curriculum Program Name (Vietnamese)</Label>
+                <Input
+                  id="prog-name-vn"
+                  placeholder="Example: Bachelor program name in Vietnamese..."
+                  value={nameVn}
+                  onChange={(e) => setNameVn(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="prog-name-en">English Name</Label>
+                <Input
+                  id="prog-name-en"
+                  placeholder="e.g. Bachelor of Science in Computer Science..."
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                <div className="flex flex-col gap-1.5">
+                  <Label>Major</Label>
+                  <Select value={majorId} onValueChange={setMajorId}>
+                    <SelectTrigger className="bg-white border-slate-200">
+                      <SelectValue placeholder="Select major..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {majors?.map((m) => (
+                        <SelectItem key={m.id} value={String(m.id)}>
+                          {m.code} - {m.nameVn}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <Label>Program Type</Label>
+                  <Select value={programTypeId} onValueChange={setProgramTypeId}>
+                    <SelectTrigger className="bg-white border-slate-200">
+                      <SelectValue placeholder="Select program type..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {programTypes?.map((pt) => (
+                        <SelectItem key={pt.id} value={String(pt.id)}>
+                          {pt.code} - {pt.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <Label>Responsible Department</Label>
+                  <Select value={departmentId} onValueChange={setDepartmentId}>
+                    <SelectTrigger className="bg-white border-slate-200">
+                      <SelectValue placeholder="Select department..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {departments?.map((d) => (
+                        <SelectItem key={d.id} value={String(d.id)}>
+                          {d.code} - {d.nameVn}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="prog-credits">Total Credits</Label>
+                  <Input
+                    id="prog-credits"
+                    type="number"
+                    value={totalCredits}
+                    onChange={(e) => setTotalCredits(e.target.value)}
+                    required
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="prog-duration">Duration (Years)</Label>
+                  <Input
+                    id="prog-duration"
+                    type="number"
+                    value={durationYears}
+                    onChange={(e) => setDurationYears(e.target.value)}
+                    required
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="prog-accreditation">Accreditation Standard</Label>
+                  <Input
+                    id="prog-accreditation"
+                    placeholder="e.g. ASIIN, ABET..."
+                    value={accreditationBody}
+                    onChange={(e) => setAccreditationBody(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <DialogFooter className="pt-2">
+                <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit" className="bg-primary text-white hover:bg-primary/90" disabled={createMutation.isPending}>
+                  {createMutation.isPending ? "Saving..." : "Create Program"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>)}
 
       <Dialog
         open={cohortProgram !== null}
@@ -1434,33 +1497,37 @@ export default function ProgramManagementPage() {
         <DialogContent className="overflow-hidden border-[#cfe2e4] bg-white p-0 sm:max-w-md">
           <div className="h-1 bg-gradient-to-r from-[#007d84] via-[#20a0a5] to-[#f0a72f]" />
           <div className="space-y-5 px-6 pb-2 pt-5">
-          <DialogHeader className="space-y-1 text-left">
-            <DialogTitle className="text-xl font-bold tracking-tight text-[#006f76]">
-              {cohortAction === "syllabi" && "View Syllabi"}
-              {cohortAction === "map" && "View Curriculum Map"}
-              {cohortAction === "archive" && "Cohort Status"}
-            </DialogTitle>
-            <DialogDescription className="text-sm">
-              {syllabiProgram ? `${displayProgramCode(syllabiProgram)} · ${syllabiProgram.name}` : ""}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-2">
-          <Label className="text-[11px] font-bold uppercase tracking-[0.08em] text-slate-500">Cohort</Label>
-          <Select value={syllabiCohortId} onValueChange={setSyllabiCohortId}>
-            <SelectTrigger className="h-11 rounded-lg border-[#cbdde0] bg-[#f8fbfb] shadow-none focus:ring-[#007d84]">
-              <SelectValue placeholder="Choose a cohort" />
-            </SelectTrigger>
-            <SelectContent>
-              {(syllabiProgram ? cohortsByProgramId.get(syllabiProgram.id) ?? [] : [])
-                .filter((cohort) => cohortAction !== "map" || cohort.isActive !== false)
-                .map((cohort) => (
-                <SelectItem key={cohort.id} value={String(cohort.id)}>
-                  {cohort.name}{cohort.isActive === false ? " — Archived" : ""}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          </div>
+            <DialogHeader className="space-y-1 text-left">
+              <DialogTitle className="text-xl font-bold tracking-tight text-[#006f76]">
+                {cohortAction === "syllabi" && "View Syllabi"}
+                {cohortAction === "map" && "View Curriculum Map"}
+                {cohortAction === "archive" && "Archive Curriculum"}
+              </DialogTitle>
+              <DialogDescription className="text-sm">
+                {syllabiProgram ? `${displayProgramCode(syllabiProgram)} · ${syllabiProgram.name}` : ""}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-2">
+              <Label className="text-[11px] font-bold uppercase tracking-[0.08em] text-slate-500">Cohort</Label>
+              <Select value={syllabiCohortId} onValueChange={setSyllabiCohortId}>
+                <SelectTrigger className="h-11 rounded-lg border-[#cbdde0] bg-[#f8fbfb] shadow-none focus:ring-[#007d84]">
+                  <SelectValue placeholder="Choose a cohort" />
+                </SelectTrigger>
+                <SelectContent>
+                  {(syllabiProgram ? cohortsByProgramId.get(syllabiProgram.id) ?? [] : [])
+                    .filter((cohort) =>
+                      cohortAction === "syllabi"
+                        ? true
+                        : cohort.isActive !== false,
+                    )
+                    .map((cohort) => (
+                      <SelectItem key={cohort.id} value={String(cohort.id)}>
+                        {cohort.name}{cohort.isActive === false ? " — Archived" : ""}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
           <DialogFooter className="border-t border-[#e2ecee] bg-[#f7fafb] px-6 py-4 sm:justify-end">
             <Button className="h-9" variant="ghost" onClick={() => setSyllabiProgram(null)}>Cancel</Button>
@@ -1468,7 +1535,7 @@ export default function ProgramManagementPage() {
               className={cohortAction === "archive"
                 ? "h-9 bg-amber-600 text-white hover:bg-amber-700"
                 : "h-9 bg-[#007d84] text-white hover:bg-[#006b71]"}
-              disabled={!syllabiProgram || !syllabiCohortId || cohortStatusMutation.isPending}
+              disabled={!syllabiProgram || !syllabiCohortId || cohortArchiveMutation.isPending}
               onClick={() => {
                 const cohort = (syllabiProgram ? cohortsByProgramId.get(syllabiProgram.id) ?? [] : []).find((item) => item.id === Number(syllabiCohortId))
                 if (!syllabiProgram || !cohort) return
@@ -1477,16 +1544,13 @@ export default function ProgramManagementPage() {
                 } else if (cohortAction === "map") {
                   goToCurriculumMap(syllabiProgram, cohort)
                 } else {
-                  cohortStatusMutation.mutate(cohort)
+                  cohortArchiveMutation.mutate(cohort)
                 }
               }}
             >
               {cohortAction === "syllabi" && "View Syllabi"}
               {cohortAction === "map" && "View Map"}
-              {cohortAction === "archive" && (() => {
-                const cohort = (syllabiProgram ? cohortsByProgramId.get(syllabiProgram.id) ?? [] : []).find((item) => item.id === Number(syllabiCohortId))
-                return cohort?.isActive ? "Archive" : "Reactivate"
-              })()}
+              {cohortAction === "archive" && "Archive"}
             </Button>
           </DialogFooter>
         </DialogContent>

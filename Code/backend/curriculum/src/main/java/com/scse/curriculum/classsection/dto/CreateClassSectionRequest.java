@@ -23,7 +23,7 @@ public class CreateClassSectionRequest {
     private Integer syllabusId;
 
     @NotNull(message = "Vui lòng chọn giảng viên")
-    private Integer instructorId;
+    private Integer instructorUserId;
 
     private Integer semester;
 

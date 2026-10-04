@@ -17,7 +17,6 @@ public class LoginResponse {
     private String username;
     private String email;
     private UserRole role;
-    private Integer instructorId;
 
     @JsonIgnore
     private String refreshToken;

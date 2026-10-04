@@ -99,6 +99,25 @@ const formatSyllabusStatus = (
     .replace(/\b\w/g, (character) => character.toUpperCase())
 }
 
+const getInstructorDisplayName = (
+  section: ClassSectionResponse,
+) => {
+  const fullName =
+    section.instructorFullName?.trim()
+
+  const username =
+    section.instructorUsername?.trim()
+
+  if (fullName && username) {
+    return `${fullName} — ${username}`
+  }
+
+  return (
+    fullName
+    || username
+    || `Instructor #${section.instructorUserId}`
+  )
+}
 export default function ClassSectionManagementPage() {
   const queryClient = useQueryClient()
 
@@ -135,8 +154,8 @@ export default function ClassSectionManagementPage() {
         queryKey: ["class-sections"],
       }),
       queryClient.invalidateQueries({
-        queryKey: ["instructors"],
-      }),
+  queryKey: ["users"],
+}),
       queryClient.invalidateQueries({
         queryKey: ["syllabuses"],
       }),
@@ -243,7 +262,8 @@ export default function ClassSectionManagementPage() {
       const searchable = [
         section.courseCode,
         section.courseName,
-        section.instructorName,
+        getInstructorDisplayName(section),
+section.instructorUsername,
       ]
         .join(" ")
         .toLowerCase()
@@ -262,8 +282,10 @@ export default function ClassSectionManagementPage() {
     const missing = sections.filter((section) => section.syllabusId === null).length
     const linked = sections.length - missing
     const distinctInstructors = new Set(
-      sections.map((section) => section.instructorId),
-    ).size
+  sections.map(
+    (section) => section.instructorUserId,
+  ),
+).size
 
     return {
       total: sections.length,
@@ -306,10 +328,10 @@ export default function ClassSectionManagementPage() {
     const nextActive = !section.isActive
 
     const confirmed = window.confirm(
-      nextActive
-        ? `Activate the teaching assignment for ${section.courseCode} — ${section.instructorName}?`
-        : `Deactivate the teaching assignment for ${section.courseCode} — ${section.instructorName}?\n\nThe record will be preserved for history. A linked syllabus will not be deleted.`,
-    )
+  nextActive
+    ? `Activate the teaching assignment for ${section.courseCode} — ${getInstructorDisplayName(section)}?`
+    : `Deactivate the teaching assignment for ${section.courseCode} — ${getInstructorDisplayName(section)}?\n\nThe record will be preserved for history. A linked syllabus will not be deleted.`,
+)
 
     if (!confirmed) {
       return
@@ -332,7 +354,8 @@ export default function ClassSectionManagementPage() {
         programId: section.programId,
         cohortId: section.cohortId,
         syllabusId: section.syllabusId,
-        instructorId: section.instructorId,
+        instructorUserId:
+  section.instructorUserId,
         semester: section.semester,
         academicYear: section.academicYear,
         groupNumber: section.groupNumber,
@@ -350,8 +373,8 @@ const handleDelete = (
   section: ClassSectionResponse,
 ) => {
   const confirmed = window.confirm(
-    `Delete teaching assignment for ${section.courseCode} — ${section.instructorName}?\n\nThis action permanently removes this assignment. It is only allowed when no syllabus or enrollment is linked.`,
-  )
+  `Delete teaching assignment for ${section.courseCode} — ${getInstructorDisplayName(section)}?\n\nThis action permanently removes this assignment. It is only allowed when no syllabus or enrollment is linked.`,
+)
 
   if (!confirmed) {
     return
@@ -552,9 +575,16 @@ const handleDelete = (
                       </p>
                     </TableCell>
 
-                    <TableCell className="font-medium text-slate-700">
-                      {section.instructorName}
-                    </TableCell>
+                    <TableCell>
+  <p className="font-medium text-slate-700">
+    {section.instructorFullName?.trim()
+      || section.instructorUsername}
+  </p>
+
+  <p className="mt-1 text-xs text-slate-500">
+    {section.instructorUsername}
+  </p>
+</TableCell>
 
                     <TableCell>
                       {section.syllabusId ? (

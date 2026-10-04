@@ -1,5 +1,6 @@
 package com.scse.curriculum.syllabus.service;
-
+import org.mockito.Spy;
+import com.scse.curriculum.syllabus.template.TargetTemplateProfileResolver;
 import com.scse.curriculum.approval.repository.ApprovalRequestRepository;
 import com.scse.curriculum.approval.entity.ApprovalRequest;
 import com.scse.curriculum.approval.entity.ApprovalStatus;
@@ -25,7 +26,7 @@ import com.scse.curriculum.course.entity.Course;
 import com.scse.curriculum.course.repository.CourseRepository;
 import com.scse.curriculum.courseprogram.repository.CourseProgramRepository;
 import com.scse.curriculum.enrollment.repository.EnrollmentRepository;
-import com.scse.curriculum.instructor.entity.Instructor;
+
 import com.scse.curriculum.email.WorkflowNotificationService;
 import com.scse.curriculum.plo.entity.Plo;
 import com.scse.curriculum.studentscore.repository.StudentScoreRepository;
@@ -92,6 +93,10 @@ class SyllabusServiceImplCloneTest {
 
     @Mock private com.scse.curriculum.syllabus.service.SyllabusIdentityService syllabusIdentityService;
     @Mock private com.scse.curriculum.syllabus.history.SyllabusHistoryService syllabusHistoryService;
+    @Mock private com.scse.curriculum.cohort.service.CohortOperationalGuard cohortOperationalGuard;
+    @Spy
+private TargetTemplateProfileResolver targetTemplateProfileResolver =
+        new TargetTemplateProfileResolver();
     @InjectMocks
     private SyllabusServiceImpl service;
 
@@ -127,7 +132,6 @@ cohort =
                 .id(10)
                 .username("faculty1")
                 .role(UserRole.INSTRUCTOR)
-                .instructorId(3)
                 .isActive(true)
                 .build();
 
@@ -164,23 +168,18 @@ cohort =
                 .notes("Source notes")
                 .build();
 
-        Instructor instructor = Instructor.builder()
-                .id(3)
-                .staffCode("GV003")
-                .fullName("Faculty One")
-                .build();
 
         targetAssignment = ClassSection.builder()
-                .id(99)
-                .course(course)
-                .instructor(instructor)
-                .semester(2)
-                .academicYear("2026-2027")
-                .groupNumber(1)
-                .sectionType(SectionType.THEORY)
-                .isActive(true)
-                .syllabus(null)
-                .build();
+        .id(99)
+        .course(course)
+        .instructorUser(faculty)
+        .semester(2)
+        .academicYear("2026-2027")
+        .groupNumber(1)
+        .sectionType(SectionType.THEORY)
+        .isActive(true)
+        .syllabus(null)
+        .build();
     }
 
 
@@ -499,6 +498,122 @@ cohort =
         verify(syllabusHistoryService, org.mockito.Mockito.times(2)).capture(source, "REVISION_CREATED", "faculty1");
     }
 
+        @Test
+    void approvedRevisionCapturesSourceBeforeCreatingDraft() {
+
+        source.setVersionNumber(1);
+        source.setVersionLabel("v1.0");
+        source.setStatus(SyllabusStatus.APPROVED);
+        source.setIsCurrent(true);
+
+        java.time.LocalDateTime approvedTime =
+                java.time.LocalDateTime.of(
+                        2026, 10, 3, 12, 0);
+
+        source.setSubmittedAt(approvedTime.minusDays(1));
+        source.setApprovedAt(approvedTime);
+        source.setFinalApprovalDate(approvedTime);
+        source.setApprovedBy(faculty);
+
+        when(repository.findByIdWithRelations(50))
+                .thenReturn(Optional.of(source));
+
+        when(syllabusAccessService.currentUser())
+                .thenReturn(faculty);
+
+        when(repository.saveAndFlush(any(Syllabus.class)))
+                .thenAnswer(invocation ->
+                        invocation.getArgument(0));
+
+        when(courseProgramRepository.findBySyllabus_Id(50))
+                .thenReturn(List.of());
+
+        when(classSectionRepository.findForPdfBySyllabusId(50))
+                .thenReturn(List.of());
+
+        java.util.List<String> capturedStates =
+                new java.util.ArrayList<>();
+
+        org.mockito.Mockito.doAnswer(invocation -> {
+
+            Syllabus captured =
+                    invocation.getArgument(0);
+
+            String event =
+                    invocation.getArgument(1);
+
+            capturedStates.add(
+                    event
+                            + "|"
+                            + captured.getVersionNumber()
+                            + "|"
+                            + captured.getVersionLabel()
+                            + "|"
+                            + captured.getStatus()
+                            + "|"
+                            + captured.getIsCurrent());
+
+            return null;
+
+        }).when(syllabusHistoryService)
+                .capture(
+                        any(Syllabus.class),
+                        org.mockito.ArgumentMatchers.anyString(),
+                        org.mockito.ArgumentMatchers.anyString());
+
+        SyllabusResponse result =
+                service.createRevisionDraftFromRejected(50);
+
+        assertThat(capturedStates)
+                .containsExactly(
+                        "REVISION_SOURCE|1|v1.0|APPROVED|true",
+                        "REVISION_CREATED|2|v2.0|DRAFT|false");
+
+        assertThat(result.getId())
+                .isEqualTo(50);
+
+        assertThat(source.getId())
+                .isEqualTo(50);
+
+        assertThat(source.getVersionNumber())
+                .isEqualTo(2);
+
+        assertThat(source.getVersionLabel())
+                .isEqualTo("v2.0");
+
+        assertThat(source.getStatus())
+                .isEqualTo(SyllabusStatus.DRAFT);
+
+        assertThat(source.getIsCurrent())
+                .isFalse();
+
+        assertThat(source.getSubmittedAt())
+                .isNull();
+
+        assertThat(source.getApprovedAt())
+                .isNull();
+
+        assertThat(source.getApprovedBy())
+                .isNull();
+
+        assertThat(source.getFinalApprovalDate())
+                .isNull();
+
+        verify(repository)
+                .saveAndFlush(source);
+
+        verify(syllabusHistoryService)
+                .capture(
+                        source,
+                        "REVISION_SOURCE",
+                        "faculty1");
+
+        verify(syllabusHistoryService)
+                .capture(
+                        source,
+                        "REVISION_CREATED",
+                        "faculty1");
+    }
     @Test
     void revisionCannotStartFromDraft() {
         source.setStatus(SyllabusStatus.DRAFT);

@@ -1,4 +1,4 @@
-import SyllabusRevisionHistory from "@/components/syllabus/SyllabusRevisionHistory"
+﻿import SyllabusRevisionHistory from "@/components/syllabus/SyllabusRevisionHistory"
 import { syllabusHistoryApi } from "@/api/syllabusHistoryApi"
 import { formatVersionLabel } from "@/lib/syllabusVersion"
 import { useEffect, useMemo, useState } from "react"
@@ -23,6 +23,7 @@ import { syllabusApi } from "@/api/syllabusApi"
 import { syllabusPdfApi } from "@/api/syllabusPdfApi"
 import { approvalRequestApi } from "@/api/approvalRequestApi"
 import SyllabusForm from "@/components/syllabus/SyllabusForm"
+import New2027SyllabusView from "@/components/syllabus/New2027SyllabusView"
 import SyllabusPdfPreviewDialog from "@/components/syllabus/SyllabusPdfPreviewDialog"
 import ApprovalReviewDialog, { type ReviewDecision } from "@/components/approval/ApprovalReviewDialog"
 import { Badge } from "@/components/ui/badge"
@@ -52,11 +53,22 @@ const normalizeStatus = (value: unknown) => String(value ?? "")
   .trim()
   .toUpperCase()
 
+const isNew2027Syllabus = (syllabus?: Syllabus | null) =>
+  String(syllabus?.targetTemplateProfile ?? "").trim().toUpperCase() === "NEW_2027"
+
 const statusLabel = (status: unknown, role: string) => {
   const normalized = normalizeStatus(status)
   if (role === "DEPT_HEAD" && normalized === "SUBMITTED") return "Pending Department Review"
   if (role === "DEPT_HEAD" && normalized === "UNDER_REVIEW") return "Forwarded to Dean"
-  if (role === "DEAN" && normalized === "UNDER_REVIEW") return "Pending Final Review"
+  if (
+  (
+    role === "DEAN"
+    || role === "DEAN_SECRETARY"
+  )
+  && normalized === "UNDER_REVIEW"
+) {
+  return "Pending Final Review"
+}
   return STATUS_LABELS[normalized] || normalized || "Unknown"
 }
 
@@ -137,6 +149,9 @@ export default function SyllabusDetailPage() {
   const syllabusId = Number(id)
   const validId = Number.isInteger(syllabusId) && syllabusId > 0
   const role = normalizeRole(user?.role)
+  const isDean =
+  role === "DEAN"
+  || role === "DEAN_SECRETARY"
   const [previewOpen, setPreviewOpen] = useState(false)
   const [downloading, setDownloading] = useState(false)
   const [reviewDecision, setReviewDecision] = useState<ReviewDecision | null>(null)
@@ -148,6 +163,7 @@ export default function SyllabusDetailPage() {
   } = useSyllabus(validId ? syllabusId : null)
 
   const currentStatus = normalizeStatus(syllabus?.status)
+  const isNew2027 = isNew2027Syllabus(syllabus)
   const isApproved = currentStatus === "APPROVED"
 
   const {
@@ -190,13 +206,20 @@ export default function SyllabusDetailPage() {
   // A successful Instructor GET already passed the backend assignment scope.
   const canEditDraft = ["DRAFT", "REVISION_REQUESTED"].includes(currentStatus)
     && (isAdmin || role === "INSTRUCTOR")
+    const canStartRevision = ["APPROVED", "REJECTED"].includes(currentStatus)
+  && (isAdmin || role === "INSTRUCTOR")
   const needsReviewerAction = (
-    role === "DEPT_HEAD" && currentStatus === "SUBMITTED"
-  ) || (
-    role === "DEAN" && currentStatus === "UNDER_REVIEW"
-  )
+  role === "DEPT_HEAD"
+  && currentStatus === "SUBMITTED"
+) || (
+  isDean
+  && currentStatus === "UNDER_REVIEW"
+)
 
-  const reviewStep = role === "DEAN" ? "STEP3_DEAN" : "STEP1_DEPT_HEAD"
+  const reviewStep =
+  isDean
+    ? "STEP3_DEAN"
+    : "STEP1_DEPT_HEAD"
   const { data: pendingReviewRequests = [] } = useQuery({
     queryKey: ["approval-requests", "pending", reviewStep],
     queryFn: () => approvalRequestApi.getPendingByStep(reviewStep),
@@ -223,11 +246,13 @@ export default function SyllabusDetailPage() {
         queryClient.invalidateQueries({ queryKey: ["notifications"] }),
       ])
       toast.success(reviewDecision === "APPROVED"
-        ? role === "DEAN" ? "Syllabus received final approval." : "Syllabus forwarded to the Dean."
+        ? isDean
+  ? "Syllabus received final approval."
+  : "Syllabus forwarded to the Dean."
         : "Syllabus returned to the instructor for revision.")
     },
   })
-  const isRevisionState = ["REJECTED", "REVISION_REQUESTED"].includes(currentStatus)
+  const isRevisionState = ["APPROVED", "REJECTED", "REVISION_REQUESTED"].includes(currentStatus)
 
   useEffect(() => {
     if (!syllabus || location.hash !== "#approval-history") return
@@ -346,14 +371,17 @@ export default function SyllabusDetailPage() {
     Compare Previous Cohort
   </Button>
 )}
-            {(role === "DEPT_HEAD" || role === "DEAN") && pendingReviewRequest && (
+            {(role === "DEPT_HEAD" || isDean)
+  && pendingReviewRequest && (
               <>
                 <Button
                   type="button"
                   className="bg-emerald-600 text-white hover:bg-emerald-700"
                   onClick={() => setReviewDecision("APPROVED")}
                 >
-                  <CheckCircle2 className="size-4" />{role === "DEAN" ? "Final Approve" : "Approve & Forward"}
+                  <CheckCircle2 className="size-4" />{isDean
+  ? "Final Approve"
+  : "Approve & Forward"}
                 </Button>
                 <Button
                   type="button"
@@ -369,7 +397,13 @@ export default function SyllabusDetailPage() {
               <Button
                 type="button"
                 className="bg-[#007d84] text-white hover:bg-[#006d73]"
-                onClick={() => navigate(role === "DEAN" ? "/dean/approvals" : "/dept-head/approvals")}
+                onClick={() =>
+  navigate(
+    isDean
+      ? "/dean/approvals"
+      : "/dept-head/approvals"
+  )
+}
               >
                 <ShieldCheck className="size-4" />Open Review Queue
               </Button>
@@ -399,7 +433,7 @@ export default function SyllabusDetailPage() {
           open
           item={pendingReviewRequest}
           decision={reviewDecision}
-          isDean={role === "DEAN"}
+          isDean={isDean}
           isPending={reviewMutation.isPending}
           errorMessage={reviewMutation.error instanceof Error ? reviewMutation.error.message : null}
           onOpenChange={(open) => {
@@ -413,37 +447,66 @@ export default function SyllabusDetailPage() {
       )}
 
       {isRevisionState && (
-        <section className="flex items-start gap-3 rounded-xl border border-rose-200 bg-rose-50 px-5 py-4 text-rose-800">
-          <AlertTriangle className="mt-0.5 size-5 shrink-0" />
+  <section
+    className={
+      currentStatus === "APPROVED"
+        ? "flex items-start gap-3 rounded-xl border border-blue-200 bg-blue-50 px-5 py-4 text-blue-800"
+        : "flex items-start gap-3 rounded-xl border border-rose-200 bg-rose-50 px-5 py-4 text-rose-800"
+    }
+  >
+    <AlertTriangle className="mt-0.5 size-5 shrink-0" />
+
+    <div>
+      <p className="font-semibold">
+        {currentStatus === "APPROVED"
+          ? "Approved syllabus"
+          : "Reviewer feedback requires revision"}
+      </p>
+
+      <p className="mt-1 text-sm leading-6">
+        {currentStatus === "APPROVED"
+          ? "Create a new revision draft while preserving the approved version in revision history."
+          : "Review the approval history below for the comments attached to this revision."}
+      </p>
+
+      {canStartRevision && (
+        <Button
+          className="mt-3"
+          disabled={revisionMutation.isPending}
+          onClick={() => revisionMutation.mutate()}
+        >
+          {revisionMutation.isPending
+            ? "Starting revision…"
+            : currentStatus === "APPROVED"
+              ? "Start new revision"
+              : "Start revision"}
+        </Button>
+      )}
+    </div>
+  </section>
+)}
+
+      {isNew2027 ? (
+        <New2027SyllabusView syllabus={syllabus} />
+      ) : (
+        <section aria-label="Complete syllabus form" className="space-y-3">
           <div>
-            <p className="font-semibold">Reviewer feedback requires revision</p>
-            <p className="mt-1 text-sm leading-6">Review the approval history below for the comments attached to this revision.</p>
-            {currentStatus === "REJECTED" && (isAdmin || role === "INSTRUCTOR") && (
-              <Button className="mt-3" disabled={revisionMutation.isPending} onClick={() => revisionMutation.mutate()}>
-                {revisionMutation.isPending ? "Starting revision…" : "Start revision"}
-              </Button>
-            )}
+            <h2 className="text-xl font-bold text-[#17343d]">Complete Syllabus Form</h2>
+            <p className="mt-1 text-xs leading-5 text-slate-500">
+              This is the same standard form used to edit the Draft. Every saved field is displayed here in read-only mode.
+            </p>
           </div>
+          <SyllabusForm
+            key={`${syllabus.id}:${syllabus.updatedAt}:view`}
+            initialData={formData}
+            onSubmit={() => undefined}
+            autoPrefillExisting={false}
+            lockProgramContext
+            lockAssignmentContext
+            readOnly
+          />
         </section>
       )}
-
-      <section aria-label="Complete syllabus form" className="space-y-3">
-        <div>
-          <h2 className="text-xl font-bold text-[#17343d]">Complete Syllabus Form</h2>
-          <p className="mt-1 text-xs leading-5 text-slate-500">
-            This is the same standard form used to edit the Draft. Every saved field is displayed here in read-only mode.
-          </p>
-        </div>
-        <SyllabusForm
-          key={`${syllabus.id}:${syllabus.updatedAt}:view`}
-          initialData={formData}
-          onSubmit={() => undefined}
-          autoPrefillExisting={false}
-          lockProgramContext
-          lockAssignmentContext
-          readOnly
-        />
-      </section>
 
       <SyllabusRevisionHistory syllabusId={syllabus.id} />
 

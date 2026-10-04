@@ -21,13 +21,13 @@ import com.scse.curriculum.program.entity.Program;
 import com.scse.curriculum.program.repository.ProgramRepository;
 import com.scse.curriculum.cohort.entity.Cohort;
 import com.scse.curriculum.cohort.repository.CohortRepository;
+import com.scse.curriculum.cohort.service.CohortOperationalGuard;
 import com.scse.curriculum.courseprogram.repository.CourseProgramRepository;
 import com.scse.curriculum.enrollment.repository.EnrollmentRepository;
-import com.scse.curriculum.instructor.entity.Instructor;
-import com.scse.curriculum.instructor.repository.InstructorRepository;
 import com.scse.curriculum.syllabus.entity.Syllabus;
 import com.scse.curriculum.syllabus.repository.SyllabusRepository;
 import com.scse.curriculum.user.entity.UserAccount;
+import com.scse.curriculum.user.repository.UserAccountRepository;
 import com.scse.curriculum.user.entity.UserRole;
 
 import lombok.RequiredArgsConstructor;
@@ -45,9 +45,10 @@ public class ClassSectionServiceImpl
     private final CourseRepository courseRepository;
     private final ProgramRepository programRepository;
     private final CohortRepository cohortRepository;
+    private final CohortOperationalGuard cohortOperationalGuard;
     private final CourseProgramRepository courseProgramRepository;
     private final SyllabusRepository syllabusRepository;
-    private final InstructorRepository instructorRepository;
+    private final UserAccountRepository userAccountRepository;
     private final EnrollmentRepository enrollmentRepository;
     private final CurrentUserService currentUserService;
 
@@ -66,16 +67,17 @@ public class ClassSectionServiceImpl
         Course course = requireCourse(request.getCourseId());
         Program program = requireProgram(request.getProgramId());
         Cohort cohort = requireCohort(request.getCohortId());
+        cohortOperationalGuard.assertActive(cohort);
         assertCurriculumContext(course, program, cohort);
-        Instructor instructor =
-                requireInstructor(request.getInstructorId());
+        UserAccount instructorUser =
+                requireInstructorUser(request.getInstructorUserId());
 
         /*
          * Kiểm tra phạm vi bộ môn ở tầng service.
          * Không chỉ phụ thuộc vào @PreAuthorize ở controller.
          */
         assertProgramInManagementScope(actor, program);
-        assertInstructorInManagementScope(actor, instructor);
+        assertInstructorInManagementScope(actor, instructorUser);
 
         Syllabus syllabus = resolveOptionalSyllabus(
                 request.getSyllabusId(),
@@ -90,7 +92,7 @@ public class ClassSectionServiceImpl
                 .program(program)
                 .cohort(cohort)
                 .syllabus(syllabus)
-                .instructor(instructor)
+                .instructorUser(instructorUser)
                 .semester(resolveAssignmentSemester(
                         course,
                         program,
@@ -141,15 +143,20 @@ public class ClassSectionServiceImpl
         ClassSection section =
                 requireAccessibleSection(id, actor);
 
+        if (section.getCohort() != null) {
+            cohortOperationalGuard.assertActive(section.getCohort());
+        }
+
         Course course = requireCourse(request.getCourseId());
         Program program = requireProgram(request.getProgramId());
         Cohort cohort = requireCohort(request.getCohortId());
+        cohortOperationalGuard.assertActive(cohort);
         assertCurriculumContext(course, program, cohort);
-        Instructor instructor =
-                requireInstructor(request.getInstructorId());
+        UserAccount instructorUser =
+                requireInstructorUser(request.getInstructorUserId());
 
         assertProgramInManagementScope(actor, program);
-        assertInstructorInManagementScope(actor, instructor);
+        assertInstructorInManagementScope(actor, instructorUser);
 
         Syllabus syllabus = resolveOptionalSyllabus(
                 request.getSyllabusId(),
@@ -163,8 +170,8 @@ public class ClassSectionServiceImpl
         section.setProgram(program);
         section.setCohort(cohort);
         section.setSyllabus(syllabus);
-        section.setInstructor(instructor);
-        // Course and Instructor are the assignment source of truth. Legacy
+        section.setInstructorUser(instructorUser);
+        // Course and instructor UserAccount are the assignment source of truth.
         // ClassSection metadata is preserved on edit, not re-entered by Admin.
         Integer resolvedSemester =
                 resolveAssignmentSemester(
@@ -207,6 +214,10 @@ public void delete(Integer id) {
 
     ClassSection section =
             requireAccessibleSection(id, actor);
+
+    if (section.getCohort() != null) {
+        cohortOperationalGuard.assertActive(section.getCohort());
+    }
 
     if (section.getSyllabus() != null) {
         throw new IllegalStateException(
@@ -340,17 +351,9 @@ public void delete(Integer id) {
                     .toList();
         }
 
-        if (currentUser.getRole() != UserRole.INSTRUCTOR
-                || currentUser.getInstructorId() == null) {
-
-            throw new ForbiddenOperationException(
-                    "Chỉ giảng viên được xem danh sách "
-                            + "phân công của chính mình.");
-        }
-
         return repository
-                .findActiveByInstructorId(
-                        currentUser.getInstructorId())
+                .findActiveByInstructorUserId(
+                        currentUser.getId())
                 .stream()
                 .map(this::map)
                 .toList();
@@ -395,31 +398,6 @@ public void delete(Integer id) {
         return actor.getManagedMajor().getId();
     }
 
-    private Instructor requireCurrentUserInstructor(
-            UserAccount actor) {
-
-        if (actor.getInstructorId() == null) {
-            throw new ForbiddenOperationException(
-                    "Tài khoản Trưởng bộ môn chưa liên kết "
-                            + "với hồ sơ giảng viên.");
-        }
-
-        Instructor instructor =
-                instructorRepository
-                        .findById(actor.getInstructorId())
-                        .orElseThrow(() ->
-                                new ForbiddenOperationException(
-                                        "Không tìm thấy hồ sơ giảng viên "
-                                                + "của tài khoản hiện tại."));
-
-        if (!Boolean.TRUE.equals(instructor.getIsActive())) {
-            throw new ForbiddenOperationException(
-                    "Hồ sơ giảng viên của tài khoản "
-                            + "hiện tại không hoạt động.");
-        }
-
-        return instructor;
-    }
 
     private void assertProgramInManagementScope(
             UserAccount actor,
@@ -446,11 +424,16 @@ public void delete(Integer id) {
 
     private void assertInstructorInManagementScope(
             UserAccount actor,
-            Instructor instructor) {
-        if (!Boolean.TRUE.equals(instructor.getIsActive())) {
+            UserAccount instructorUser) {
+
+        if (instructorUser.getRole() != UserRole.INSTRUCTOR) {
             throw new IllegalStateException(
-                    "Không thể phân công giảng viên "
-                            + "đang ở trạng thái không hoạt động.");
+                    "Teaching assignments can only be assigned to an Instructor account.");
+        }
+
+        if (!Boolean.TRUE.equals(instructorUser.getIsActive())) {
+            throw new IllegalStateException(
+                    "Cannot assign a deactivated Instructor account.");
         }
     }
 
@@ -516,14 +499,27 @@ public void delete(Integer id) {
         }
     }
 
-    private Instructor requireInstructor(
-            Integer instructorId) {
+    private UserAccount requireInstructorUser(
+            Integer instructorUserId) {
 
-        return instructorRepository
-                .findById(instructorId)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "Instructor not found"));
+        UserAccount instructorUser =
+                userAccountRepository
+                        .findById(instructorUserId)
+                        .orElseThrow(() ->
+                                new ResourceNotFoundException(
+                                        "Instructor account not found"));
+
+        if (instructorUser.getRole() != UserRole.INSTRUCTOR) {
+            throw new IllegalArgumentException(
+                    "The selected account is not an Instructor.");
+        }
+
+        if (!Boolean.TRUE.equals(instructorUser.getIsActive())) {
+            throw new IllegalStateException(
+                    "Cannot assign a deactivated Instructor account.");
+        }
+
+        return instructorUser;
     }
 
     /*
@@ -668,10 +664,10 @@ public void delete(Integer id) {
                                                 section.getCohort().getId(),
                                                 cohort.getId()))
                         .filter(section ->
-                                section.getInstructor() != null
+                                section.getInstructorUser() != null
                                         && Objects.equals(
-                                                section.getInstructor().getId(),
-                                                request.getInstructorId()))
+                                                section.getInstructorUser().getId(),
+                                                request.getInstructorUserId()))
                         .filter(section ->
                                 Objects.equals(
                                         section.getSemester(),
@@ -692,7 +688,7 @@ public void delete(Integer id) {
             throw new IllegalStateException(
                     "Teaching assignment already exists "
                             + "for this Course, Program, Cohort, "
-                            + "Instructor, Semester, Academic Year, "
+                            + "Instructor Account, Semester, Academic Year, "
                             + "and Group.");
         }
     }
@@ -776,10 +772,12 @@ private String defaultAcademicYear(String value) {
                                 || syllabus.getStatus() == null
                                 ? null
                                 : syllabus.getStatus().name())
-                .instructorId(
-                        section.getInstructor().getId())
-                .instructorName(
-                        section.getInstructor().getFullName())
+                .instructorUserId(
+                        section.getInstructorUser().getId())
+                .instructorFullName(
+                        section.getInstructorUser().getFullName())
+                .instructorUsername(
+                        section.getInstructorUser().getUsername())
                 .semester(section.getSemester())
                 .academicYear(section.getAcademicYear())
                 .groupNumber(section.getGroupNumber())

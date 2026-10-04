@@ -1,5 +1,7 @@
 package com.scse.curriculum.program.service;
 
+import com.scse.curriculum.syllabus.dto.CloneSyllabusRequest;
+import com.scse.curriculum.syllabus.service.SyllabusService;
 import com.scse.curriculum.cohort.entity.Cohort;
 import com.scse.curriculum.cohort.repository.CohortRepository;
 import com.scse.curriculum.common.exception.ResourceNotFoundException;
@@ -40,13 +42,14 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Transactional
 public class ProgramServiceImpl implements ProgramService {
-
+private final SyllabusService syllabusService;
     private final ProgramRepository repository;
     private final MajorRepository majorRepository;
     private final ProgramTypeRepository programTypeRepository;
     private final DepartmentRepository departmentRepository;
     private final CourseProgramRepository courseProgramRepository;
     private final CohortRepository cohortRepository;
+    private final com.scse.curriculum.cohort.service.CohortOperationalGuard cohortOperationalGuard;
 
     @Override
     public ProgramResponse create(CreateProgramRequest request) {
@@ -457,6 +460,9 @@ public List<CurriculumTimelineResponse> getCurriculumTimeline(
         ensureCohortBelongsToProgram(sourceProgram.getId(), sourceCohort, "Source cohort does not belong to the source program");
         ensureCohortBelongsToProgram(targetProgram.getId(), targetCohort, "Target cohort does not belong to the target program");
 
+        cohortOperationalGuard.assertActive(sourceCohort);
+        cohortOperationalGuard.assertActive(targetCohort);
+
         if (Objects.equals(sourceCohort.getId(), targetCohort.getId())) {
             throw new IllegalArgumentException("Source cohort and target cohort must be different");
         }
@@ -481,13 +487,38 @@ public List<CurriculumTimelineResponse> getCurriculumTimeline(
         int skippedCount = 0;
 
         for (CourseProgram sourceItem : sourceItems) {
-            Integer courseId = sourceItem.getCourse().getId();
-            if (!overwriteExisting && targetByCourseId.containsKey(courseId)) {
-                skippedCount++;
-                continue;
-            }
 
-            CourseProgram clone = CourseProgram.builder()
+    Integer courseId = sourceItem.getCourse().getId();
+
+    CourseProgram targetItem =
+            targetByCourseId.get(courseId);
+
+    /*
+     * CourseProgram đã tồn tại ở target:
+     * không tạo duplicate, nhưng nếu chưa có syllabus
+     * thì clone syllabus từ source sang.
+     */
+    if (!overwriteExisting && targetItem != null) {
+
+        if (Objects.equals(
+                    sourceProgram.getId(),
+                    targetProgram.getId())
+                && targetItem.getSyllabus() == null
+                && sourceItem.getSyllabus() != null) {
+
+            cloneSyllabusToTargetCohort(
+                    sourceItem,
+                    targetItem,
+                    sourceCohort,
+                    targetCohort);
+        }
+
+        skippedCount++;
+        continue;
+    }
+
+    CourseProgram clone =
+            CourseProgram.builder()
                     .course(sourceItem.getCourse())
                     .program(targetProgram)
                     .cohort(targetCohort)
@@ -497,10 +528,23 @@ public List<CurriculumTimelineResponse> getCurriculumTimeline(
                     .required(sourceItem.getRequired())
                     .build();
 
-            CourseProgram saved = courseProgramRepository.save(clone);
-            createdIds.add(saved.getId());
-        }
+    CourseProgram saved =
+            courseProgramRepository.save(clone);
 
+    createdIds.add(saved.getId());
+
+    if (Objects.equals(
+                sourceProgram.getId(),
+                targetProgram.getId())
+            && sourceItem.getSyllabus() != null) {
+
+        cloneSyllabusToTargetCohort(
+                sourceItem,
+                saved,
+                sourceCohort,
+                targetCohort);
+    }
+}
         return CloneProgramResponse.builder()
                 .programId(targetProgram.getId())
                 .programCode(targetProgram.getCode())
@@ -517,6 +561,68 @@ public List<CurriculumTimelineResponse> getCurriculumTimeline(
                         + (skippedCount > 0 ? ". Bỏ qua " + skippedCount + " môn đã tồn tại." : "."))
                 .build();
     }
+    private void cloneSyllabusToTargetCohort(
+        CourseProgram sourceItem,
+        CourseProgram targetItem,
+        Cohort sourceCohort,
+        Cohort targetCohort) {
+
+    if (sourceItem == null
+            || sourceItem.getSyllabus() == null
+            || targetItem == null) {
+        return;
+    }
+
+    String targetSemester;
+
+    if (targetItem.getSemesterSuggest() != null) {
+        targetSemester =
+                "Semester "
+                        + targetItem.getSemesterSuggest();
+    } else if (sourceItem.getSyllabus().getSemester() != null
+            && !sourceItem.getSyllabus()
+                    .getSemester()
+                    .isBlank()) {
+        targetSemester =
+                sourceItem.getSyllabus()
+                        .getSemester();
+    } else {
+        /*
+         * SyllabusIdentityService chỉ chấp nhận
+         * Semester 1-8 hoặc null.
+         */
+        targetSemester = null;
+    }
+
+    CloneSyllabusRequest request =
+            new CloneSyllabusRequest();
+
+    request.setCohortId(
+            targetCohort.getId());
+
+    request.setAcademicYear(
+            targetCohort.getName());
+
+    /*
+     * Nếu curriculum không có semester thì không tạo
+     * giá trị giả như ELECTIVE.
+     */
+    if (targetSemester != null) {
+        request.setSemester(targetSemester);
+    } else {
+        return;
+    }
+
+    request.setChangeSummary(
+            "Cloned with curriculum from "
+                    + sourceCohort.getName()
+                    + " to "
+                    + targetCohort.getName());
+
+    syllabusService.clone(
+            sourceItem.getSyllabus().getId(),
+            request);
+}
 
     private ProgramResponse map(Program program) {
         return ProgramResponse.builder()

@@ -17,7 +17,6 @@ import com.scse.curriculum.classsection.entity.ClassSection;
 import com.scse.curriculum.classsection.repository.ClassSectionRepository;
 import com.scse.curriculum.course.entity.Course;
 import com.scse.curriculum.department.entity.Department;
-import com.scse.curriculum.instructor.entity.Instructor;
 import com.scse.curriculum.major.entity.Major;
 import com.scse.curriculum.program.entity.Program;
 import com.scse.curriculum.syllabus.entity.Syllabus;
@@ -43,8 +42,10 @@ class DeadlineEscalationTargetResolverTest {
         Department cs = department(1, "CS", "Computer Science");
         Department it = department(2, "IT", "Information Technology");
 
-        Instructor alice = instructor(11, "Alice Nguyen", "alice@iu.edu.vn", cs);
-        Instructor bob = instructor(12, "Bob Tran", "bob@iu.edu.vn", it);
+        UserAccount alice = instructorUser(
+                11, "alice", "Alice Nguyen", "alice@iu.edu.vn");
+        UserAccount bob = instructorUser(
+                12, "bob", "Bob Tran", "bob@iu.edu.vn");
 
         Course algorithms = course(101, "IT013IU", "Algorithms", cs);
         Course databases = course(102, "IT079IU", "Database Systems", cs);
@@ -57,15 +58,29 @@ class DeadlineEscalationTargetResolverTest {
                 section(3, networks, alice, syllabus(302, SyllabusStatus.SUBMITTED)),
                 section(4, web, bob, null));
 
-        UserAccount csHead = user(501, "head.cs", "head.cs@iu.edu.vn", UserRole.DEPT_HEAD);
-        UserAccount dean = user(601, "dean.scse", "dean@iu.edu.vn", UserRole.DEAN);
+        UserAccount csHead = user(
+                501,
+                "head.cs",
+                "head.cs@iu.edu.vn",
+                UserRole.DEPT_HEAD);
+
+        UserAccount dean = user(
+                601,
+                "dean.scse",
+                "dean@iu.edu.vn",
+                UserRole.DEAN);
 
         when(classSectionRepository.findActiveForDeadline("2026-2027", 1))
                 .thenReturn(assignments);
+
         when(userAccountRepository.findByRoleAndManagedMajor_IdAndIsActiveTrue(
-                UserRole.DEPT_HEAD, 1)).thenReturn(List.of(csHead));
+                UserRole.DEPT_HEAD, 1))
+                .thenReturn(List.of(csHead));
+
         when(userAccountRepository.findByRoleAndManagedMajor_IdAndIsActiveTrue(
-                UserRole.DEPT_HEAD, 2)).thenReturn(List.of());
+                UserRole.DEPT_HEAD, 2))
+                .thenReturn(List.of());
+
         when(userAccountRepository.findByRoleAndIsActiveTrue(UserRole.DEAN))
                 .thenReturn(List.of(dean));
 
@@ -83,9 +98,11 @@ class DeadlineEscalationTargetResolverTest {
                 .filter(target -> target.recipientRole() == UserRole.DEPT_HEAD)
                 .findFirst()
                 .orElseThrow();
+
         assertThat(headTarget.scopeKey()).isEqualTo("MAJOR:1");
         assertThat(headTarget.overdueInstructors())
-                .extracting(DeadlineEscalationTarget.OverdueInstructor::instructorName)
+                .extracting(
+                        DeadlineEscalationTarget.OverdueInstructor::instructorName)
                 .containsExactly("Alice Nguyen");
         assertThat(headTarget.missingCourseCount()).isEqualTo(2);
 
@@ -93,9 +110,11 @@ class DeadlineEscalationTargetResolverTest {
                 .filter(target -> target.recipientRole() == UserRole.DEAN)
                 .findFirst()
                 .orElseThrow();
+
         assertThat(deanTarget.scopeKey()).isEqualTo("FACULTY");
         assertThat(deanTarget.overdueInstructors())
-                .extracting(DeadlineEscalationTarget.OverdueInstructor::instructorName)
+                .extracting(
+                        DeadlineEscalationTarget.OverdueInstructor::instructorName)
                 .containsExactly("Alice Nguyen", "Bob Tran");
         assertThat(deanTarget.missingCourseCount()).isEqualTo(3);
     }
@@ -103,15 +122,26 @@ class DeadlineEscalationTargetResolverTest {
     @Test
     void shouldReturnNoRecipientsWhenEveryAssignedCourseWasSubmitted() {
         Department cs = department(1, "CS", "Computer Science");
-        Instructor alice = instructor(11, "Alice Nguyen", "alice@iu.edu.vn", cs);
-        Course algorithms = course(101, "IT013IU", "Algorithms", cs);
+
+        UserAccount alice = instructorUser(
+                11,
+                "alice",
+                "Alice Nguyen",
+                "alice@iu.edu.vn");
+
+        Course algorithms = course(
+                101,
+                "IT013IU",
+                "Algorithms",
+                cs);
 
         when(classSectionRepository.findActiveForDeadline("2026-2027", 1))
-                .thenReturn(List.of(section(
-                        1,
-                        algorithms,
-                        alice,
-                        syllabus(301, SyllabusStatus.APPROVED))));
+                .thenReturn(List.of(
+                        section(
+                                1,
+                                algorithms,
+                                alice,
+                                syllabus(301, SyllabusStatus.APPROVED))));
 
         DeadlineEscalationTargetResolver.Resolution result =
                 resolver.resolve("2026-2027", 1);
@@ -120,6 +150,7 @@ class DeadlineEscalationTargetResolverTest {
         assertThat(result.departments()).isEmpty();
         assertThat(result.overdueInstructorCount()).isZero();
         assertThat(result.missingCourseCount()).isZero();
+
         verify(userAccountRepository, never())
                 .findByRoleAndIsActiveTrue(UserRole.DEAN);
     }
@@ -127,17 +158,45 @@ class DeadlineEscalationTargetResolverTest {
     @Test
     void shouldDeduplicateLeadershipAccountsByEmail() {
         Department cs = department(1, "CS", "Computer Science");
-        Instructor alice = instructor(11, "Alice Nguyen", "alice@iu.edu.vn", cs);
-        Course algorithms = course(101, "IT013IU", "Algorithms", cs);
 
-        UserAccount first = user(501, "head.cs.1", "head.cs@iu.edu.vn", UserRole.DEPT_HEAD);
-        UserAccount duplicate = user(502, "head.cs.2", "HEAD.CS@iu.edu.vn", UserRole.DEPT_HEAD);
-        UserAccount dean = user(601, "dean.scse", "dean@iu.edu.vn", UserRole.DEAN);
+        UserAccount alice = instructorUser(
+                11,
+                "alice",
+                "Alice Nguyen",
+                "alice@iu.edu.vn");
+
+        Course algorithms = course(
+                101,
+                "IT013IU",
+                "Algorithms",
+                cs);
+
+        UserAccount first = user(
+                501,
+                "head.cs.1",
+                "head.cs@iu.edu.vn",
+                UserRole.DEPT_HEAD);
+
+        UserAccount duplicate = user(
+                502,
+                "head.cs.2",
+                "HEAD.CS@iu.edu.vn",
+                UserRole.DEPT_HEAD);
+
+        UserAccount dean = user(
+                601,
+                "dean.scse",
+                "dean@iu.edu.vn",
+                UserRole.DEAN);
 
         when(classSectionRepository.findActiveForDeadline("2026-2027", 1))
-                .thenReturn(List.of(section(1, algorithms, alice, null)));
+                .thenReturn(List.of(
+                        section(1, algorithms, alice, null)));
+
         when(userAccountRepository.findByRoleAndManagedMajor_IdAndIsActiveTrue(
-                UserRole.DEPT_HEAD, 1)).thenReturn(List.of(first, duplicate));
+                UserRole.DEPT_HEAD, 1))
+                .thenReturn(List.of(first, duplicate));
+
         when(userAccountRepository.findByRoleAndIsActiveTrue(UserRole.DEAN))
                 .thenReturn(List.of(dean));
 
@@ -145,11 +204,16 @@ class DeadlineEscalationTargetResolverTest {
                 resolver.resolve("2026-2027", 1);
 
         assertThat(result.recipients())
-                .filteredOn(target -> target.recipientRole() == UserRole.DEPT_HEAD)
+                .filteredOn(
+                        target -> target.recipientRole() == UserRole.DEPT_HEAD)
                 .hasSize(1);
     }
 
-    private Department department(Integer id, String code, String name) {
+    private Department department(
+            Integer id,
+            String code,
+            String name) {
+
         return Department.builder()
                 .id(id)
                 .code(code)
@@ -158,17 +222,19 @@ class DeadlineEscalationTargetResolverTest {
                 .build();
     }
 
-    private Instructor instructor(
+    private UserAccount instructorUser(
             Integer id,
-            String name,
-            String email,
-            Department department) {
-        return Instructor.builder()
+            String username,
+            String fullName,
+            String email) {
+
+        return UserAccount.builder()
                 .id(id)
-                .staffCode("GV" + id)
-                .fullName(name)
+                .username(username)
+                .fullName(fullName)
                 .email(email)
-                .department(department)
+                .passwordHash("test")
+                .role(UserRole.INSTRUCTOR)
                 .isActive(true)
                 .build();
     }
@@ -178,6 +244,7 @@ class DeadlineEscalationTargetResolverTest {
             String code,
             String name,
             Department department) {
+
         return Course.builder()
                 .id(id)
                 .courseCode(code)
@@ -191,8 +258,9 @@ class DeadlineEscalationTargetResolverTest {
     private ClassSection section(
             Integer id,
             Course course,
-            Instructor instructor,
+            UserAccount instructorUser,
             Syllabus syllabus) {
+
         return ClassSection.builder()
                 .id(id)
                 .course(course)
@@ -205,7 +273,7 @@ class DeadlineEscalationTargetResolverTest {
                                 .name(course.getDepartment().getName())
                                 .build())
                         .build())
-                .instructor(instructor)
+                .instructorUser(instructorUser)
                 .syllabus(syllabus)
                 .academicYear("2026-2027")
                 .semester(1)
@@ -214,7 +282,10 @@ class DeadlineEscalationTargetResolverTest {
                 .build();
     }
 
-    private Syllabus syllabus(Integer id, SyllabusStatus status) {
+    private Syllabus syllabus(
+            Integer id,
+            SyllabusStatus status) {
+
         return Syllabus.builder()
                 .id(id)
                 .status(status)
@@ -226,6 +297,7 @@ class DeadlineEscalationTargetResolverTest {
             String username,
             String email,
             UserRole role) {
+
         return UserAccount.builder()
                 .id(id)
                 .username(username)

@@ -1,11 +1,12 @@
 package com.scse.curriculum.user.entity;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.scse.curriculum.major.entity.Major;
+
 import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
-import com.scse.curriculum.major.entity.Major;
 
 @Entity
 @Table(name = "user_account")
@@ -20,6 +21,9 @@ public class UserAccount {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
+    @Column(name = "full_name", length = 255)
+    private String fullName;
+
     @Column(nullable = false, unique = true, length = 100)
     private String username;
 
@@ -33,9 +37,6 @@ public class UserAccount {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private UserRole role;
-
-    @Column(name = "instructor_id")
-    private Integer instructorId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "managed_major_id")

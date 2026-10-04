@@ -19,13 +19,5 @@ public class DepartmentResponse {
 
     private Boolean isActive;
 
-    private Integer headUserId;
-
-    private String headUsername;
-
-    private Integer headInstructorId;
-
-    private String headFullName;
-
     private LocalDateTime createdAt;
 }

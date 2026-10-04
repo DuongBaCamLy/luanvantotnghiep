@@ -1,5 +1,6 @@
 import type { Syllabus } from "@/types/syllabus"
 import type {
+  BulkSyllabusImportPreviewResponse,
   SyllabusImportData,
   ValidSyllabusImportPreviewResponse,
 } from "@/types/syllabusImport"
@@ -9,14 +10,18 @@ export type SyllabusComparisonSectionKey =
   | "general"
   | "workloadCredit"
   | "requirements"
+  | "objectives"
   | "clo"
   | "content"
   | "topicClo"
   | "cloPlo"
+  | "cloLlo"
   | "plannedActivities"
   | "assessment"
   | "assessmentClo"
+  | "rubrics"
   | "examination"
+  | "studyRequirements"
   | "readings"
   | "revision"
 
@@ -399,14 +404,18 @@ const parserProvidedTemplateSections = (
           "general",
           "workloadCredit",
           "requirements",
+          "objectives",
           "clo",
           "content",
           "topicClo",
           "cloPlo",
+          "cloLlo",
           "plannedActivities",
           "assessment",
           "assessmentClo",
+          "rubrics",
           "examination",
+          "studyRequirements",
           "readings",
           "revision",
         ].includes(key)
@@ -478,6 +487,147 @@ const parserProvidedTemplateSections = (
       ): item is SyllabusComparisonSectionDefinition =>
         item !== null,
     )
+}
+
+export const NEW_2027_TARGET_SECTION_KEYS = [
+  "general",
+  "objectives",
+  "clo",
+  "content",
+  "cloPlo",
+  "cloLlo",
+  "examination",
+  "studyRequirements",
+  "plannedActivities",
+  "assessment",
+  "rubrics",
+  "readings",
+] as const satisfies readonly SyllabusComparisonSectionKey[]
+
+const NEW_2027_TARGET_SECTION_KEY_SET =
+  new Set<string>(NEW_2027_TARGET_SECTION_KEYS)
+
+export const parseTargetTemplateSections = (
+  response: Pick<
+    BulkSyllabusImportPreviewResponse,
+    "targetTemplateSections"
+  >,
+): SyllabusComparisonSectionDefinition[] => {
+  if (!Array.isArray(response.targetTemplateSections)) {
+    return []
+  }
+
+  return response.targetTemplateSections
+    .map((rawSection) => {
+      const sectionSource =
+        asRecord(rawSection)
+
+      const key =
+        String(sectionSource.key ?? "")
+          .trim() as SyllabusComparisonSectionKey
+
+      if (!NEW_2027_TARGET_SECTION_KEY_SET.has(key)) {
+        return null
+      }
+
+      const fields =
+        (Array.isArray(sectionSource.fields)
+          ? sectionSource.fields
+          : [])
+          .map((rawField) => {
+            const fieldSource =
+              asRecord(rawField)
+
+            const keyValue =
+              String(fieldSource.key ?? "").trim()
+
+            if (!keyValue) {
+              return null
+            }
+
+            return field(
+              keyValue,
+              String(
+                fieldSource.label
+                ?? keyValue,
+              ).trim()
+              || keyValue,
+            )
+          })
+          .filter(
+            (
+              item,
+            ): item is SyllabusComparisonFieldDefinition =>
+              item !== null,
+          )
+
+      if (fields.length === 0) {
+        return null
+      }
+
+      return section(
+        key,
+        String(
+          sectionSource.label
+          ?? key,
+        ).trim()
+        || key,
+        fields,
+      )
+    })
+    .filter(
+      (
+        item,
+      ): item is SyllabusComparisonSectionDefinition =>
+        item !== null,
+    )
+}
+
+export const validateNew2027TargetTemplateResponse = (
+  response: Pick<
+    BulkSyllabusImportPreviewResponse,
+    "targetTemplateProfile" | "targetTemplateSections"
+  >,
+): string | null => {
+  if (response.targetTemplateProfile !== "NEW_2027") {
+    return "NEW_2027 target import is blocked: targetTemplateProfile must be NEW_2027."
+  }
+
+  if (!Array.isArray(response.targetTemplateSections)) {
+    return "NEW_2027 target import is blocked: targetTemplateSections is missing."
+  }
+
+  if (
+    response.targetTemplateSections.length
+    !== NEW_2027_TARGET_SECTION_KEYS.length
+  ) {
+    return `NEW_2027 target import is blocked: expected exactly ${NEW_2027_TARGET_SECTION_KEYS.length} target sections, received ${response.targetTemplateSections.length}.`
+  }
+
+  const sections =
+    parseTargetTemplateSections(response)
+
+  if (
+    sections.length
+    !== NEW_2027_TARGET_SECTION_KEYS.length
+  ) {
+    return `NEW_2027 target import is blocked: expected ${NEW_2027_TARGET_SECTION_KEYS.length} valid target sections, received ${sections.length}.`
+  }
+
+  for (
+    let index = 0;
+    index < NEW_2027_TARGET_SECTION_KEYS.length;
+    index += 1
+  ) {
+    if (
+      sections[index]?.key
+      !== NEW_2027_TARGET_SECTION_KEYS[index]
+    ) {
+      return `NEW_2027 target import is blocked: target section ${index + 1} must be ${NEW_2027_TARGET_SECTION_KEYS[index]}.`
+    }
+  }
+
+  return null
 }
 
 /**

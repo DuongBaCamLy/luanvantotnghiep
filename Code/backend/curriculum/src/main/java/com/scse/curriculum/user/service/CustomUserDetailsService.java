@@ -7,6 +7,7 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 import com.scse.curriculum.user.entity.UserAccount;
+import com.scse.curriculum.user.entity.UserRole;
 import com.scse.curriculum.user.repository.UserAccountRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -21,25 +22,45 @@ public class CustomUserDetailsService implements UserDetailsService {
     public UserDetails loadUserByUsername(String username)
             throws UsernameNotFoundException {
 
-        UserAccount user = repository.findByUsernameIgnoreCaseOrEmailIgnoreCase(username, username)
-                .orElseThrow(() ->
-                        new UsernameNotFoundException(
-                                "User not found: " + username));
+        UserAccount user =
+                repository.findByUsernameIgnoreCaseOrEmailIgnoreCase(
+                                username,
+                                username)
+                        .orElseThrow(() ->
+                                new UsernameNotFoundException(
+                                        "User not found: " + username));
 
-        String[] phaseRoles = switch (user.getRole()) {
-            case ADMIN -> new String[] { "ADMIN" };
-            case INSTRUCTOR -> new String[] { "INSTRUCTOR" };
-            default -> new String[] { user.getRole().name(), "ADMIN" };
-        };
+        /*
+         * DEAN_SECRETARY là một actor riêng trong database.
+         *
+         * Tuy nhiên ở tầng Spring Security,
+         * thư ký được thêm ROLE_DEAN để có thể sử dụng
+         * các API thuộc quyền Dean, đặc biệt là Final Review.
+         *
+         * ROLE_DEAN_SECRETARY vẫn được giữ để hệ thống biết
+         * chính xác actor thật đang đăng nhập.
+         */
+        String[] securityRoles;
+
+        if (user.getRole() == UserRole.DEAN_SECRETARY) {
+
+            securityRoles = new String[] {
+                    "DEAN_SECRETARY",
+                    "DEAN"
+            };
+
+        } else {
+
+            securityRoles = new String[] {
+                    user.getRole().name()
+            };
+        }
 
         return User.builder()
                 .username(user.getUsername())
                 .password(user.getPasswordHash())
-                // Instructor permissions are now enforced by their real role.
-                // Dean/DeptHead retain the phase baseline authorities until
-                // their dedicated permission phases are implemented.
-                .roles(phaseRoles)
-                .disabled(!user.getIsActive())
+                .roles(securityRoles)
+                .disabled(!Boolean.TRUE.equals(user.getIsActive()))
                 .build();
     }
 }

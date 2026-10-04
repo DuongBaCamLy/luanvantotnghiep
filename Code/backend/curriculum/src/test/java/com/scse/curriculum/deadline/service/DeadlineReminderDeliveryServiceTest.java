@@ -60,7 +60,6 @@ class DeadlineReminderDeliveryServiceTest {
                 .id(700)
                 .username("faculty.deadline")
                 .email("faculty.deadline@iu.edu.vn")
-                .instructorId(70)
                 .isActive(true)
                 .build();
         target = new DeadlineReminderTarget(

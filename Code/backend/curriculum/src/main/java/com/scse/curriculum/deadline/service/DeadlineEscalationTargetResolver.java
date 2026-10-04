@@ -16,7 +16,6 @@ import org.springframework.transaction.annotation.Transactional;
 import com.scse.curriculum.classsection.entity.ClassSection;
 import com.scse.curriculum.classsection.repository.ClassSectionRepository;
 import com.scse.curriculum.course.entity.Course;
-import com.scse.curriculum.instructor.entity.Instructor;
 import com.scse.curriculum.major.entity.Major;
 import com.scse.curriculum.syllabus.entity.Syllabus;
 import com.scse.curriculum.syllabus.entity.SyllabusStatus;
@@ -147,11 +146,12 @@ public class DeadlineEscalationTargetResolver {
     private List<DeadlineEscalationTarget.OverdueInstructor> resolveOverdueInstructors(
             List<ClassSection> assignments) {
         Map<InstructorMajorKey, List<ClassSection>> grouped = assignments.stream()
-                .filter(section -> section.getInstructor() != null)
+                .filter(section -> section.getInstructorUser() != null)
                 .filter(section -> section.getCourse() != null)
+                .filter(section -> isActiveInstructor(section.getInstructorUser()))
                 .collect(Collectors.groupingBy(
                         section -> new InstructorMajorKey(
-                                section.getInstructor().getId(),
+                                section.getInstructorUser().getId(),
                                 majorId(section)),
                         LinkedHashMap::new,
                         Collectors.toList()));
@@ -160,7 +160,7 @@ public class DeadlineEscalationTargetResolver {
 
         for (List<ClassSection> instructorDepartmentAssignments : grouped.values()) {
             ClassSection sampleSection = instructorDepartmentAssignments.getFirst();
-            Instructor instructor = sampleSection.getInstructor();
+            UserAccount instructorUser = sampleSection.getInstructorUser();
             Major major = sampleSection.getProgram() == null
                     ? null : sampleSection.getProgram().getMajor();
 
@@ -184,9 +184,9 @@ public class DeadlineEscalationTargetResolver {
             }
 
             result.add(new DeadlineEscalationTarget.OverdueInstructor(
-                    instructor.getId(),
-                    instructor.getFullName(),
-                    instructor.getEmail(),
+                    instructorUser.getId(),
+                    displayName(instructorUser),
+                    instructorUser.getEmail(),
                     major == null ? null : major.getId(),
                     major == null ? "UNASSIGNED" : major.getCode(),
                     major == null ? "Chưa gán Major" : major.getName(),
@@ -194,6 +194,19 @@ public class DeadlineEscalationTargetResolver {
         }
 
         return sortInstructors(result);
+    }
+
+    private boolean isActiveInstructor(UserAccount user) {
+        return user != null
+                && user.getRole() == UserRole.INSTRUCTOR
+                && Boolean.TRUE.equals(user.getIsActive());
+    }
+
+    private String displayName(UserAccount user) {
+        if (user.getFullName() != null && !user.getFullName().isBlank()) {
+            return user.getFullName().trim();
+        }
+        return user.getUsername();
     }
 
     private boolean courseStillMissing(List<ClassSection> courseAssignments) {
@@ -253,7 +266,7 @@ public class DeadlineEscalationTargetResolver {
     }
 
     private record InstructorMajorKey(
-            Integer instructorId,
+            Integer instructorUserId,
             Integer majorId) {
     }
 

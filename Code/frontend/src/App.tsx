@@ -10,15 +10,16 @@ import AdminDashboardPage from "@/pages/admin/AdminDashboardPage"
 import FacultyDashboardPage from "@/pages/admin/FacultyDashboardPage"
 import UserManagementPage from "@/pages/admin/UserManagementPage"
 import ProgramManagementPage from "@/pages/admin/ProgramManagementPage"
+import CurriculumArchivePage from "@/pages/admin/CurriculumArchivePage"
 import ClassSectionManagementPage from "@/pages/admin/ClassSectionManagementPage"
 import InstructorAssignmentsPage from "@/pages/syllabus/InstructorAssignmentsPage"
-import ReportManagementPage from "@/pages/admin/ReportManagementPage"
+
 import AuditLogPage from "@/pages/admin/AuditLogPage"
 import SystemSettingsPage from "@/pages/admin/SystemSettingsPage"
 import PloManagementPage from "@/pages/admin/PloManagementPage"
 import CloPloHeatmapPage from "@/pages/admin/CloPloHeatmapPage"
-import EmailOutboxPage from "@/pages/admin/EmailOutboxPage"
-import EscalationCenterPage from "@/pages/admin/EscalationCenterPage"
+
+
 import CreateCurriculumPage from "@/pages/admin/CreateCurriculumPage"
 import SyllabusListPage from "@/pages/syllabus/SyllabusListPage"
 import SyllabusDetailPage from "@/pages/syllabus/SyllabusDetailPage"
@@ -36,9 +37,12 @@ import DeptHeadDashboardPage from "@/pages/admin/DeptHeadDashboardPage"
 import DeanDashboardPage from "@/pages/admin/DeanDashboardPage"
 import DeptHeadCoursesPage from "@/pages/admin/DeptHeadCoursesPage"
 import DeptHeadApprovalPage from "@/pages/admin/DeptHeadApprovalPage"
-
 const ROLE_HOME: Record<UserRole, string> = {
-  ADMIN: "/admin", DEAN: "/dean", DEPT_HEAD: "/dept-head", INSTRUCTOR: "/instructor",
+  ADMIN: "/admin",
+  DEAN: "/dean",
+  DEAN_SECRETARY: "/dean",
+  DEPT_HEAD: "/dept-head",
+  INSTRUCTOR: "/instructor",
 }
 
 function RootRedirect() {
@@ -59,22 +63,22 @@ function sharedWorkspaceRoutes(root: string) {
   const isDean = root === "/dean"
   const isDeptHead = root === "/dept-head"
   const isInstructor = root === "/instructor"
-
   return (
     <>
       <Route
         path={root}
         element={
-          isInstructor
-            ? <FacultyDashboardPage />
-            : isDean
-              ? <DeanDashboardPage />
-              : isDeptHead
-                ? <DeptHeadDashboardPage />
-                : <AdminDashboardPage />
-        }
+  isInstructor
+    ? <FacultyDashboardPage />
+    : isDean
+      ? <DeanDashboardPage />
+      : isDeptHead
+        ? <DeptHeadDashboardPage />
+        : <AdminDashboardPage />
+}
       />
-      {(isAdmin || isInstructor || isDeptHead) && (
+{(isAdmin || isInstructor || isDeptHead) && (
+        
         <Route
           path={`${root}/class-sections`}
           element={
@@ -92,19 +96,23 @@ function sharedWorkspaceRoutes(root: string) {
         element={<ProgramManagementPage />}
       />
 
-      {(isAdmin || isDean) && (
+      {isAdmin && (
         <Route
-          path={`${root}/plo`}
-          element={<PloManagementPage />}
+          path={`${root}/curriculum-archive`}
+          element={<CurriculumArchivePage />}
         />
       )}
 
-      {!isInstructor && (
-        <Route
-          path={`${root}/clo-plo-heatmap`}
-          element={<CloPloHeatmapPage />}
-        />
-      )}
+      {(isAdmin || isDean) && (
+  <Route
+    path={`${root}/plo`}
+    element={<PloManagementPage />}
+  />
+)}
+      <Route
+  path={`${root}/clo-plo-heatmap`}
+  element={<CloPloHeatmapPage />}
+/>
 
       <Route
         path={`${root}/syllabus`}
@@ -152,9 +160,20 @@ function sharedWorkspaceRoutes(root: string) {
       />
 
       <Route
-        path={`${root}/programs/:id/curriculum`}
-        element={<ProgramCurriculumPage />}
-      />
+  path={`${root}/programs/:id/curriculum`}
+  element={
+    isAdmin
+      ? (
+          <Navigate
+            to={`${root}/programs`}
+            replace
+          />
+        )
+      : (
+          <ProgramCurriculumPage />
+        )
+  }
+/>
 
       <Route
         path={`${root}/programs/:id/timeline`}
@@ -183,15 +202,6 @@ function sharedWorkspaceRoutes(root: string) {
             element={<CreateCurriculumPage />}
           />
 
-          <Route
-            path={`${root}/email-outbox`}
-            element={<EmailOutboxPage />}
-          />
-
-          <Route
-            path={`${root}/escalations`}
-            element={<EscalationCenterPage />}
-          />
 
           <Route
             path={`${root}/settings`}
@@ -201,11 +211,11 @@ function sharedWorkspaceRoutes(root: string) {
       )}
 
       {(isDeptHead || isDean) && (
-        <Route
-          path={`${root}/approvals`}
-          element={<DeptHeadApprovalPage />}
-        />
-      )}
+  <Route
+    path={`${root}/approvals`}
+    element={<DeptHeadApprovalPage />}
+  />
+)}
     </>
   )
 }
@@ -221,40 +231,16 @@ export default function App() {
         <Route path="/curriculum-map" element={<SyllabusCurriculumMapPage />} />
         <Route element={<OwnWorkspace />}>
           {sharedWorkspaceRoutes("/admin")}
-          {sharedWorkspaceRoutes("/instructor")}
-          {sharedWorkspaceRoutes("/dean")}
-          {sharedWorkspaceRoutes("/dept-head")}
+{sharedWorkspaceRoutes("/instructor")}
+{sharedWorkspaceRoutes("/dean")}
+{sharedWorkspaceRoutes("/dept-head")}
         </Route>
         <Route element={<ProtectedRoute permission="MANAGE_USERS" />}>
           <Route path="/admin/users" element={<UserManagementPage />} />
         </Route>
-        <Route
-  element={
-    <ProtectedRoute
-      allowedRoles={["ADMIN"]}
-      permission="VIEW_REPORTS"
-    />
-  }
->
-  <Route
-    path="/admin/reports"
-    element={<ReportManagementPage />}
-  />
-</Route>
+        
 
-<Route
-  element={
-    <ProtectedRoute
-      allowedRoles={["DEAN"]}
-      permission="VIEW_REPORTS"
-    />
-  }
->
-  <Route
-    path="/dean/reports"
-    element={<ReportManagementPage />}
-  />
-</Route>
+
         <Route element={<ProtectedRoute permission="VIEW_AUDIT" />}>
           <Route path="/admin/audit-log" element={<AuditLogPage />} />
         </Route>
@@ -263,3 +249,4 @@ export default function App() {
     <Route path="*" element={<Navigate to="/" replace />} />
   </Routes></BrowserRouter>
 }
+

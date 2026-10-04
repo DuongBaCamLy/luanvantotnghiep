@@ -89,7 +89,7 @@ getAdminTermOptions() {
     }
 
     @GetMapping("/heatmap/{programId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'DEAN', 'DEPT_HEAD', 'INSTRUCTOR')")
+@PreAuthorize("hasAnyRole('ADMIN', 'DEAN', 'DEPT_HEAD')")
     public ResponseEntity<DashboardHeatmapResponse> getHeatmapCoverage(
             @PathVariable long programId,
             @RequestParam(required = false) Integer cohortId,

@@ -4,6 +4,7 @@ import com.scse.curriculum.classsection.entity.ClassSection;
 import com.scse.curriculum.classsection.repository.ClassSectionRepository;
 import com.scse.curriculum.cohort.entity.Cohort;
 import com.scse.curriculum.cohort.repository.CohortRepository;
+import com.scse.curriculum.cohort.service.CohortOperationalGuard;
 import com.scse.curriculum.common.exception.ForbiddenOperationException;
 import com.scse.curriculum.common.exception.ResourceNotFoundException;
 import com.scse.curriculum.courseprogram.entity.CourseProgram;
@@ -35,6 +36,7 @@ public class SyllabusCohortResetService {
             "__AUDIT_RESET__";
 
     private final CohortRepository cohortRepository;
+    private final CohortOperationalGuard cohortOperationalGuard;
     private final CourseProgramRepository courseProgramRepository;
     private final ClassSectionRepository classSectionRepository;
     private final SyllabusRepository syllabusRepository;
@@ -62,6 +64,8 @@ public class SyllabusCohortResetService {
                         .orElseThrow(() ->
                                 new ResourceNotFoundException(
                                         "Cohort not found"));
+
+        cohortOperationalGuard.assertActive(cohort);
 
         assertCohortBelongsToProgram(
                 cohort,

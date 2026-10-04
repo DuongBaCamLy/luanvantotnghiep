@@ -31,7 +31,7 @@ export default function CreateCurriculumPage() {
   const { data: programTypes = [] } = useQuery({ queryKey: ["program-types"], queryFn: programApi.getProgramTypes })
   const { data: programs = [] } = useQuery({ queryKey: ["programs"], queryFn: programApi.getAll })
   const { data: cohorts = [] } = useQuery<Cohort[]>({ queryKey: ["cohorts"], queryFn: cohortApi.getAll })
-  const sourceCohorts = useMemo(() => cohorts.filter((cohort) => String(cohort.programId) === form.sourceProgramId), [cohorts, form.sourceProgramId])
+  const sourceCohorts = useMemo(() => cohorts.filter((cohort) => cohort.isActive !== false && String(cohort.programId) === form.sourceProgramId), [cohorts, form.sourceProgramId])
   const update = (key: keyof FormState, value: string) => setForm((current) => ({ ...current, [key]: key === "sourceProgramId" && value === "none" ? "" : value, ...(key === "sourceProgramId" ? { sourceCohortId: "" } : {}) }))
   const validationMessage = () => {
     if (!form.code.trim() || !form.name.trim() || !form.nameVn.trim()) return "Enter the program code and names."

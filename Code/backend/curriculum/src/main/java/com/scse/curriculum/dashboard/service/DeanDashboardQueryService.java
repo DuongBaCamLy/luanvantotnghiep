@@ -89,7 +89,9 @@ public class DeanDashboardQueryService {
             Integer requestedSemester) {
 
         UserAccount current = currentUserService.getCurrentUser();
-        if (current.getRole() != UserRole.DEAN && current.getRole() != UserRole.ADMIN) {
+        if (current.getRole() != UserRole.DEAN
+        && current.getRole() != UserRole.DEAN_SECRETARY
+        && current.getRole() != UserRole.ADMIN) {
             throw new ForbiddenOperationException(
                     "Chỉ Trưởng khoa được xem Dean Dashboard.");
         }

@@ -22,7 +22,9 @@ import com.scse.curriculum.topicclo.entity.TopicClo;
 import com.scse.curriculum.topicclo.repository.TopicCloRepository;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
-
+import com.scse.curriculum.courseprogram.entity.CourseProgram;
+import com.scse.curriculum.courseprogram.repository.CourseProgramRepository;
+import com.scse.curriculum.syllabus.template.TargetTemplateProfileResolver;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -45,7 +47,8 @@ public class SyllabusPdfDataLoader {
     private final AssessmentComponentRepository assessmentComponentRepository;
     private final AssessmentCloRepository assessmentCloRepository;
     private final SyllabusBookRepository syllabusBookRepository;
-
+private final CourseProgramRepository courseProgramRepository;
+private final TargetTemplateProfileResolver targetTemplateProfileResolver;
     public SyllabusPdfDataLoader(
             SyllabusRepository syllabusRepository,
             SyllabusAccessService syllabusAccessService,
@@ -56,7 +59,9 @@ public class SyllabusPdfDataLoader {
             TopicCloRepository topicCloRepository,
             AssessmentComponentRepository assessmentComponentRepository,
             AssessmentCloRepository assessmentCloRepository,
-            SyllabusBookRepository syllabusBookRepository) {
+            SyllabusBookRepository syllabusBookRepository,
+CourseProgramRepository courseProgramRepository,
+TargetTemplateProfileResolver targetTemplateProfileResolver) {
         this.syllabusRepository = syllabusRepository;
         this.syllabusAccessService = syllabusAccessService;
         this.classSectionRepository = classSectionRepository;
@@ -67,6 +72,8 @@ public class SyllabusPdfDataLoader {
         this.assessmentComponentRepository = assessmentComponentRepository;
         this.assessmentCloRepository = assessmentCloRepository;
         this.syllabusBookRepository = syllabusBookRepository;
+        this.courseProgramRepository = courseProgramRepository;
+this.targetTemplateProfileResolver = targetTemplateProfileResolver;
     }
 
     @Transactional(readOnly = true)
@@ -162,21 +169,21 @@ public class SyllabusPdfDataLoader {
 
         List<ClassSection> sections = classSectionRepository.findForPdfBySyllabusId(syllabusId);
         String responsiblePersons = sections.stream()
-                .map(ClassSection::getInstructor)
-                .filter(Objects::nonNull)
-                .map(instructor -> instructor.getFullName())
-                .filter(value -> value != null && !value.isBlank())
-                .distinct()
-                .sorted(String.CASE_INSENSITIVE_ORDER)
-                .reduce((left, right) -> left + ", " + right)
-                /*
-                 * The technical account that created/imported the syllabus
-                 * is not automatically the academic person responsible for
-                 * the course. If no linked teaching assignment exists, make
-                 * the missing assignment explicit instead of printing
-                 * "admin" as the responsible instructor.
-                 */
-                .orElse("Not assigned");
+        .map(ClassSection::getInstructorUser)
+        .filter(Objects::nonNull)
+        .map(user -> {
+            if (user.getFullName() != null
+                    && !user.getFullName().isBlank()) {
+                return user.getFullName().trim();
+            }
+
+            return user.getUsername();
+        })
+        .filter(value -> value != null && !value.isBlank())
+        .distinct()
+        .sorted(String.CASE_INSENSITIVE_ORDER)
+        .reduce((left, right) -> left + ", " + right)
+        .orElse("Not assigned");
 
         var course = syllabus.getCourse();
         var department = course == null ? null : course.getDepartment();
@@ -201,7 +208,17 @@ public class SyllabusPdfDataLoader {
                 .orElse(syllabus.getSemester());
 
         String courseCode = course == null ? null : course.getCourseCode();
+CourseProgram syllabusCourseProgram = courseProgramRepository
+        .findBySyllabus_Id(syllabus.getId())
+        .stream()
+        .filter(courseProgram -> courseProgram.getCohort() != null)
+        .findFirst()
+        .orElse(null);
 
+String targetTemplateProfile = targetTemplateProfileResolver.resolve(
+        syllabusCourseProgram == null
+                ? null
+                : syllabusCourseProgram.getCohort());
         return new SyllabusPdfDocument(
                 syllabus.getId(),
                 syllabus.getStatus() == null ? "UNKNOWN" : syllabus.getStatus().name(),
@@ -211,6 +228,7 @@ public class SyllabusPdfDataLoader {
                 department == null ? null : department.getCode(),
                 department == null ? null : department.getName(),
                 resolvedAcademicYear,
+                targetTemplateProfile,
                 resolvedSemester,
                 syllabus.getVersionNumber(),
                 syllabus.getVersionLabel(),

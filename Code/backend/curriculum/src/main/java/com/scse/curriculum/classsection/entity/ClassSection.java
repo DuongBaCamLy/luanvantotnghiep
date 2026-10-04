@@ -3,11 +3,11 @@ package com.scse.curriculum.classsection.entity;
 import com.scse.curriculum.course.entity.Course;
 import com.scse.curriculum.program.entity.Program;
 import com.scse.curriculum.cohort.entity.Cohort;
-import com.scse.curriculum.instructor.entity.Instructor;
 import com.scse.curriculum.syllabus.entity.Syllabus;
+import com.scse.curriculum.user.entity.UserAccount;
+
 import jakarta.persistence.*;
 import lombok.*;
-
 @Entity
 @Table(name = "class_section")
 @Getter
@@ -42,10 +42,18 @@ public class ClassSection {
     @JoinColumn(name = "syllabus_id", nullable = true)
     private Syllabus syllabus;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "instructor_id", nullable = false)
-    private Instructor instructor;
 
+
+    /**
+ * New account-based teaching assignment.
+ * This replaces the legacy Instructor Profile link.
+ */
+@ManyToOne(fetch = FetchType.LAZY)
+@JoinColumn(
+        name = "instructor_user_id",
+        nullable = false
+)
+private UserAccount instructorUser;
     @Column(nullable = false)
     private Integer semester;
 

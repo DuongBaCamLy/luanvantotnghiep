@@ -80,18 +80,18 @@ if (request.getRole() == UserRole.ADMIN
 }
         UserAccount user =
                 UserAccount
-                        .builder()
-                        .username(
-                                request.getUsername())
+        .builder()
+        .fullName(
+                request.getFullName().trim())
+        .username(
+                request.getUsername().trim())
                         .email(
-                                request.getEmail())
+        request.getEmail().trim())
                         .passwordHash(
                                 passwordEncoder.encode(
                                         request.getPassword()))
                         .role(
                                 request.getRole())
-                        .instructorId(
-                                request.getInstructorId())
                         .managedMajor(managedMajor)
                         .isActive(true)
                         .createdAt(
@@ -132,18 +132,17 @@ if (request.getRole() == UserRole.ADMIN
                 : Boolean.TRUE.equals(request.getIsActive());
         Major managedMajor = resolveManagedMajor(
                 request.getRole(), request.getManagedMajorId(), id, active);
-
+user.setFullName(
+        request.getFullName().trim());
         user.setUsername(
-                request.getUsername());
+        request.getUsername().trim());
 
-        user.setEmail(
-                request.getEmail());
+user.setEmail(
+        request.getEmail().trim());
 
         user.setRole(
                 request.getRole());
 
-        user.setInstructorId(
-                request.getInstructorId());
         user.setManagedMajor(managedMajor);
 
         if (request.getIsActive() != null) {
@@ -169,25 +168,33 @@ if (request.getRole() == UserRole.ADMIN
     }
 
     @Transactional
-    public void delete(
-            Integer id) {
+public void delete(
+        Integer id) {
 
-        UserAccount user =
-        findEntityOrThrow(id);
+    UserAccount user =
+            findEntityOrThrow(id);
 
-if (user.getRole() == UserRole.ADMIN) {
-    throw new IllegalStateException(
-            "The Administrator account cannot be deleted.");
-}
-
-if (Boolean.TRUE.equals(user.getIsActive())) {
-    throw new IllegalStateException(
-            "Deactivate the account before deleting it.");
-}
-
-repository.delete(user);
+    if (user.getRole() == UserRole.ADMIN) {
+        throw new IllegalStateException(
+                "The Administrator account cannot be deleted.");
     }
 
+    try {
+        repository.delete(user);
+
+        /*
+         * Force SQL DELETE to execute inside this method so that
+         * foreign-key violations can be converted into a clear
+         * application error instead of appearing at transaction commit.
+         */
+        repository.flush();
+    } catch (DataIntegrityViolationException ex) {
+        throw new IllegalStateException(
+                "This user account cannot be deleted because it is already referenced by system data. Deactivate the account instead.",
+                ex);
+    }
+}
+    
     @Transactional
     public UserAccountResponse toggleActive(
             Integer id) {

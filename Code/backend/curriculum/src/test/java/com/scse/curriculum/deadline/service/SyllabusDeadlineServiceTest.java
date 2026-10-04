@@ -252,7 +252,6 @@ class SyllabusDeadlineServiceTest {
                 .id(userId)
                 .username(username)
                 .email(username + "@iu.edu.vn")
-                .instructorId(instructorId)
                 .isActive(true)
                 .build();
         return new DeadlineReminderTarget(

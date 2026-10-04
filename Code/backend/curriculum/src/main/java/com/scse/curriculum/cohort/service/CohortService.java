@@ -12,6 +12,8 @@ public interface CohortService {
 
     List<CohortResponse> getAll();
 
+    List<CohortResponse> getArchived();
+
     CohortResponse getById(
             Integer id);
 
@@ -21,7 +23,9 @@ public interface CohortService {
     List<CohortResponse> getByProgram(
             Integer programId);
 
-    CohortResponse archive(Integer id);
+    CohortResponse archive(
+            Integer id);
 
-    CohortResponse reactivate(Integer id);
+    CohortResponse reactivate(
+            Integer id);
 }

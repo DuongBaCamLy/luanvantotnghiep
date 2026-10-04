@@ -7,7 +7,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
@@ -18,7 +17,7 @@ import com.scse.curriculum.classsection.repository.ClassSectionRepository;
 import com.scse.curriculum.syllabus.entity.Syllabus;
 import com.scse.curriculum.syllabus.entity.SyllabusStatus;
 import com.scse.curriculum.user.entity.UserAccount;
-import com.scse.curriculum.user.repository.UserAccountRepository;
+import com.scse.curriculum.user.entity.UserRole;
 
 import lombok.RequiredArgsConstructor;
 
@@ -27,105 +26,182 @@ import lombok.RequiredArgsConstructor;
 @Transactional(readOnly = true)
 public class DeadlineReminderTargetResolver {
 
-    private static final Set<SyllabusStatus> SUBMITTED_STATES = Set.of(
-            SyllabusStatus.SUBMITTED,
-            SyllabusStatus.UNDER_REVIEW,
-            SyllabusStatus.APPROVED);
+    private static final Set<SyllabusStatus> SUBMITTED_STATES =
+            Set.of(
+                    SyllabusStatus.SUBMITTED,
+                    SyllabusStatus.UNDER_REVIEW,
+                    SyllabusStatus.APPROVED);
 
     private final ClassSectionRepository classSectionRepository;
-    private final UserAccountRepository userAccountRepository;
 
-    public Resolution resolve(String academicYear, Integer semester) {
-        List<ClassSection> assignments = classSectionRepository
-                .findActiveForDeadline(academicYear, semester);
+    public Resolution resolve(
+            String academicYear,
+            Integer semester) {
 
-        Map<Integer, List<ClassSection>> byInstructor = assignments.stream()
-                .filter(section -> section.getInstructor() != null)
-                .collect(Collectors.groupingBy(
-                        section -> section.getInstructor().getId(),
-                        LinkedHashMap::new,
-                        Collectors.toList()));
+        List<ClassSection> assignments =
+                classSectionRepository
+                        .findActiveForDeadline(
+                                academicYear,
+                                semester);
 
-        if (byInstructor.isEmpty()) {
-            return new Resolution(List.of(), 0);
+        /*
+         * Teaching Assignment now points directly to UserAccount.
+         *
+         * Key = UserAccount.id
+         */
+        Map<Integer, List<ClassSection>> byInstructorUser =
+                assignments
+                        .stream()
+                        .filter(section ->
+                                section.getInstructorUser()
+                                        != null)
+                        .collect(
+                                Collectors.groupingBy(
+                                        section ->
+                                                section
+                                                        .getInstructorUser()
+                                                        .getId(),
+                                        LinkedHashMap::new,
+                                        Collectors.toList()));
+
+        if (byInstructorUser.isEmpty()) {
+            return new Resolution(
+                    List.of(),
+                    0);
         }
 
-        Map<Integer, UserAccount> usersByInstructor = userAccountRepository
-                .findByInstructorIdIn(byInstructor.keySet())
-                .stream()
-                .filter(user -> user.getInstructorId() != null)
-                .collect(Collectors.toMap(
-                        UserAccount::getInstructorId,
-                        Function.identity(),
-                        (first, ignored) -> first));
+        List<DeadlineReminderTarget> targets =
+                new ArrayList<>();
 
-        List<DeadlineReminderTarget> targets = new ArrayList<>();
         int skippedWithoutUserAccount = 0;
 
-        for (Map.Entry<Integer, List<ClassSection>> entry : byInstructor.entrySet()) {
-            Integer instructorId = entry.getKey();
-            List<ClassSection> instructorAssignments = entry.getValue();
-            UserAccount user = usersByInstructor.get(instructorId);
+        for (Map.Entry<Integer, List<ClassSection>> entry :
+                byInstructorUser.entrySet()) {
 
-            if (user == null || !Boolean.TRUE.equals(user.getIsActive())) {
+            Integer instructorUserId =
+                    entry.getKey();
+
+            List<ClassSection> instructorAssignments =
+                    entry.getValue();
+
+            UserAccount user =
+                    instructorAssignments
+                            .get(0)
+                            .getInstructorUser();
+
+            /*
+             * Defensive validation.
+             *
+             * Assignment recipients must remain active
+             * Instructor accounts.
+             */
+            if (user == null
+                    || user.getId() == null
+                    || user.getRole()
+                            != UserRole.INSTRUCTOR
+                    || !Boolean.TRUE.equals(
+                            user.getIsActive())) {
+
                 skippedWithoutUserAccount++;
                 continue;
             }
 
-            Map<Integer, List<ClassSection>> byCourse = instructorAssignments.stream()
-                    .filter(section -> section.getCourse() != null)
-                    .collect(Collectors.groupingBy(
-                            section -> section.getCourse().getId(),
-                            LinkedHashMap::new,
-                            Collectors.toList()));
+            Map<Integer, List<ClassSection>> byCourse =
+                    instructorAssignments
+                            .stream()
+                            .filter(section ->
+                                    section.getCourse()
+                                            != null)
+                            .collect(
+                                    Collectors.groupingBy(
+                                            section ->
+                                                    section
+                                                            .getCourse()
+                                                            .getId(),
+                                            LinkedHashMap::new,
+                                            Collectors.toList()));
 
-            List<DeadlineReminderTarget.MissingCourse> missingCourses = byCourse.values()
-                    .stream()
-                    .filter(this::courseStillMissing)
-                    .map(this::toMissingCourse)
-                    .sorted(Comparator.comparing(
-                            DeadlineReminderTarget.MissingCourse::courseCode,
-                            String.CASE_INSENSITIVE_ORDER))
-                    .toList();
+            List<DeadlineReminderTarget.MissingCourse>
+                    missingCourses =
+                    byCourse
+                            .values()
+                            .stream()
+                            .filter(
+                                    this::courseStillMissing)
+                            .map(
+                                    this::toMissingCourse)
+                            .sorted(
+                                    Comparator.comparing(
+                                            DeadlineReminderTarget
+                                                    .MissingCourse
+                                                    ::courseCode,
+                                            String.CASE_INSENSITIVE_ORDER))
+                            .toList();
 
             if (missingCourses.isEmpty()) {
                 continue;
             }
 
-            ClassSection sample = instructorAssignments.get(0);
-            String instructorName = sample.getInstructor().getFullName();
+            String instructorName =
+                    user.getFullName();
 
-            targets.add(new DeadlineReminderTarget(
-                    user,
-                    instructorId,
-                    instructorName,
-                    missingCourses));
+            /*
+             * Temporary compatibility:
+             * DeadlineReminderTarget still calls this field
+             * instructorId.
+             *
+             * It now receives UserAccount.id.
+             * We will rename that record field next.
+             */
+            targets.add(
+                    new DeadlineReminderTarget(
+                            user,
+                            instructorUserId,
+                            instructorName,
+                            missingCourses));
         }
 
-        targets.sort(Comparator.comparing(
-                target -> target.instructorName() == null
-                        ? target.user().getUsername()
-                        : target.instructorName(),
-                String.CASE_INSENSITIVE_ORDER));
+        targets.sort(
+                Comparator.comparing(
+                        target ->
+                                target.instructorName() == null
+                                        || target.instructorName()
+                                                .isBlank()
+                                        ? target.user()
+                                                .getUsername()
+                                        : target.instructorName(),
+                        String.CASE_INSENSITIVE_ORDER));
 
-        return new Resolution(List.copyOf(targets), skippedWithoutUserAccount);
+        return new Resolution(
+                List.copyOf(targets),
+                skippedWithoutUserAccount);
     }
 
-    private boolean courseStillMissing(Collection<ClassSection> courseAssignments) {
-        return courseAssignments.stream()
+    private boolean courseStillMissing(
+            Collection<ClassSection> courseAssignments) {
+
+        return courseAssignments
+                .stream()
                 .map(ClassSection::getSyllabus)
                 .noneMatch(this::hasBeenSubmitted);
     }
 
-    private boolean hasBeenSubmitted(Syllabus syllabus) {
+    private boolean hasBeenSubmitted(
+            Syllabus syllabus) {
+
         return syllabus != null
                 && syllabus.getStatus() != null
-                && SUBMITTED_STATES.contains(syllabus.getStatus());
+                && SUBMITTED_STATES.contains(
+                        syllabus.getStatus());
     }
 
-    private DeadlineReminderTarget.MissingCourse toMissingCourse(
+    private DeadlineReminderTarget.MissingCourse
+    toMissingCourse(
             List<ClassSection> courseAssignments) {
-        ClassSection sample = courseAssignments.get(0);
+
+        ClassSection sample =
+                courseAssignments.get(0);
+
         return new DeadlineReminderTarget.MissingCourse(
                 sample.getCourse().getId(),
                 sample.getCourse().getCourseCode(),

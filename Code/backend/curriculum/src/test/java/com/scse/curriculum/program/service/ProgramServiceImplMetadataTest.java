@@ -38,6 +38,7 @@ class ProgramServiceImplMetadataTest {
     @Mock private DepartmentRepository departmentRepository;
     @Mock private CourseProgramRepository courseProgramRepository;
     @Mock private CohortRepository cohortRepository;
+    @Mock private com.scse.curriculum.cohort.service.CohortOperationalGuard cohortOperationalGuard;
     @InjectMocks private ProgramServiceImpl service;
 
     private Program program;

@@ -1,9 +1,10 @@
-import { api } from "./axios"
+﻿import { api } from "./axios"
 import type { RelationType } from "./courseRelationshipApi"
 import type { SyllabusFilter } from "@/lib/syllabusCatalogFilters"
 
 export interface CurriculumMapCourse {
   courseId: number
+  syllabusId?: number | null
   courseCode: string
   courseName: string
   courseNameVn?: string | null
@@ -57,3 +58,4 @@ export const curriculumMapApi = {
     return response.data
   },
 }
+

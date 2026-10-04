@@ -84,7 +84,7 @@ const targetCohorts =
     return cohorts
       .filter(
         (cohort) =>
-          cohort.isActive
+          cohort.isActive !== false
           && (
             !source.programId
             || cohort.programId
@@ -274,7 +274,7 @@ setCohortId(
                     <SelectValue placeholder="Select target cohort" />
                   </SelectTrigger>
                   <SelectContent>
-                    {cohorts.map((cohort) => (
+                    {targetCohorts.map((cohort) => (
                       <SelectItem key={cohort.id} value={String(cohort.id)}>
                         {cohort.name}
                       </SelectItem>

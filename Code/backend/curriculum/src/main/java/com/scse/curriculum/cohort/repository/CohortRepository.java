@@ -3,6 +3,7 @@ package com.scse.curriculum.cohort.repository;
 import com.scse.curriculum.cohort.entity.Cohort;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+
 import java.util.List;
 import java.util.Optional;
 
@@ -18,6 +19,22 @@ public interface CohortRepository
 
     List<Cohort> findByProgram_IdOrderByEntryYearDesc(
             Integer programId);
+
+    /*
+     * Canonical source for Curriculum Archive.
+     *
+     * Program and archived UserAccount are fetched together so the archive
+     * screen never has to reconstruct Program/User data independently.
+     */
+    @Query("""
+            SELECT c
+            FROM Cohort c
+            JOIN FETCH c.program p
+            LEFT JOIN FETCH c.archivedBy archivedBy
+            WHERE c.isActive = false
+            ORDER BY c.archivedAt DESC, c.entryYear DESC, c.name
+            """)
+    List<Cohort> findArchived();
 
     /**
      * Danh sách filter FR-06.1 được fetch cùng Program và Major để tránh N+1.

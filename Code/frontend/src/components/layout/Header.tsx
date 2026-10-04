@@ -626,10 +626,12 @@ function getWorkflowNotificationRoute(
     || normalizedType
       === "SYLLABUS_DEADLINE_DUE_TODAY"
   ) {
-    return normalizedRole
-      === "INSTRUCTOR"
-      ? "/instructor/syllabus"
-      : null
+    return (
+  normalizedRole === "DEAN"
+  || normalizedRole === "DEAN_SECRETARY"
+)
+  ? "/dean/approvals"
+  : null
   }
 
   if (
@@ -673,11 +675,11 @@ function getWorkflowNotificationRoute(
     )
   ) {
     if (
-      normalizedRole
-      === "DEAN"
-    ) {
-      return "/dean/syllabus"
-    }
+  normalizedRole === "DEAN"
+  || normalizedRole === "DEAN_SECRETARY"
+) {
+  return "/dean/syllabus"
+}
 
     if (
       normalizedRole
@@ -711,10 +713,11 @@ function getWorkflowNotificationRoute(
     }
 
     if (
-      normalizedRole === "DEAN"
-    ) {
-      return "/dean/syllabus"
-    }
+  normalizedRole === "DEAN"
+  || normalizedRole === "DEAN_SECRETARY"
+) {
+  return "/dean/syllabus"
+}
 
     if (
       normalizedRole === "DEPT_HEAD"

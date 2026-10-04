@@ -71,6 +71,7 @@ const ROLE_HOME: Record<UserRole, string> = {
   DEAN: "/dean",
   DEPT_HEAD: "/dept-head",
   INSTRUCTOR: "/instructor",
+  DEAN_SECRETARY: "/dean",
 }
 
 export default function LoginPage() {

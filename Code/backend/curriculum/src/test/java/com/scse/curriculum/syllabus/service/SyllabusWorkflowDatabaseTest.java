@@ -24,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.jdbc.core.JdbcTemplate;
 import java.util.List;
 import static org.assertj.core.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 import com.scse.curriculum.auditlog.listener.AuditLogAsyncProcessor;
 @SpringBootTest(classes=CurriculumApplication.class)
@@ -83,7 +84,22 @@ class SyllabusWorkflowDatabaseTest {
         assertThat(jdbc.queryForObject("select syllabus_id from course_program where id=?", Integer.class, link.getId())).isEqualTo(id);
         assertThat(jdbc.queryForObject("select syllabus_version_number from approval_request where id=?", Integer.class, first.getId())).isEqualTo(1);
         var snapshots = history.history(id);
-        assertThat(snapshots).hasSize(6);
+
+assertThat(snapshots).hasSize(7);
+
+assertThat(snapshots)
+        .extracting(
+                SyllabusHistoryService.HistoryItem::eventType
+        )
+        .containsExactly(
+                "SUBMITTED",
+                "REJECTED",
+                "REVISION_SOURCE",
+                "REVISION_CREATED",
+                "SUBMITTED",
+                "DEPT_HEAD_APPROVED",
+                "APPROVED"
+        );
         assertThat(snapshots.getFirst().content().path("syllabus").path("objectives").asText()).isEqualTo("Original learning objectives");
         assertThat(snapshots.getLast().content().path("syllabus").path("objectives").asText()).isEqualTo("Revised learning objectives");
         assertThat(snapshots).allSatisfy(snapshot -> assertThat(snapshot.content().has("student_score")).isFalse());

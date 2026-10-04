@@ -33,6 +33,7 @@ class SyllabusXlsxPreviewTest {
     @Mock private com.fasterxml.jackson.databind.ObjectMapper objectMapper;
     @Mock private com.scse.curriculum.syllabus.service.SyllabusIdentityService syllabusIdentityService;
     @Mock private com.scse.curriculum.syllabus.history.SyllabusHistoryService syllabusHistoryService;
+    @Mock private com.scse.curriculum.cohort.service.CohortOperationalGuard cohortOperationalGuard;
     @InjectMocks private SyllabusImportServiceImpl service;
 
     private byte[] completedWorkbook() throws Exception {

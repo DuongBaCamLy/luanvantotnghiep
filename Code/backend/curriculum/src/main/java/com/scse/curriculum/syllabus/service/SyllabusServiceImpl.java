@@ -37,6 +37,7 @@ import com.scse.curriculum.course.entity.Course;
 import com.scse.curriculum.course.repository.CourseRepository;
 import com.scse.curriculum.cohort.entity.Cohort;
 import com.scse.curriculum.cohort.repository.CohortRepository;
+import com.scse.curriculum.cohort.service.CohortOperationalGuard;
 import com.scse.curriculum.enrollment.repository.EnrollmentRepository;
 import com.scse.curriculum.email.WorkflowNotificationService;
 import com.scse.curriculum.studentscore.repository.StudentScoreRepository;
@@ -72,11 +73,14 @@ import lombok.RequiredArgsConstructor;
 import com.scse.curriculum.syllabus.dto.SyllabusCatalogResponse;
 import com.scse.curriculum.syllabus.comparison.dto.SemanticSyllabusDiffResponse;
 import com.scse.curriculum.syllabus.comparison.service.SyllabusSemanticComparisonService;
+import com.scse.curriculum.syllabus.template.TargetTemplateProfileResolver;
 @Service
 @RequiredArgsConstructor
 public class SyllabusServiceImpl implements SyllabusService {
         private final CourseProgramRepository courseProgramRepository;
+        private final TargetTemplateProfileResolver targetTemplateProfileResolver;
         private final CohortRepository cohortRepository;
+        private final CohortOperationalGuard cohortOperationalGuard;
         private final PloRepository ploRepository;
         private final SyllabusRepository repository;
         private final CourseRepository courseRepository;
@@ -133,6 +137,37 @@ public class SyllabusServiceImpl implements SyllabusService {
 
                 Course course = creationAuthorization.course();
                 UserAccount creator = creationAuthorization.creator();
+
+                Integer operationalCohortId =
+                                request.getCohortId();
+
+                if (!creationAuthorization.assignments().isEmpty()) {
+                        ClassSection assignment =
+                                        creationAuthorization
+                                                        .assignments()
+                                                        .getFirst();
+
+                        if (assignment.getCohort() == null
+                                        || assignment.getCohort().getId() == null) {
+                                throw new IllegalArgumentException(
+                                                "The teaching assignment must have a Cohort.");
+                        }
+
+                        if (operationalCohortId != null
+                                        && !Objects.equals(
+                                                        operationalCohortId,
+                                                        assignment.getCohort().getId())) {
+                                throw new IllegalArgumentException(
+                                                "The selected Cohort must match the teaching assignment.");
+                        }
+
+                        operationalCohortId =
+                                        assignment.getCohort().getId();
+                }
+
+                cohortOperationalGuard
+                                .requireActive(
+                                                operationalCohortId);
 
                 /*
                  * Version phải được tính theo course đã được backend xác thực,
@@ -846,17 +881,24 @@ if (courseProgram != null) {
          * created/imported the draft (createdBy).
          */
         private String resolveResponsibleInstructors(Integer syllabusId) {
-                return classSectionRepository.findForPdfBySyllabusId(syllabusId)
-                                .stream()
-                                .map(ClassSection::getInstructor)
-                                .filter(Objects::nonNull)
-                                .map(instructor -> instructor.getFullName())
-                                .filter(value -> value != null && !value.isBlank())
-                                .distinct()
-                                .sorted(String.CASE_INSENSITIVE_ORDER)
-                                .reduce((left, right) -> left + ", " + right)
-                                .orElse(null);
-        }
+        return classSectionRepository.findForPdfBySyllabusId(syllabusId)
+                        .stream()
+                        .map(ClassSection::getInstructorUser)
+                        .filter(Objects::nonNull)
+                        .map(user -> {
+                                if (user.getFullName() != null
+                                                && !user.getFullName().isBlank()) {
+                                        return user.getFullName().trim();
+                                }
+
+                                return user.getUsername();
+                        })
+                        .filter(value -> value != null && !value.isBlank())
+                        .distinct()
+                        .sorted(String.CASE_INSENSITIVE_ORDER)
+                        .reduce((left, right) -> left + ", " + right)
+                        .orElse(null);
+}
 
         private SyllabusResponse map(Syllabus syllabus) {
 
@@ -866,7 +908,10 @@ if (courseProgram != null) {
                                 .filter(courseProgram -> courseProgram.getCohort() != null)
                                 .findFirst()
                                 .orElse(null);
-
+String targetTemplateProfile = targetTemplateProfileResolver.resolve(
+                syllabusCourseProgram == null
+                        ? null
+                        : syllabusCourseProgram.getCohort());
                 return SyllabusResponse.builder()
                                 .id(syllabus.getId())
                                 .courseId(syllabus.getCourse().getId())
@@ -886,9 +931,10 @@ if (courseProgram != null) {
                                 .programCode(syllabusCourseProgram == null ? null : syllabusCourseProgram.getProgram().getCode())
                                 .programName(syllabusCourseProgram == null ? null : syllabusCourseProgram.getProgram().getName())
                                 .academicYear(syllabusCourseProgram == null || syllabusCourseProgram.getCohort() == null
-                                                ? syllabus.getAcademicYear()
-                                                : syllabusCourseProgram.getCohort().getName())
-                                .creditTheory(syllabus.getCourse().getCreditTheory())
+                ? syllabus.getAcademicYear()
+                : syllabusCourseProgram.getCohort().getName())
+.targetTemplateProfile(targetTemplateProfile)
+.creditTheory(syllabus.getCourse().getCreditTheory())
                                 .creditLab(syllabus.getCourse().getCreditLab())
                                 .responsibleInstructors(resolveResponsibleInstructors(syllabus.getId()))
                                 .courseDesignation(syllabus.getCourseDesignation())
@@ -998,6 +1044,8 @@ if (courseProgram != null) {
 
                 Syllabus syllabus = repository.findByIdWithRelations(id)
                                 .orElseThrow(() -> new ResourceNotFoundException("Syllabus not found"));
+
+                cohortOperationalGuard.assertSyllabusNotArchived(id);
 
                 syllabusAccessService.assertCanModify(syllabus);
                 assertContentIsMutable(syllabus);
@@ -1355,6 +1403,8 @@ if (courseProgram != null) {
                 Syllabus syllabus = repository.findByIdWithRelations(id)
                                 .orElseThrow(() -> new ResourceNotFoundException("Syllabus not found"));
 
+                cohortOperationalGuard.assertSyllabusNotArchived(id);
+
                 if (syllabus.getStatus() == SyllabusStatus.APPROVED) {
                         throw new ForbiddenOperationException(
                                         "Approved syllabus cannot be deleted. Archive it instead.");
@@ -1529,6 +1579,8 @@ public SyllabusResponse submit(Integer id) {
                             new ResourceNotFoundException(
                                     "Syllabus not found"));
 
+    cohortOperationalGuard.assertSyllabusNotArchived(id);
+
     /*
      * Only an authorized Instructor/Admin may submit
      * an editable Draft.
@@ -1654,30 +1706,86 @@ public SyllabusResponse submit(Integer id) {
         @Override
 @Transactional
 public SyllabusResponse createRevisionDraftFromRejected(Integer sourceId) {
+
     repository.lockWorkflow(sourceId);
+
     Syllabus syllabus = repository.findByIdWithRelations(sourceId)
-            .orElseThrow(() -> new ResourceNotFoundException("Syllabus not found"));
+            .orElseThrow(() ->
+                    new ResourceNotFoundException("Syllabus not found"));
+
+    cohortOperationalGuard.assertSyllabusNotArchived(sourceId);
+
     syllabusAccessService.assertCanModify(syllabus);
-    if (syllabus.getStatus() != SyllabusStatus.REJECTED) {
-        throw new IllegalStateException("A revision can only start from REJECTED.");
+
+    SyllabusStatus sourceStatus = syllabus.getStatus();
+
+    if (sourceStatus != SyllabusStatus.REJECTED
+            && sourceStatus != SyllabusStatus.APPROVED) {
+
+        throw new IllegalStateException(
+                "A revision can only start from APPROVED or REJECTED.");
     }
-    if (approvalRequestRepository.existsBySyllabusIdAndStatus(sourceId, ApprovalStatus.PENDING)) {
-        throw new IllegalStateException("Resolve pending approval requests before starting a revision.");
+
+    if (approvalRequestRepository.existsBySyllabusIdAndStatus(
+            sourceId,
+            ApprovalStatus.PENDING)) {
+
+        throw new IllegalStateException(
+                "Resolve pending approval requests before starting a revision.");
     }
-    syllabus.setVersionNumber(Math.addExact(syllabus.getVersionNumber(), 1));
-    syllabus.setVersionLabel(SyllabusVersion.format(syllabus.getVersionNumber()));
-    syllabus.setStatus(SyllabusStatus.DRAFT);
+
+    String actor =
+            syllabusAccessService
+                    .currentUser()
+                    .getUsername();
+
+    /*
+     * Preserve the COMPLETE source version before changing
+     * version/status. This snapshot contains syllabus metadata,
+     * CLOs, topics, assessments, readings and mappings.
+     */
+    syllabusHistoryService.capture(
+            syllabus,
+            "REVISION_SOURCE",
+            actor);
+
+    syllabus.setVersionNumber(
+            Math.addExact(
+                    syllabus.getVersionNumber(),
+                    1));
+
+    syllabus.setVersionLabel(
+            SyllabusVersion.format(
+                    syllabus.getVersionNumber()));
+
+    syllabus.setStatus(
+            SyllabusStatus.DRAFT);
+
     syllabus.setSubmittedAt(null);
     syllabus.setApprovedAt(null);
     syllabus.setApprovedBy(null);
     syllabus.setFinalApprovalDate(null);
     syllabus.setIsCurrent(false);
-    syllabus.setUpdatedAt(LocalDateTime.now());
-    repository.saveAndFlush(syllabus);
-    syllabusHistoryService.capture(syllabus, "REVISION_CREATED", syllabusAccessService.currentUser().getUsername());
+    syllabus.setUpdatedAt(
+            LocalDateTime.now());
+
+    repository.saveAndFlush(
+            syllabus);
+
+    /*
+     * Also preserve the newly-created Draft state.
+     */
+    syllabusHistoryService.capture(
+            syllabus,
+            "REVISION_CREATED",
+            actor);
+
     return map(syllabus);
 }
-        private void assertContentIsMutable(Syllabus syllabus) {
+
+
+
+private void assertContentIsMutable(Syllabus syllabus) {
                 if (syllabus.getStatus() != SyllabusStatus.DRAFT
                                 && syllabus.getStatus() != SyllabusStatus.REVISION_REQUESTED) {
                         throw new IllegalStateException(
@@ -1916,6 +2024,8 @@ public SyllabusResponse createRevisionDraftFromRejected(Integer sourceId) {
                 Syllabus source = repository.findByIdWithRelations(id)
                                 .orElseThrow(() -> new ResourceNotFoundException("Syllabus not found"));
 
+                cohortOperationalGuard.assertSyllabusNotArchived(id);
+
                 /*
                  * FR-03.2 + FR-01.5:
                  * - Không nhận userId/createdBy từ client.
@@ -1939,6 +2049,8 @@ public SyllabusResponse createRevisionDraftFromRejected(Integer sourceId) {
                     }
                     targetCohortId = assignment.getCohort().getId();
                 }
+                cohortOperationalGuard.requireActive(targetCohortId);
+
                 CourseProgram targetContext = courseProgramRepository.findByCourse_IdAndCohort_Id(
                         source.getCourse().getId(), targetCohortId).stream()
                         .filter(cp -> cp.getProgram() != null && cp.getCohort() != null
