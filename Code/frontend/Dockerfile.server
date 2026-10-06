@@ -3,7 +3,11 @@
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm ci
+# The faculty server has a slow, flaky link to the npm registry, so keep
+# the package cache between builds and retry patiently.
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci --fetch-timeout=900000 --fetch-retries=5 \
+      --fetch-retry-maxtimeout=180000 --maxsockets=4
 
 COPY . .
 # ImportSyllabusDialog imports ../../../../templates/*.xlsx, which resolves to /templates
