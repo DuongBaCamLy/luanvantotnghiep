@@ -746,6 +746,8 @@ private String defaultAcademicYear(String value) {
             ClassSection section) {
 
         Syllabus syllabus = section.getSyllabus();
+        UserAccount instructorUser =
+                section.getInstructorUser();
 
         return ClassSectionResponse.builder()
                 .id(section.getId())
@@ -773,11 +775,17 @@ private String defaultAcademicYear(String value) {
                                 ? null
                                 : syllabus.getStatus().name())
                 .instructorUserId(
-                        section.getInstructorUser().getId())
+                        instructorUser == null
+                                ? null
+                                : instructorUser.getId())
                 .instructorFullName(
-                        section.getInstructorUser().getFullName())
+                        instructorUser == null
+                                ? null
+                                : instructorUser.getFullName())
                 .instructorUsername(
-                        section.getInstructorUser().getUsername())
+                        instructorUser == null
+                                ? null
+                                : instructorUser.getUsername())
                 .semester(section.getSemester())
                 .academicYear(section.getAcademicYear())
                 .groupNumber(section.getGroupNumber())

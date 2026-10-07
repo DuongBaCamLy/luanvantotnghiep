@@ -245,8 +245,10 @@ const activeInstructorUsers =
         String(initialData.courseId),
       )
       setInstructorUserId(
-  String(initialData.instructorUserId),
-)
+        initialData.instructorUserId == null
+          ? ""
+          : String(initialData.instructorUserId),
+      )
       setSemester(
         String(initialData.semester),
       )

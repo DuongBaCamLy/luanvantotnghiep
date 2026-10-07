@@ -232,6 +232,191 @@ itCohort = Cohort.builder()
     }
 
     @Test
+    void mappingPreservesInstructorUserFields() {
+        ClassSection section = createSection(
+                61,
+                csCourse,
+                csInstructorAccount,
+                null);
+
+        when(currentUserService.getCurrentUser())
+                .thenReturn(adminAccount);
+
+        when(repository.findAllInScope(null))
+                .thenReturn(List.of(section));
+
+        ClassSectionResponse result =
+                service.getAll().getFirst();
+
+        assertThat(result.getInstructorUserId())
+                .isEqualTo(101);
+        assertThat(result.getInstructorFullName())
+                .isEqualTo("CS Instructor");
+        assertThat(result.getInstructorUsername())
+                .isEqualTo("cs.instructor");
+    }
+
+    @Test
+    void mappingHandlesMissingInstructorUserWithoutNullPointerException() {
+        ClassSection section = createSection(
+                62,
+                csCourse,
+                null,
+                null);
+
+        when(currentUserService.getCurrentUser())
+                .thenReturn(adminAccount);
+
+        when(repository.findAllInScope(null))
+                .thenReturn(List.of(section));
+
+        ClassSectionResponse result =
+                service.getAll().getFirst();
+
+        assertThat(result.getInstructorUserId()).isNull();
+        assertThat(result.getInstructorFullName()).isNull();
+        assertThat(result.getInstructorUsername()).isNull();
+    }
+
+    @Test
+    void createRejectsMissingInstructorAccount() {
+        CreateClassSectionRequest request =
+                createRequest(10, 9999);
+
+        when(currentUserService.getCurrentUser())
+                .thenReturn(adminAccount);
+
+        when(courseRepository.findById(10))
+                .thenReturn(Optional.of(csCourse));
+
+        stubCurriculumContext(
+                csCourse,
+                csProgram,
+                csCohort);
+
+        when(userAccountRepository.findById(9999))
+                .thenReturn(Optional.empty());
+
+        assertThatThrownBy(() ->
+                service.create(request))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessage("Instructor account not found");
+
+        verify(repository, never())
+                .save(any(ClassSection.class));
+    }
+
+    @Test
+    void createRejectsNonInstructorAccount() {
+        CreateClassSectionRequest request =
+                createRequest(10, 1);
+
+        when(currentUserService.getCurrentUser())
+                .thenReturn(adminAccount);
+
+        when(courseRepository.findById(10))
+                .thenReturn(Optional.of(csCourse));
+
+        stubCurriculumContext(
+                csCourse,
+                csProgram,
+                csCohort);
+
+        when(userAccountRepository.findById(1))
+                .thenReturn(Optional.of(adminAccount));
+
+        assertThatThrownBy(() ->
+                service.create(request))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage(
+                        "The selected account is not an Instructor.");
+
+        verify(repository, never())
+                .save(any(ClassSection.class));
+    }
+
+    @Test
+    void updateRejectsMissingInstructorAccount() {
+        CreateClassSectionRequest request =
+                createRequest(10, 9999);
+
+        ClassSection section = createSection(
+                63,
+                csCourse,
+                csInstructorAccount,
+                null);
+
+        section.setProgram(csProgram);
+        section.setCohort(csCohort);
+
+        when(currentUserService.getCurrentUser())
+                .thenReturn(adminAccount);
+
+        when(repository.findByIdInScope(63, null))
+                .thenReturn(Optional.of(section));
+
+        when(courseRepository.findById(10))
+                .thenReturn(Optional.of(csCourse));
+
+        stubCurriculumContext(
+                csCourse,
+                csProgram,
+                csCohort);
+
+        when(userAccountRepository.findById(9999))
+                .thenReturn(Optional.empty());
+
+        assertThatThrownBy(() ->
+                service.update(63, request))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessage("Instructor account not found");
+
+        verify(repository, never())
+                .save(any(ClassSection.class));
+    }
+
+    @Test
+    void updateRejectsNonInstructorAccount() {
+        CreateClassSectionRequest request =
+                createRequest(10, 1);
+
+        ClassSection section = createSection(
+                64,
+                csCourse,
+                csInstructorAccount,
+                null);
+
+        section.setProgram(csProgram);
+        section.setCohort(csCohort);
+
+        when(currentUserService.getCurrentUser())
+                .thenReturn(adminAccount);
+
+        when(repository.findByIdInScope(64, null))
+                .thenReturn(Optional.of(section));
+
+        when(courseRepository.findById(10))
+                .thenReturn(Optional.of(csCourse));
+
+        stubCurriculumContext(
+                csCourse,
+                csProgram,
+                csCohort);
+
+        when(userAccountRepository.findById(1))
+                .thenReturn(Optional.of(adminAccount));
+
+        assertThatThrownBy(() ->
+                service.update(64, request))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage(
+                        "The selected account is not an Instructor.");
+
+        verify(repository, never())
+                .save(any(ClassSection.class));
+    }
+
+    @Test
 void departmentHeadGetAllUsesOwnManagedMajorScope() {
     ClassSection section = createSection(
             2,

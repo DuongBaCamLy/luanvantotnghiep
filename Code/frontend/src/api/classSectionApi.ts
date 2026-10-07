@@ -17,9 +17,9 @@ export interface ClassSectionResponse {
   syllabusVersionNumber: number | null
   syllabusStatus: string | null
 
-  instructorUserId: number
+  instructorUserId: number | null
   instructorFullName: string | null
-  instructorUsername: string
+  instructorUsername: string | null
 
   semester: number
   academicYear: string
