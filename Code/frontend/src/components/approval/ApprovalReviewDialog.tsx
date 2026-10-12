@@ -29,6 +29,7 @@ interface ApprovalReviewDialogProps {
   item: ApprovalRequestItem | null
   decision: ReviewDecision
   isDean: boolean
+  isDeanSecretary?: boolean
   isPending: boolean
   errorMessage?: string | null
   onOpenChange: (
@@ -44,6 +45,7 @@ export default function ApprovalReviewDialog({
   item,
   decision,
   isDean,
+  isDeanSecretary = false,
   isPending,
   errorMessage,
   onOpenChange,
@@ -61,41 +63,52 @@ export default function ApprovalReviewDialog({
     decision === "APPROVED"
 
   const copy = useMemo(() => {
-    if (isApproval) {
-      return {
-        title: isDean
-          ? "Approve Syllabus as Final"
-          : "Approve and Forward to Dean",
+  const isFinalReviewer =
+    isDean || isDeanSecretary
 
-        description: isDean
-          ? "Approve this syllabus as the final official version?"
-          : "Confirm the Department Head review and forward this syllabus to the Dean for the final decision.",
-
-        button: isDean
-          ? "Final Approve"
-          : "Approve & Forward",
-      }
-    }
-
+  if (isApproval) {
     return {
-      title: isDean ? "Reject Syllabus" : "Return Syllabus for Revision",
+      title: isFinalReviewer
+        ? "Approve Syllabus as Final"
+        : "Approve and Forward",
 
-      description:
-        "Return this syllabus to the instructor with a clear review comment explaining the required changes.",
+      description: isFinalReviewer
+        ? "Approve this syllabus as the final official version?"
+        : "Confirm the Department Head review and send this syllabus to the final approval queue.",
 
-      button: isDean ? "Reject & Return" : "Return to Instructor",
+      button: isFinalReviewer
+        ? "Final Approve"
+        : "Approve & Forward",
     }
-  }, [isApproval, isDean])
+  }
 
-  const actorLabel =
-    isDean
-      ? "Forwarded By"
-      : "Submitted By"
+  return {
+    title: isFinalReviewer
+      ? "Reject Syllabus"
+      : "Return Syllabus for Revision",
 
-  const stageLabel =
-    isDean
-      ? "Dean Final Review"
-      : "Department Review"
+    description:
+      "Return this syllabus to the instructor with a clear review comment explaining the required changes.",
+
+    button: isFinalReviewer
+      ? "Reject & Return"
+      : "Return to Instructor",
+  }
+}, [
+  isApproval,
+  isDean,
+  isDeanSecretary,
+])
+
+const actorLabel =
+  isDean || isDeanSecretary
+    ? "Submitted For Final Review By"
+    : "Submitted By"
+
+const stageLabel =
+  isDean || isDeanSecretary
+    ? "Final Review"
+    : "Department Review"
 
   const handleConfirm = () => {
     const normalizedComment =
@@ -124,7 +137,7 @@ export default function ApprovalReviewDialog({
         }
       }}
     >
-      <DialogContent className="overflow-hidden p-0 sm:max-w-[620px]">
+      <DialogContent className="max-h-[90dvh] gap-0 overflow-y-auto p-0 sm:max-w-[620px]">
         <div
           className={
             isApproval
@@ -197,6 +210,15 @@ export default function ApprovalReviewDialog({
                   {stageLabel}
                 </p>
               </div>
+
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Instructor</p>
+                <p className="mt-1 break-words text-sm font-medium text-slate-800">{item.instructorUsername || "Not recorded"}</p>
+              </div>
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Decision</p>
+                <p className={isApproval ? "mt-1 text-sm font-semibold text-emerald-700" : "mt-1 text-sm font-semibold text-rose-700"}>{isApproval ? "Approve" : "Return for Revision"}</p>
+              </div>
             </div>
           )}
 
@@ -215,6 +237,9 @@ export default function ApprovalReviewDialog({
 
             <Textarea
               id="review-comment"
+              aria-required={!isApproval}
+              aria-invalid={Boolean(validationError || errorMessage)}
+              aria-describedby="review-comment-feedback"
               value={comment}
               onChange={(event) => {
                 setComment(
@@ -237,7 +262,7 @@ export default function ApprovalReviewDialog({
             />
 
             <div className="flex items-center justify-between text-xs">
-              <span className="text-rose-600">
+              <span id="review-comment-feedback" role="status" className="text-rose-600">
                 {validationError
                   || errorMessage
                   || ""}
@@ -276,7 +301,7 @@ export default function ApprovalReviewDialog({
           </div>
         </div>
 
-        <DialogFooter className="border-t bg-slate-50 px-6 py-4">
+        <DialogFooter className="sticky bottom-0 mx-0 mb-0 border-t bg-slate-50 px-6 py-4">
           <Button
             type="button"
             variant="outline"

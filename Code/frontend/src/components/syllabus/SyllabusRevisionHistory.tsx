@@ -234,7 +234,7 @@ export default function SyllabusRevisionHistory({
 
   return (
     <section
-      id="approval-history"
+      id="syllabus-history"
       className="scroll-mt-24 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
     >
       <div className="border-b border-slate-200 px-5 py-4">

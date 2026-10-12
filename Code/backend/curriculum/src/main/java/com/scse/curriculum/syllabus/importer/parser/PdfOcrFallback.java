@@ -20,12 +20,11 @@ final class PdfOcrFallback {
             PDDocument document,
             int startPage,
             int endPage) throws IOException {
+        return extract(document, startPage, endPage,
+                System.getenv().getOrDefault("TESSERACT_COMMAND", "tesseract"));
+    }
 
-        String executable =
-                System.getenv()
-                        .getOrDefault(
-                                "TESSERACT_COMMAND",
-                                "tesseract");
+    String extract(PDDocument document, int startPage, int endPage, String executable) throws IOException {
 
         Path tempDirectory =
                 Files.createTempDirectory(
@@ -57,7 +56,8 @@ final class PdfOcrFallback {
                         "png",
                         imageFile.toFile());
 
-                Process process =
+                Path outputFile = tempDirectory.resolve("page-" + page + "-ocr.txt");
+                ProcessBuilder builder =
                         new ProcessBuilder(
                                 executable,
                                 imageFile.toString(),
@@ -67,7 +67,9 @@ final class PdfOcrFallback {
                                 "--psm",
                                 "6")
                                 .redirectErrorStream(true)
-                                .start();
+                                // Drain stdout while OCR runs; waiting on an unread pipe can deadlock.
+                                .redirectOutput(outputFile.toFile());
+                Process process = builder.start();
 
                 boolean finished;
 
@@ -77,6 +79,7 @@ final class PdfOcrFallback {
                                     90,
                                     TimeUnit.SECONDS);
                 } catch (InterruptedException exception) {
+                    process.destroyForcibly();
                     Thread.currentThread().interrupt();
 
                     throw new IOException(
@@ -92,12 +95,7 @@ final class PdfOcrFallback {
                                     + page);
                 }
 
-                String output =
-                        new String(
-                                process
-                                        .getInputStream()
-                                        .readAllBytes(),
-                                StandardCharsets.UTF_8);
+                String output = Files.readString(outputFile, StandardCharsets.UTF_8);
 
                 if (process.exitValue() != 0) {
                     throw new IOException(

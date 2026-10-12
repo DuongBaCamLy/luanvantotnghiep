@@ -2,7 +2,9 @@ package com.scse.curriculum.syllabus.pdf;
 
 import com.lowagie.text.DocumentException;
 import com.lowagie.text.Font;
+import com.lowagie.text.Phrase;
 import com.lowagie.text.pdf.BaseFont;
+import com.lowagie.text.pdf.FontSelector;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -19,6 +21,8 @@ public class SyllabusPdfFontProvider {
     private final BaseFont regularBaseFont;
     private final BaseFont boldBaseFont;
     private final boolean unicodeReady;
+    private final BaseFont symbolBaseFont;
+    private final BaseFont replacementBaseFont;
 
     public SyllabusPdfFontProvider(
             @Value("${app.pdf.font.regular:}") String configuredRegular,
@@ -28,6 +32,8 @@ public class SyllabusPdfFontProvider {
         this.regularBaseFont = regular.baseFont();
         this.boldBaseFont = bold.baseFont();
         this.unicodeReady = regular.unicodeEmbedded() && bold.unicodeEmbedded();
+        this.symbolBaseFont = resolveSymbols();
+        this.replacementBaseFont = resolveReplacement();
     }
 
     public Font regular(float size) {
@@ -48,6 +54,28 @@ public class SyllabusPdfFontProvider {
 
     public BaseFont regularBaseFont() {
         return regularBaseFont;
+    }
+
+    /** Keep mathematical source glyphs (for example ℝ) when the body font lacks them. */
+    public Phrase phrase(String text, Font primary) {
+        if(symbolBaseFont==null || text.codePoints().allMatch(primary.getBaseFont()::charExists))return new Phrase(text,primary);
+        FontSelector selector=new FontSelector();selector.addFont(primary);
+        selector.addFont(new Font(symbolBaseFont,primary.getSize(),primary.getStyle(),primary.getColor()));
+        if(replacementBaseFont!=null)selector.addFont(new Font(replacementBaseFont,primary.getSize(),primary.getStyle(),primary.getColor()));
+        return selector.process(text);
+    }
+
+    private BaseFont resolveSymbols() {
+        for(String candidate:List.of("C:/Windows/Fonts/seguisym.ttf","/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf","/System/Library/Fonts/Supplemental/Arial Unicode.ttf")) {
+            try {if(Files.isRegularFile(Path.of(candidate)))return BaseFont.createFont(candidate,BaseFont.IDENTITY_H,BaseFont.EMBEDDED);}
+            catch(IOException | RuntimeException ignored) { }
+        }
+        return null;
+    }
+
+    private BaseFont resolveReplacement() {
+        try {String path="C:/Windows/Fonts/segoeui.ttf";return Files.isRegularFile(Path.of(path))?BaseFont.createFont(path,BaseFont.IDENTITY_H,BaseFont.EMBEDDED):null;}
+        catch(IOException | RuntimeException ignored){return null;}
     }
 
     /**

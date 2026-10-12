@@ -8,7 +8,6 @@ import {
 } from "@tanstack/react-query"
 import { useNavigate } from "react-router-dom"
 import {
-  ArrowRight,
   CheckCircle2,
   Clock3,
   Eye,
@@ -24,6 +23,7 @@ import {
 } from "lucide-react"
 
 import { approvalRequestApi } from "@/api/approvalRequestApi"
+import SyllabusReviewDetailsDialog from "@/components/approval/SyllabusReviewDetailsDialog"
 import ApprovalReviewDialog, {
   type ReviewDecision,
 } from "@/components/approval/ApprovalReviewDialog"
@@ -195,6 +195,10 @@ export default function DeptHeadApprovalPage() {
   const queryClient =
     useQueryClient()
 
+  const [reviewDetails, setReviewDetails] = useState<ApprovalRequestItem | null>(null)
+  const [departmentFilter, setDepartmentFilter] = useState("all")
+  const [sortOrder, setSortOrder] = useState("oldest")
+
   const [
     searchTerm,
     setSearchTerm,
@@ -222,45 +226,46 @@ export default function DeptHeadApprovalPage() {
     )
 
   const isDean =
-  role === "DEAN"
-  || role === "DEAN_SECRETARY"
+    role === "DEAN"
+
+  const isDeanSecretary =
+    role === "DEAN_SECRETARY"
 
   const isDeptHead =
     role === "DEPT_HEAD"
 
   const canAccess =
     isDean
+    || isDeanSecretary
     || isDeptHead
 
-  const approvalStep:
-    ApprovalStep =
-      isDean
-        ? "STEP3_DEAN"
-        : "STEP1_DEPT_HEAD"
+  const approvalStep: ApprovalStep =
+    isDean || isDeanSecretary
+      ? "STEP3_DEAN"
+      : "STEP1_DEPT_HEAD"
 
   const detailBasePath =
-  isDean
-    ? "/dean/syllabus"
-    : "/dept-head/syllabus"
+    isDean || isDeanSecretary
+      ? "/dean/syllabus"
+      : "/dept-head/syllabus"
 
   const pageTitle =
-    isDean
-      ? "Dean Approval Queue"
+    isDean || isDeanSecretary
+      ? "Final Approval Queue"
       : "Department Review Queue"
 
   const pageEyebrow =
-    isDean
+    isDean || isDeanSecretary
       ? "Final Academic Review"
       : "Department Academic Review"
 
   const pageDescription =
-    isDean
-      ? "Perform the final syllabus decision. Approve to publish the official current version, or return the syllabus to the instructor with mandatory revision feedback."
-      : "Review syllabuses submitted by instructors in your department. Approve to forward them to the Dean, or return them to the instructor with mandatory revision feedback."
-
+    isDean || isDeanSecretary
+      ? "Both Dean and Dean Secretary can perform final syllabus approval or return the syllabus for revision."
+      : "Review submitted syllabuses and forward approved requests to the shared final approval queue."
   const {
     data:
-      approvalRequests = [],
+    approvalRequests = [],
     isLoading,
     isFetching,
     isError,
@@ -306,6 +311,7 @@ export default function DeptHeadApprovalPage() {
 
       onSuccess: async () => {
         await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ["approval-history"] }),
           ...["my-active-assignments", "program-timeline", "syllabus", "faculty-dashboard", "depthead-courses", "course-programs", "curriculum-map", "clo-plo-heatmap"].map((key) =>
             queryClient.invalidateQueries({ queryKey: [key] }),
           ),
@@ -347,44 +353,19 @@ export default function DeptHeadApprovalPage() {
       },
     })
 
-  const filteredRequests =
-    useMemo(() => {
-      const keyword =
-        searchTerm
-          .trim()
-          .toLowerCase()
-
-      if (!keyword) {
-        return approvalRequests
-      }
-
-      return approvalRequests
-        .filter(
-          (item) => {
-            const searchable =
-              [
-                item.courseCode,
-                item.courseName,
-                item.requestedByUsername,
-                item.versionLabel,
-              ]
-                .map(
-                  (value) =>
-                    String(
-                      value ?? "",
-                    )
-                      .toLowerCase(),
-                )
-                .join(" ")
-
-            return searchable
-              .includes(keyword)
-          },
-        )
-    }, [
-      approvalRequests,
-      searchTerm,
-    ])
+  const filteredRequests = useMemo(() => {
+    const keyword = searchTerm.trim().toLowerCase()
+    return approvalRequests.filter(item => {
+      const matchesDepartment = departmentFilter === "all" || item.departmentCode === departmentFilter
+      const searchable = [item.courseCode, item.courseName, item.instructorUsername, item.requestedByUsername,
+        item.programCode, item.cohortName, item.departmentName, item.versionLabel].join(" ").toLowerCase()
+      return matchesDepartment && (!keyword || searchable.includes(keyword))
+    }).sort((left, right) => {
+      if (sortOrder === "course") return left.courseCode.localeCompare(right.courseCode)
+      const age = (Date.parse(left.createdAt) || 0) - (Date.parse(right.createdAt) || 0)
+      return sortOrder === "newest" ? -age : age
+    })
+  }, [approvalRequests, searchTerm, departmentFilter, sortOrder])
 
   const oldestWaiting =
     useMemo(() => {
@@ -465,12 +446,13 @@ export default function DeptHeadApprovalPage() {
 
           if (isApproval) {
             message =
-              isDean
+              isDean || isDeanSecretary
                 ? "Syllabus approved successfully. This version is now the official current syllabus."
-                : "Department review completed. The syllabus has been forwarded to the Dean for final review."
+                : "Department review completed. The syllabus is now waiting for final approval."
           } else {
-  message = "Syllabus rejected. The instructor can review the feedback and start a revision."
-}
+            message =
+              "Syllabus returned for revision. The instructor can review the feedback and start a revision."
+          }
 
           setFeedback({
             type: "success",
@@ -486,570 +468,162 @@ export default function DeptHeadApprovalPage() {
   }
 
   if (!canAccess) {
-    return (
-      <div className="mx-auto max-w-2xl rounded-2xl border border-rose-200 bg-rose-50 p-6 text-rose-700">
-        This page is available only to the Department Head or Dean.
-      </div>
-    )
+    return <div role="alert" className="rounded-2xl border border-rose-200 bg-rose-50 p-6 text-rose-700">
+      This page is available only to the Department Head, Dean Secretary, or Dean.
+    </div>
   }
 
+  const requestActions = (item: ApprovalRequestItem) => <div className="flex flex-wrap gap-2 md:justify-end">
+    <Button variant="outline" size="sm" onClick={() => navigate(`${detailBasePath}/${item.syllabusId}`)}>
+      <Eye className="size-3.5" />Syllabus
+    </Button>
+    <Button variant="outline" size="sm" className="border-teal-200 bg-teal-50 text-[#007d84] hover:bg-teal-100"
+      onClick={() => setReviewDetails(item)} aria-label={`View review for ${item.courseCode}`}>
+      <History className="size-3.5" />View Review
+    </Button>
+    <Button size="sm" className="bg-[#007d84] text-white hover:bg-[#006d73]" disabled={reviewMutation.isPending}
+      onClick={() => openReviewDialog(item, "APPROVED")}>
+      <CheckCircle2 className="size-3.5" />{isDean || isDeanSecretary ? "Final Approve" : "Approve & Forward"}
+    </Button>
+    <Button variant="outline" size="sm" className="border-rose-200 text-rose-700 hover:bg-rose-50"
+      disabled={reviewMutation.isPending} onClick={() => openReviewDialog(item, "REJECTED")}>
+      <XCircle className="size-3.5" />Return for Revision
+    </Button>
+  </div>
+
+  const pendingLabel = (item: ApprovalRequestItem) => <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-800">
+    <Clock3 className="mr-1 size-3" />{item.status === "PENDING" ? "Pending" : item.status.replaceAll("_", " ")}
+  </Badge>
+
   return (
-    <div className="mx-auto w-full max-w-[1500px] space-y-6 pb-10">
-      <section className="relative overflow-hidden rounded-2xl border border-[#d7e5e8] bg-white shadow-sm">
-        <div className="absolute inset-x-0 top-0 h-[3px] bg-gradient-to-r from-[#007d84] via-[#15949a] to-[#f0a72f]" />
-
-        <div className="flex flex-col gap-5 px-6 py-6 lg:flex-row lg:items-center lg:justify-between">
+    <div className="mx-auto w-full max-w-[1500px] space-y-5 pb-10">
+      <section className="relative overflow-hidden rounded-2xl border border-[#cfe1e4] bg-white shadow-sm">
+        <div className="absolute inset-x-0 top-0 h-1 bg-[#007d84]" />
+        <div className="flex flex-col gap-5 p-5 sm:p-7 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <div className="flex items-center gap-2 text-[#007d84]">
-              <ShieldCheck className="size-5" />
-
-              <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#708894]">
-                {pageEyebrow}
-              </span>
-            </div>
-
-            <h1 className="mt-2 text-[28px] font-bold tracking-[-0.5px] text-[#17343d]">
-              {pageTitle}
-            </h1>
-
-            <p className="mt-1 max-w-4xl text-sm leading-6 text-[#687f89]">
-              {pageDescription}
-            </p>
+            <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-[#007d84]"><ShieldCheck className="size-4" />{pageEyebrow}</p>
+            <h1 className="mt-3 text-2xl font-bold tracking-tight text-[#17343d] sm:text-3xl">{pageTitle}</h1>
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500">{pageDescription}</p>
           </div>
-
           <div className="flex flex-wrap gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() =>
-                navigate(
-                  `${detailBasePath}?history=1`,
-                )
-              }
-            >
-              <History className="size-4" />
-              Review History
-            </Button>
-
-            <Button
-              type="button"
-              variant="outline"
-              disabled={isFetching}
-              onClick={() =>
-                void refetch()
-              }
-            >
-              {isFetching ? (
-                <LoaderCircle className="size-4 animate-spin" />
-              ) : (
-                <RefreshCw className="size-4" />
-              )}
-              Refresh Queue
-            </Button>
+            <Button variant="outline" onClick={() => navigate(`${detailBasePath}?history=1`)}><History className="size-4" />Review History</Button>
+            <Button variant="outline" disabled={isFetching} onClick={() => void refetch()}><RefreshCw className={`size-4 ${isFetching ? "animate-spin" : ""}`} />Refresh Queue</Button>
           </div>
         </div>
+        <ol aria-label="Syllabus approval workflow" className="grid gap-3 border-t border-[#e1ecee] bg-[#f4faf9] p-5 sm:grid-cols-3 sm:px-7">
+          {[
+            ["01", "Instructor submission", "A syllabus version is submitted for review."],
+            ["02", "Department review", "Department Head reviews and forwards."],
+            ["03", "Shared final review", "Dean or Dean Secretary makes the final decision."],
+          ].map(([number, title, description]) => <li key={number} className="flex gap-3">
+            <span className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-teal-200 bg-white text-xs font-bold text-[#007d84]">{number}</span>
+            <div><p className="text-xs font-semibold text-[#17343d]">{title}</p><p className="mt-1 text-xs leading-5 text-slate-500">{description}</p></div>
+          </li>)}
+        </ol>
       </section>
 
-      <section className="rounded-xl border border-[#cfe1e4] bg-[#f7fbfb] px-5 py-4 shadow-sm">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex items-start gap-3">
-            <ShieldCheck className="mt-0.5 size-5 shrink-0 text-[#007d84]" />
-
-            <div>
-              <p className="font-semibold text-[#17343d]">
-                Two-level syllabus approval workflow
-              </p>
-
-              <p className="mt-1 text-xs leading-5 text-slate-600">
-                Instructor submission
-                {" → "}
-                Department review
-                {" → "}
-                Dean final review.
-                Returning a syllabus for revision requires reviewer feedback and preserves the reviewed version in history.
-              </p>
-            </div>
-          </div>
-
-          <div className="hidden items-center gap-2 text-[11px] lg:flex">
-            <span className="rounded-md bg-slate-100 px-2.5 py-1.5 text-slate-600">
-              Instructor submitted
-            </span>
-
-            <ArrowRight className="size-3.5 text-slate-400" />
-
-            <span
-              className={
-                isDeptHead
-                  ? "rounded-md bg-[#eaf7f7] px-2.5 py-1.5 font-semibold text-[#007d84]"
-                  : "rounded-md bg-slate-100 px-2.5 py-1.5 text-slate-600"
-              }
-            >
-              Department review
-            </span>
-
-            <ArrowRight className="size-3.5 text-slate-400" />
-
-            <span
-              className={
-                isDean
-                  ? "rounded-md bg-blue-50 px-2.5 py-1.5 font-semibold text-blue-700"
-                  : "rounded-md bg-slate-100 px-2.5 py-1.5 text-slate-600"
-              }
-            >
-              Dean review
-            </span>
-          </div>
-        </div>
+      <section className="grid gap-3 sm:grid-cols-3">
+        <MetricCard label="Pending requests" value={isLoading || isError ? "—" : approvalRequests.length}
+          description="Syllabuses awaiting a decision" tone="info" icon={<Inbox className="size-5" />} />
+        <MetricCard label="Your review authority" value={isDeptHead ? "Department Head" : isDeanSecretary ? "Dean Secretary" : "Dean"}
+          description={isDeptHead ? "Department academic review" : "Final academic approval"} tone="success" icon={<ShieldCheck className="size-5" />} />
+        <MetricCard label="Longest waiting" value={isLoading || isError ? "—" : oldestWaiting}
+          description="Time since this review request was received" tone="warning" icon={<Clock3 className="size-5" />} />
       </section>
 
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        <MetricCard
-          label="Pending Review"
-          value={
-            approvalRequests.length
-          }
-          description="Requests waiting at your current approval step"
-          tone={
-            approvalRequests.length
-              > 0
-              ? "warning"
-              : "success"
-          }
-          icon={
-            <Clock3 className="size-5" />
-          }
-        />
+      {feedback && <section role={feedback.type === "error" ? "alert" : "status"}
+        className={`flex items-start justify-between gap-4 rounded-xl border px-4 py-3 text-sm ${feedback.type === "success" ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-rose-200 bg-rose-50 text-rose-800"}`}>
+        <div className="flex gap-2">{feedback.type === "success" ? <CheckCircle2 className="mt-0.5 size-4 shrink-0" /> : <XCircle className="mt-0.5 size-4 shrink-0" />}<span>{feedback.message}</span></div>
+        <button type="button" aria-label="Dismiss review feedback" onClick={() => setFeedback(null)} className="rounded p-1 hover:bg-white/60"><X className="size-4" /></button>
+      </section>}
 
-        <MetricCard
-          label="Current Review Level"
-          value={
-            isDean
-              ? "Dean"
-              : "Department Head"
-          }
-          description={
-            isDean
-              ? "Final academic decision"
-              : "Department decision before Dean"
-          }
-          tone="info"
-          icon={
-            <ShieldCheck className="size-5" />
-          }
-        />
-
-        <MetricCard
-          label="Oldest Waiting"
-          value={oldestWaiting}
-          description="Elapsed time for the oldest request in this queue"
-          tone={
-            approvalRequests.length
-              > 0
-              ? "warning"
-              : "success"
-          }
-          icon={
-            <Clock3 className="size-5" />
-          }
-        />
-      </section>
-
-      {feedback && (
-        <section
-          className={
-            feedback.type
-              === "success"
-              ? "flex items-start justify-between gap-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"
-              : "flex items-start justify-between gap-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800"
-          }
-        >
-          <div className="flex gap-2">
-            {feedback.type
-              === "success" ? (
-                <CheckCircle2 className="mt-0.5 size-4 shrink-0" />
-              ) : (
-                <XCircle className="mt-0.5 size-4 shrink-0" />
-              )}
-
-            <span>
-              {feedback.message}
-            </span>
+      <section aria-busy={isFetching} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="space-y-4 border-b border-slate-100 p-5">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div><h2 className="font-bold text-[#17343d]">Syllabuses awaiting review</h2>
+              <p className="mt-1 text-xs text-slate-500">Open the syllabus or inspect its review trail before recording your decision.</p></div>
+            {!isLoading && !isError && <Badge variant="outline" className="text-slate-500">{filteredRequests.length} of {approvalRequests.length} requests</Badge>}
           </div>
-
-          <button
-            type="button"
-            aria-label="Close notification"
-            onClick={() =>
-              setFeedback(null)
-            }
-            className="opacity-70 transition hover:opacity-100"
-          >
-            <X className="size-4" />
-          </button>
-        </section>
-      )}
-
-      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div className="flex flex-col gap-4 border-b border-slate-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="font-bold text-[#17343d]">
-              Review Queue
-            </h2>
-
-            <p className="mt-1 text-xs text-slate-500">
-              Only pending requests assigned to your authorized review step and Managed Major scope are shown.
-            </p>
+          <div className="grid gap-3 md:grid-cols-[1fr_220px_180px]">
+            <div className="relative"><Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+              <Input aria-label="Search review queue" value={searchTerm} onChange={event => setSearchTerm(event.target.value)}
+                placeholder="Search course, instructor, program, version…" className="h-10 pl-9" /></div>
+            <select aria-label="Filter review queue by department" value={departmentFilter} onChange={event => setDepartmentFilter(event.target.value)}
+              className="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-700 focus:ring-2 focus:ring-[#007d84]/20">
+              <option value="all">All departments</option>
+              {[...new Set(approvalRequests.map(item => item.departmentCode).filter((value): value is string => Boolean(value)))].sort()
+                .map(value => <option key={value} value={value}>{value}</option>)}
+            </select>
+            <select aria-label="Sort review queue" value={sortOrder} onChange={event => setSortOrder(event.target.value)}
+              className="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-700 focus:ring-2 focus:ring-[#007d84]/20">
+              <option value="oldest">Oldest received first</option><option value="newest">Newest received first</option><option value="course">Course code A–Z</option>
+            </select>
           </div>
-
-          <div className="relative w-full sm:max-w-[340px]">
-            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
-
-            <Input
-              value={searchTerm}
-              onChange={(event) =>
-                setSearchTerm(
-                  event.target.value,
-                )
-              }
-              placeholder="Search course, version, submitter..."
-              className="h-9 pl-9"
-            />
-          </div>
+          {(searchTerm || departmentFilter !== "all") && <Button size="sm" variant="ghost" className="text-[#007d84]"
+            onClick={() => { setSearchTerm(""); setDepartmentFilter("all") }}><X className="size-3.5" />Clear filters</Button>}
         </div>
 
-        <div className="overflow-x-auto">
-          <Table className="min-w-[1450px]">
-            <TableHeader className="bg-slate-50/80">
-              <TableRow>
-                <TableHead className="min-w-[280px]">
-                  Course
-                </TableHead>
-
-                <TableHead className="w-[120px]">
-                  Version
-                </TableHead>
-
-                <TableHead className="min-w-[190px]">
-                  Program / Cohort
-                </TableHead>
-
-                <TableHead className="min-w-[150px]">
-                  Department
-                </TableHead>
-
-                <TableHead className="min-w-[170px]">
-                  Instructor
-                </TableHead>
-
-                <TableHead className="min-w-[170px]">
-                  Submitted At
-                </TableHead>
-
-                <TableHead className="w-[100px]">
-                  Waiting
-                </TableHead>
-
-                <TableHead className="min-w-[190px]">
-                  Workflow
-                </TableHead>
-
-                <TableHead className="min-w-[320px] text-right">
-                  Actions
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-
-            <TableBody>
-              {isLoading ? (
-                <TableRow>
-                  <TableCell
-                    colSpan={9}
-                    className="h-36 text-center text-slate-500"
-                  >
-                    <div className="flex items-center justify-center gap-2">
-                      <LoaderCircle className="size-4 animate-spin" />
-                      Loading approval queue...
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ) : isError ? (
-                <TableRow>
-                  <TableCell
-                    colSpan={9}
-                    className="h-40 text-center"
-                  >
-                    <div className="mx-auto max-w-lg">
-                      <p className="font-semibold text-rose-700">
-                        Unable to load approval requests
-                      </p>
-
-                      <p className="mt-1 text-sm leading-6 text-slate-500">
-                        {getErrorMessage(
-                          error,
-                        )}
-                      </p>
-
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="mt-3"
-                        onClick={() =>
-                          void refetch()
-                        }
-                      >
-                        <RefreshCw className="size-3.5" />
-                        Try Again
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ) : filteredRequests.length
-                === 0 ? (
-                <TableRow>
-                  <TableCell
-                    colSpan={9}
-                    className="h-48 text-center"
-                  >
-                    <div className="mx-auto flex max-w-md flex-col items-center">
-                      <span className="flex size-12 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
-                        <Inbox className="size-5" />
-                      </span>
-
-                      <p className="mt-3 font-semibold text-slate-800">
-                        {searchTerm
-                          ? "No requests match your search."
-                          : "No syllabus is waiting for your review."}
-                      </p>
-
-                      <p className="mt-1 text-xs leading-5 text-slate-500">
-                        {searchTerm
-                          ? "Clear the search to view all pending requests."
-                          : isDean
-                            ? "New requests will appear after a Department Head approves a submitted syllabus."
-                            : "New requests will appear after an instructor submits a syllabus in your department."}
-                      </p>
-
-                      {searchTerm && (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="mt-3"
-                          onClick={() =>
-                            setSearchTerm("")
-                          }
-                        >
-                          Clear Search
-                        </Button>
-                      )}
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ) : (
-                filteredRequests.map(
-                  (item) => (
-                    <TableRow
-                      key={item.id}
-                      className="align-top hover:bg-[#f8fbfb]"
-                    >
-                      <TableCell>
-                        <div>
-                          <p className="font-mono text-xs font-bold text-[#007d84]">
-                            {item.courseCode}
-                          </p>
-
-                          <p className="mt-1 font-semibold text-slate-800">
-                            {item.courseName}
-                          </p>
-                        </div>
-                      </TableCell>
-
-                      <TableCell>
-                        <Badge
-                          variant="outline"
-                          className="border-slate-200 bg-white text-slate-700"
-                        >
-                          {formatVersionLabel(item.versionNumber, item.versionLabel)}
-                        </Badge>
-                      </TableCell>
-
-                      <TableCell>
-                        <p className="text-sm font-semibold text-slate-700">{item.programCode || "—"}</p>
-                        <p className="mt-0.5 text-xs text-slate-500">{item.cohortName || "—"} · {item.semester || "—"}</p>
-                      </TableCell>
-
-                      <TableCell>
-                        <p className="text-sm font-semibold text-slate-700">{item.departmentCode || "—"}</p>
-                        <p className="mt-0.5 text-xs text-slate-500">{item.departmentName || "—"}</p>
-                      </TableCell>
-
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <span className="flex size-7 items-center justify-center rounded-full bg-slate-100 text-slate-600">
-                            <UserRound className="size-3.5" />
-                          </span>
-
-                          <span className="text-sm font-medium text-slate-700">
-                            {(item.instructorUsername || item.requestedByUsername)
-                              || "—"}
-                          </span>
-                        </div>
-                      </TableCell>
-
-                      <TableCell className="text-sm text-slate-600">
-                        {formatDateTime(
-                          item.submittedAt
-                          ?? item.createdAt,
-                        )}
-                      </TableCell>
-
-                      <TableCell>
-                        <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-700">
-                          <Clock3 className="size-3.5" />
-                          {getWaitingTime(
-                            item.createdAt
-                            ?? item.submittedAt,
-                          )}
-                        </span>
-                      </TableCell>
-
-                      <TableCell>
-                        <div>
-                          <p className="text-sm font-semibold text-slate-700">
-                            {isDean
-                              ? "Dean Final Review"
-                              : "Department Review"}
-                          </p>
-
-                          <p className="mt-0.5 text-[10px] text-slate-400">
-                            {isDean
-                              ? `Forwarded by ${item.requestedByUsername || "Department Head"}`
-                              : "Approve to forward"}
-                          </p>
-                        </div>
-                      </TableCell>
-
-                      <TableCell>
-                        <div className="flex flex-wrap justify-end gap-2">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() =>
-                              navigate(
-                                `${detailBasePath}/${item.syllabusId}`,
-                              )
-                            }
-                          >
-                            <Eye className="size-3.5" />
-                            View
-                          </Button>
-
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() =>
-                              navigate(
-                                `${detailBasePath}/${item.syllabusId}#approval-history`,
-                              )
-                            }
-                          >
-                            <History className="size-3.5" />
-                            History
-                          </Button>
-
-                          <Button
-                            type="button"
-                            size="sm"
-                            className="bg-emerald-600 text-white hover:bg-emerald-700"
-                            disabled={
-                              reviewMutation.isPending
-                            }
-                            onClick={() =>
-                              openReviewDialog(
-                                item,
-                                "APPROVED",
-                              )
-                            }
-                          >
-                            <CheckCircle2 className="size-3.5" />
-                            {isDean
-                              ? "Final Approve"
-                              : "Approve & Forward"}
-                          </Button>
-
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            className="border-rose-200 text-rose-700 hover:bg-rose-50 hover:text-rose-800"
-                            disabled={
-                              reviewMutation.isPending
-                            }
-                            onClick={() =>
-                              openReviewDialog(
-                                item,
-                                "REJECTED",
-                              )
-                            }
-                          >
-                            <XCircle className="size-3.5" />
-                            Return for Revision
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ),
-                )
-              )}
-            </TableBody>
-          </Table>
-        </div>
+        {isLoading ? <div role="status" className="space-y-4 p-6">
+          <p className="flex items-center gap-2 text-sm text-slate-500"><LoaderCircle className="size-4 animate-spin" />Loading review queue…</p>
+          {[1, 2, 3].map(value => <div key={value} aria-hidden="true" className="h-24 animate-pulse rounded-xl bg-slate-50" />)}
+        </div> : isError ? <div role="alert" className="m-5 rounded-xl border border-rose-200 bg-rose-50 p-5">
+          <p className="font-semibold text-rose-800">Unable to load approval requests</p><p className="mt-2 text-sm text-rose-700">{getErrorMessage(error)}</p>
+          <Button size="sm" variant="outline" className="mt-4" onClick={() => void refetch()}><RefreshCw className="size-4" />Try again</Button>
+        </div> : !filteredRequests.length ? <div className="flex flex-col items-center px-5 py-14 text-center">
+          <span className="rounded-2xl bg-[#eef7f5] p-4 text-[#007d84]"><Inbox className="size-7" /></span>
+          <h3 className="mt-4 font-semibold text-[#17343d]">{searchTerm || departmentFilter !== "all" ? "No requests match your filters" : "Your review queue is up to date"}</h3>
+          <p className="mt-2 max-w-md text-sm leading-6 text-slate-500">{searchTerm || departmentFilter !== "all"
+            ? "Adjust the search or department to see more requests."
+            : isDeptHead ? "New requests will appear when an instructor submits a syllabus in your managed major."
+              : "New requests will appear after Department Head approval."}</p>
+        </div> : <>
+          <div className="divide-y divide-slate-100 md:hidden">
+            {filteredRequests.map(item => <article key={item.id} className="space-y-4 p-5">
+              <div className="flex items-start justify-between gap-3"><div><p className="font-mono text-xs font-bold text-[#007d84]">{item.courseCode}</p>
+                <h3 className="mt-1 font-semibold text-[#17343d]">{item.courseName}</h3></div>{pendingLabel(item)}</div>
+              <dl className="grid grid-cols-2 gap-3 text-xs">
+                <div><dt className="text-slate-500">Version</dt><dd className="mt-1 font-semibold text-slate-700">{formatVersionLabel(item.versionNumber, item.versionLabel)}</dd></div>
+                <div><dt className="text-slate-500">Instructor</dt><dd className="mt-1 break-words font-semibold text-slate-700">{item.instructorUsername || "Not recorded"}</dd></div>
+                <div><dt className="text-slate-500">Program / Cohort</dt><dd className="mt-1 text-slate-700">{item.programCode || "—"} · {item.cohortName || "—"}</dd></div>
+                <div><dt className="text-slate-500">Received</dt><dd className="mt-1 text-slate-700">{formatDateTime(item.createdAt)} · {getWaitingTime(item.createdAt)}</dd></div>
+              </dl>
+              <p className="text-xs text-slate-500">Review authority: {isDeptHead ? "Department Head" : "Dean / Dean Secretary"}</p>
+              {requestActions(item)}
+            </article>)}
+          </div>
+          <div className="hidden overflow-x-auto md:block">
+            <Table className="min-w-[1020px]">
+              <TableHeader className="bg-slate-50"><TableRow>
+                <TableHead className="min-w-[240px]">Course / Curriculum</TableHead><TableHead>Instructor</TableHead>
+                <TableHead>Version</TableHead><TableHead>Received</TableHead><TableHead>Status / Review authority</TableHead><TableHead className="min-w-[270px] text-right">Actions</TableHead>
+              </TableRow></TableHeader>
+              <TableBody>{filteredRequests.map(item => <TableRow key={item.id} className="align-top hover:bg-[#f7fbfa]">
+                <TableCell className="py-5"><p className="font-mono text-xs font-bold text-[#007d84]">{item.courseCode}</p>
+                  <p className="mt-1 max-w-xs font-semibold text-[#17343d]">{item.courseName}</p>
+                  <p className="mt-2 text-xs text-slate-500">{item.programCode || "—"} · {item.cohortName || "—"} · {item.semester || "—"}</p>
+                  <p className="mt-1 text-xs text-slate-400">{item.departmentName || item.departmentCode || "Department not recorded"}</p></TableCell>
+                <TableCell className="py-5"><div className="flex items-center gap-2"><UserRound className="size-4 shrink-0 text-slate-400" /><span className="break-words text-sm text-slate-700">{item.instructorUsername || "Not recorded"}</span></div>
+                  <p className="mt-2 text-xs text-slate-400">Sent by {item.requestedByUsername || "Not recorded"}</p></TableCell>
+                <TableCell className="py-5"><Badge variant="outline">{formatVersionLabel(item.versionNumber, item.versionLabel)}</Badge></TableCell>
+                <TableCell className="py-5"><p className="whitespace-nowrap text-xs text-slate-600">{formatDateTime(item.createdAt)}</p>
+                  <p className="mt-2 flex items-center gap-1 text-xs text-amber-700"><Clock3 className="size-3.5" />Waiting {getWaitingTime(item.createdAt)}</p></TableCell>
+                <TableCell className="py-5">{pendingLabel(item)}<p className="mt-2 text-xs text-slate-500">{isDeptHead ? "Department Head" : "Dean / Dean Secretary"}</p>
+                  {item.reviewedByUsername && <p className="mt-1 text-xs text-slate-500">Reviewed by {item.reviewedByUsername}</p>}</TableCell>
+                <TableCell className="py-5">{requestActions(item)}</TableCell>
+              </TableRow>)}</TableBody>
+            </Table>
+          </div>
+        </>}
       </section>
 
-      {reviewDialog && (
-        <ApprovalReviewDialog
-          key={
-            `${reviewDialog.item.id}`
-            + `-${reviewDialog.decision}`
-          }
-          open
-          item={
-            reviewDialog.item
-          }
-          decision={
-            reviewDialog.decision
-          }
-          isDean={isDean}
-          isPending={
-            reviewMutation.isPending
-          }
-          errorMessage={
-            reviewMutation.isError
-              ? getErrorMessage(
-                  reviewMutation.error,
-                )
-              : null
-          }
-          onOpenChange={(
-            open,
-          ) => {
-            if (!open) {
-              setReviewDialog(
-                null,
-              )
-
-              reviewMutation.reset()
-            }
-          }}
-          onConfirm={
-            handleReviewConfirm
-          }
-        />
-      )}
+      {reviewDetails && <SyllabusReviewDetailsDialog
+        syllabus={{ id: reviewDetails.syllabusId, courseCode: reviewDetails.courseCode, courseName: reviewDetails.courseName,
+          versionNumber: reviewDetails.versionNumber, versionLabel: reviewDetails.versionLabel }}
+        syllabusPath={`${detailBasePath}/${reviewDetails.syllabusId}`} onClose={() => setReviewDetails(null)} />}
+      {reviewDialog && <ApprovalReviewDialog key={`${reviewDialog.item.id}-${reviewDialog.decision}`} open
+        item={reviewDialog.item} decision={reviewDialog.decision} isDean={isDean} isDeanSecretary={isDeanSecretary}
+        isPending={reviewMutation.isPending} errorMessage={reviewMutation.isError ? getErrorMessage(reviewMutation.error) : null}
+        onOpenChange={open => { if (!open) { setReviewDialog(null); reviewMutation.reset() } }} onConfirm={handleReviewConfirm} />}
     </div>
   )
 }
@@ -1066,9 +640,9 @@ function MetricCard({
   description: string
   icon: ReactNode
   tone:
-    | "warning"
-    | "info"
-    | "success"
+  | "warning"
+  | "info"
+  | "success"
 }) {
   const toneClass =
     tone === "warning"

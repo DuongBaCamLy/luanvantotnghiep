@@ -23,6 +23,7 @@ export const APPROVAL_STATUS_LABELS: Record<ApprovalStatus, string> = {
 export const APPROVAL_STEP_LABELS: Record<ApprovalStep, string> = {
   STEP1_DEPT_HEAD: t("approval.step.departmentHead"),
   STEP2_PROG_COORDINATOR: t("approval.step.programCoordinator"),
+  STEP2_DEAN_SECRETARY: t("approval.step.deanSecretary"),
   STEP3_DEAN: t("approval.step.dean"),
 }
 

@@ -427,6 +427,7 @@ cohort =
         var head = UserAccount.builder().id(7).username("head").role(UserRole.DEPT_HEAD).build();
         var dean = UserAccount.builder().id(2).username("dean").role(UserRole.DEAN).build();
         when(userRepository.findByRoleAndIsActiveTrue(UserRole.DEAN)).thenReturn(List.of(dean));
+        when(userRepository.findByRoleAndIsActiveTrue(UserRole.DEAN_SECRETARY)).thenReturn(List.of());
         java.util.List<ApprovalRequest> approvals = new java.util.ArrayList<>();
         when(approvalRequestRepository.save(any(ApprovalRequest.class))).thenAnswer(call -> {
             ApprovalRequest saved = call.getArgument(0);
@@ -436,7 +437,8 @@ cohort =
         when(approvalRequestRepository.findById(any(Integer.class))).thenAnswer(call -> Optional.of(approvals.get((Integer)call.getArgument(0) - 1)));
         when(approvalRequestRepository.findBySyllabusIdOrderByCreatedAtDesc(50)).thenAnswer(call -> approvals);
         var reviewService = new com.scse.curriculum.approval.service.ApprovalRequestServiceImpl(
-                approvalRequestRepository, repository, userRepository, workflowNotificationService,
+                approvalRequestRepository, repository, userRepository,
+                org.mockito.Mockito.mock(jakarta.persistence.EntityManager.class), workflowNotificationService,
                 syllabusAccessService, service, courseProgramRepository, classSectionRepository, syllabusHistoryService);
 
         for (int revision = 1; revision <= 3; revision++) {

@@ -19,6 +19,8 @@ import java.util.regex.Pattern;
 public class SyllabusWordServiceImpl implements SyllabusWordService {
     private final SyllabusSourceSnapshotRepository snapshots;
     private final SyllabusService syllabuses;
+    private final com.scse.curriculum.syllabus.pdf.SyllabusPdfDataLoader exportData;
+    private final SyllabusWordRenderer renderer;
 
     public SyllabusWordResult original(Integer syllabusId) {
         SyllabusResponse syllabus=syllabuses.getById(syllabusId);
@@ -29,16 +31,8 @@ public class SyllabusWordServiceImpl implements SyllabusWordService {
 
     public SyllabusWordResult current(Integer syllabusId) {
         SyllabusResponse syllabus=syllabuses.getById(syllabusId);
-        var snapshot=snapshots.findBySyllabus_Id(syllabusId)
-                .orElseThrow(() -> new ResourceNotFoundException("This syllabus has no Word source template."));
-        try(XWPFDocument doc=new XWPFDocument(new ByteArrayInputStream(snapshot.getContent()));
-            ByteArrayOutputStream out=new ByteArrayOutputStream()) {
-            patchCourseCode(doc,syllabus.getCourseCode());
-            patchGeneralInfo(doc,syllabus);
-            patchClos(doc,syllabus.getClos());
-            doc.write(out); byte[] bytes=out.toByteArray();
-            return new SyllabusWordResult(bytes,filename(syllabus,"Current"),sha256(bytes));
-        } catch(IOException exception) { throw new IllegalStateException("Cannot export the current Word document",exception); }
+        byte[] bytes = renderer.render(exportData.load(syllabusId));
+        return new SyllabusWordResult(bytes,filename(syllabus,"Current"),sha256(bytes));
     }
 
     private void patchCourseCode(XWPFDocument doc,String code) {
@@ -81,7 +75,7 @@ public class SyllabusWordServiceImpl implements SyllabusWordService {
         else { runs.get(0).setText(value,0); for(int i=1;i<runs.size();i++) runs.get(i).setText("",0); }
     }
     private String filename(SyllabusResponse s,String variant) {
-        String raw="Syllabus_"+s.getCourseCode()+"_"+variant;
+        String raw="Syllabus_"+s.getCourseCode()+"_V"+s.getVersionNumber()+"_"+variant;
         return Normalizer.normalize(raw,Normalizer.Form.NFD).replaceAll("\\p{M}+","").replaceAll("[^A-Za-z0-9._-]+","_")+".docx";
     }
     private String ascii(String value){return Normalizer.normalize(value==null?"":value,Normalizer.Form.NFD).replaceAll("\\p{M}","");}

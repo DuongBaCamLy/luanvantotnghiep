@@ -44,7 +44,7 @@ type TopicDetail = {
 }
 
 type PlannedActivityDraft = {
-  week: number
+  week: number | ""
   topic: string
   clo: string
   assessments: string
@@ -144,14 +144,14 @@ const asRecord = (value: unknown): Record<string, unknown> =>
 
 const asText = (value: unknown) => typeof value === "string" ? value : ""
 
-const parseMatrix = (value: unknown) => Object.fromEntries(
+const parseMatrix = (value: unknown, preserveNumbers = false) => Object.fromEntries(
   Object.entries(asRecord(value)).map(([rowKey, row]) => [
     rowKey,
-    Object.fromEntries(Object.entries(asRecord(row)).map(([key, cell]) => [key, asText(cell)])),
+    Object.fromEntries(Object.entries(asRecord(row)).map(([key, cell]) => [key, preserveNumbers && typeof cell === "number" ? String(cell) : asText(cell)])),
   ]),
 ) as Record<string, Record<string, string>>
 
-const parseReadings = (value: unknown): ReadingDraft[] => Array.isArray(value)
+const parseReadings = (value: unknown, sourceFaithful = false): ReadingDraft[] => Array.isArray(value)
   ? value.map((item) => {
       if (typeof item === "string") return { title: item, author: "", publisher: "", year: "" }
       const source = asRecord(item)
@@ -160,7 +160,7 @@ const parseReadings = (value: unknown): ReadingDraft[] => Array.isArray(value)
         author: asText(source.author),
         publisher: asText(source.publisher),
         year: String(source.year ?? ""),
-        usageType: asText(source.usageType) || "REQUIRED",
+        usageType: asText(source.usageType) || (sourceFaithful ? "" : "REQUIRED"),
       }
     })
   : []
@@ -184,6 +184,7 @@ export const parseStandardSyllabusNotes = (raw?: string | null): StandardSyllabu
   try {
     const source = asRecord(JSON.parse(raw))
     const defaults = emptySupplemental()
+    const sourceFaithful = source.sourceFaithful2027 === true || source.sourceAlignmentPreserved === true || Array.isArray(source.sourceContentRows)
     const topicDetails = Object.fromEntries(
       Object.entries(asRecord(source.topicDetails)).map(([key, value]) => {
         const detail = asRecord(value)
@@ -207,13 +208,13 @@ export const parseStandardSyllabusNotes = (raw?: string | null): StandardSyllabu
       laboratoryCredits: asText(source.laboratoryCredits ?? source.creditsPractice),
       workloadStudentResponsibility: asText(source.workloadStudentResponsibility),
       ploCodes: Array.isArray(source.ploCodes) ? source.ploCodes.map(String).filter(Boolean) : defaults.ploCodes,
-      cloPloMatrix: parseMatrix(source.cloPloMatrix ?? source.loMatrix),
+      cloPloMatrix: parseMatrix(source.cloPloMatrix ?? source.loMatrix, sourceFaithful),
       topicDetails,
       plannedActivities: Array.isArray(source.plannedActivities)
         ? source.plannedActivities.map((item, index) => {
             const activity = asRecord(item)
             return {
-              week: Number(activity.week) || index + 1,
+              week: sourceFaithful && (activity.week == null || activity.week === "") ? "" : Number(activity.week) || index + 1,
               topic: asText(activity.topic),
               clo: asText(activity.clo),
               assessments: asText(activity.assessments),
@@ -222,10 +223,10 @@ export const parseStandardSyllabusNotes = (raw?: string | null): StandardSyllabu
             }
           })
         : [],
-      assessmentCloMatrix: parseMatrix(source.assessmentCloMatrix),
-      readings: parseReadings(source.readings ?? source.references),
-      assessmentPassNote: asText(source.assessmentPassNote) || defaults.assessmentPassNote,
-      contentNote: asText(source.contentNote) || defaults.contentNote,
+      assessmentCloMatrix: parseMatrix(source.assessmentCloMatrix, sourceFaithful),
+      readings: parseReadings(source.readings ?? source.references, sourceFaithful),
+      assessmentPassNote: asText(source.assessmentPassNote) || (sourceFaithful ? "" : defaults.assessmentPassNote),
+      contentNote: asText(source.contentNote) || (sourceFaithful ? "" : defaults.contentNote),
     }
   } catch {
     return { ...emptySupplemental(), internalNotes: raw }
@@ -490,6 +491,15 @@ export default function StandardSyllabusFormSections({
 
       <Section number={numbers.content} order={2} icon={FileText} title="Content" description="Nội dung giảng dạy, trọng số và mức độ: I — Introduce, T — Teach, U — Utilize." accent="blue">
         <Field label="Ghi chú trọng số / mức độ"><Input className={inputClass} value={supplemental.contentNote} onChange={(event) => patchSupplemental({ contentNote: event.target.value })} /></Field>
+        {Array.isArray(supplemental.sourceContentRows) && supplemental.sourceContentRows.length > 0 ? <>
+          <p className="text-xs text-slate-600">Source Content is kept independently from the weekly plan. Blank weeks and hours remain blank when saved.</p>
+          <Table minWidth="1000px"><thead><HeaderRow><Th>No.</Th><Th>Topic</Th><Th>Week</Th><Th>Teaching</Th><Th>Lab</Th><Th>Self-study</Th><Th>Weight</Th><Th>Level</Th></HeaderRow></thead><tbody>
+            {supplemental.sourceContentRows.map((value, index) => {
+              const row = asRecord(value)
+              return <tr key={`source-content-${index}`}><Td>{index + 1}</Td><Td>{readOnly ? asText(row.name) : <textarea aria-label={`Source Content ${index + 1}`} className={compactTextarea} value={asText(row.name)} onChange={(event) => patchSupplemental({ sourceContentRows: (supplemental.sourceContentRows as unknown[]).map((item, position) => position === index ? { ...asRecord(item), name: event.target.value } : item) })} />}</Td>{["weekNumber", "teachingHours", "labHours", "selfStudyHours", "weight", "level"].map((key) => <Td key={key}>{row[key] == null ? "" : String(row[key])}</Td>)}</tr>
+            })}
+          </tbody></Table>
+        </> : <>
         <Table minWidth="1180px"><thead><HeaderRow><Th className="w-16 text-center">No.</Th><Th>Topic</Th><Th className="w-24">Teaching</Th><Th className="w-24">Lab</Th><Th className="w-28">Self-study</Th><Th className="w-52">Mapped CLOs</Th><Th className="w-28">Weight</Th><Th className="w-40">Level</Th><Th className="w-14" /></HeaderRow></thead><tbody>
           {topics.map((topic, index) => {
             const detail = getTopicDetail(topic, index)
@@ -498,6 +508,7 @@ export default function StandardSyllabusFormSections({
         </tbody></Table>
         {topics.length === 0 && <Empty icon={FileText} text="No course content has been added." />}
         {!readOnly && <AddButton label="Add Content Row" onClick={addTopic} />}
+        </>}
       </Section>
 
       <Section number={numbers.matrix} order={4} icon={Grid3X3} title="Learning Outcomes Matrix (CLO × SLO)" description="Bấm vào từng ô để đổi mức đóng góp: trống → x → xx → xxx. Nhãn SLO cũng có thể chỉnh sửa." accent="violet">
@@ -508,8 +519,9 @@ export default function StandardSyllabusFormSections({
         <Table minWidth="720px"><thead><HeaderRow><Th>CLO / SLO</Th>{supplemental.ploCodes.map((code, index) => <Th key={`head-${index}`} className="text-center">{code || `SLO${index + 1}`}</Th>)}</HeaderRow></thead><tbody>{cloCodes.map((cloCode, cloIndex) => <tr key={`${cloCode}-${cloIndex}`}><Td className="bg-slate-50 font-mono text-xs font-bold text-[#007d84]">{cloCode}</Td>{supplemental.ploCodes.map((sloCode, sloIndex) => {
           const value = supplemental.cloPloMatrix[cloCode]?.[sloCode] ?? ""
           return <Td key={`${cloIndex}-${sloIndex}`} className="text-center"><button type="button" className={`mx-auto flex size-10 items-center justify-center rounded-lg border text-xs font-bold ${value ? "border-[#8bd0d3] bg-[#eaf8f8] text-[#007d84]" : "border-dashed text-slate-300"}`} onClick={() => {
-            const currentIndex = MATRIX_VALUES.indexOf(value.toLowerCase())
-            const next = MATRIX_VALUES[(currentIndex + 1) % MATRIX_VALUES.length]
+            const values = supplemental.sourceAlignmentPreserved === true && /^[1-4]$/.test(value) ? ["", "1", "2", "3", "4"] : MATRIX_VALUES
+            const currentIndex = values.indexOf(value.toLowerCase())
+            const next = values[(currentIndex + 1) % values.length]
             patchSupplemental({ cloPloMatrix: { ...supplemental.cloPloMatrix, [cloCode]: { ...supplemental.cloPloMatrix[cloCode], [sloCode]: next } } })
           }}>{value || "—"}</button></Td>
         })}</tr>)}</tbody></Table>
@@ -535,9 +547,11 @@ export default function StandardSyllabusFormSections({
           <div className="grid gap-4 lg:grid-cols-2"><Field label="Examination forms"><textarea className={`${textareaClass} min-h-28 text-sm`} value={examForms} onChange={(event) => onExamFormsChange(event.target.value)} placeholder="Short-answer questions, programming exercises..." /></Field><Field label="Study and examination requirements"><textarea className={`${textareaClass} min-h-28 text-sm`} value={examRequirements} onChange={(event) => onExamRequirementsChange(event.target.value)} placeholder="Attendance, participation, minimum score..." /></Field></div>
         </Subsection>
         <Subsection title="Reading list" eyebrow="References">
+          {typeof supplemental.sourceReadingList === "string" && supplemental.sourceReadingList ? <Field label="Source reading list"><textarea className={`${textareaClass} min-h-36`} value={supplemental.sourceReadingList} onChange={(event) => patchSupplemental({ sourceReadingList: event.target.value })} /></Field> : <>
           <div className="space-y-3">{supplemental.readings.map((reading, index) => <article key={`reading-${index}`} className="grid gap-3 rounded-xl border bg-slate-50/50 p-4 lg:grid-cols-[2fr_1fr_100px_40px]"><Field label="Title" required><Input className={inputClass} value={reading.title} onChange={(event) => patchSupplemental({ readings: updateAt(supplemental.readings, index, { title: event.target.value }) })} /></Field><Field label="Author"><Input className={inputClass} value={reading.author} onChange={(event) => patchSupplemental({ readings: updateAt(supplemental.readings, index, { author: event.target.value }) })} /></Field><Field label="Year"><Input className={inputClass} value={reading.year} onChange={(event) => patchSupplemental({ readings: updateAt(supplemental.readings, index, { year: event.target.value }) })} /></Field><div className="flex items-end">{!readOnly && <DeleteButton label={`Delete ${reading.title || `reading ${index + 1}`}`} onClick={() => patchSupplemental({ readings: supplemental.readings.filter((_, i) => i !== index) })} />}</div></article>)}</div>
           {supplemental.readings.length === 0 && <Empty icon={BookOpen} text="No reading resource has been added." />}
           {!readOnly && <AddButton label="Add Reading" onClick={() => patchSupplemental({ readings: [...supplemental.readings, { title: "", author: "", publisher: "", year: "", usageType: "SUPPLEMENTARY" }] })} />}
+          </>}
         </Subsection>
         <Subsection title="Revision information" eyebrow="Revision"><div className="grid gap-4 lg:grid-cols-[220px_1fr]"><Field label="Date revised"><Input type="date" className={inputClass} value={supplemental.dateRevised} onChange={(event) => patchSupplemental({ dateRevised: event.target.value })} /></Field><Field label="Revision / reviewer notes"><textarea className={compactTextarea} value={supplemental.internalNotes} onChange={(event) => patchSupplemental({ internalNotes: event.target.value })} /></Field></div></Subsection>
       </Section>

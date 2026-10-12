@@ -192,7 +192,7 @@ export default function DeptHeadDashboardPage() {
               }
             >
               <BookOpen className="size-4" />
-              Managed Courses
+              Assign Teaching Course
             </Button>
 
             <Button
@@ -211,17 +211,7 @@ export default function DeptHeadDashboardPage() {
       </Card>
 
       {/* KPI */}
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <MetricCard
-          label="Managed Courses"
-          value={summary.total}
-          description="Courses in your managed Major"
-          icon={
-            <BookOpen className="size-5" />
-          }
-          iconClass="bg-slate-100 text-slate-700"
-        />
-
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         <MetricCard
           label="Pending Review"
           value={summary.pending}

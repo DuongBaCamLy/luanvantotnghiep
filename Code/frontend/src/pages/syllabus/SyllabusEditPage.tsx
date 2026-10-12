@@ -12,6 +12,8 @@ import { useLocation, useNavigate, useParams } from "react-router-dom"
 import { toast } from "sonner"
 
 import SyllabusForm from "@/components/syllabus/SyllabusForm"
+import New2027SyllabusForm from "@/components/syllabus/New2027SyllabusForm"
+import { isNew2027Syllabus, new2027RelationPayload } from "@/lib/new2027SyllabusDraft"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -181,7 +183,7 @@ export default function SyllabusEditPage() {
       setSynchronizingRelations(true)
       const saved = await updateMutation.mutateAsync({ id: syllabusId, data: payload })
 
-      await syncStandardSyllabusRelations(saved.id, payload)
+      await syncStandardSyllabusRelations(saved.id, isNew2027Syllabus(data) ? new2027RelationPayload(data, payload) : payload)
 
       toast.success("Syllabus Draft and all linked form data were saved successfully.")
       navigate(basePath)
@@ -254,7 +256,14 @@ export default function SyllabusEditPage() {
         </AlertDescription>
       </Alert>
 
-      <SyllabusForm
+      {isNew2027Syllabus(data) ? <New2027SyllabusForm
+        key={`${data.id}:${data.updatedAt}`}
+        syllabus={data}
+        initialData={initialData!}
+        onSubmit={handleUpdate}
+        loading={updateMutation.isPending || synchronizingRelations}
+        lockAssignmentContext={role === "INSTRUCTOR"}
+      /> : <SyllabusForm
         key={`${data.id}:${data.updatedAt}`}
         initialData={effectiveInitialData}
         onSubmit={handleUpdate}
@@ -269,7 +278,7 @@ export default function SyllabusEditPage() {
           major: curriculumMajor,
           cohort: data.cohortName,
         } : undefined}
-      />
+      />}
 
     </div>
   )

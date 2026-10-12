@@ -23,6 +23,21 @@ public class AuditLogServiceImpl implements AuditLogService {
 
     @Override
     @Transactional(readOnly = true)
+    public com.scse.curriculum.auditlog.dto.AuditLogPageResponse getPage(String keyword,
+            com.scse.curriculum.auditlog.entity.AuditAction action, int page, int size) {
+        String q = keyword == null ? "" : keyword.trim().toLowerCase(java.util.Locale.ROOT);
+        String pattern = "%" + q.replace("!", "!!").replace("%", "!%").replace("_", "!_") + "%";
+        var result = repository.searchPage(pattern, action, PageRequest.of(Math.max(0, page),
+                Math.max(1, Math.min(100, size)), org.springframework.data.domain.Sort.by(
+                        org.springframework.data.domain.Sort.Order.desc("changedAt"),
+                        org.springframework.data.domain.Sort.Order.desc("id"))));
+        return new com.scse.curriculum.auditlog.dto.AuditLogPageResponse(
+                result.getContent().stream().map(this::map).toList(), result.getNumber(),
+                result.getSize(), result.getTotalElements(), result.getTotalPages());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<AuditLogResponse> getAll() {
         return repository.findAll().stream().map(this::map).toList();
     }
@@ -38,17 +53,20 @@ public class AuditLogServiceImpl implements AuditLogService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public AuditLogResponse getById(Long id) {
         return map(repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Audit log not found")));
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<AuditLogResponse> getByTableName(String tableName) {
         return repository.findByTableNameOrderByChangedAtDesc(tableName).stream().map(this::map).toList();
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<AuditLogResponse> search(String keyword) {
         String q = keyword == null ? "" : keyword.trim();
         return repository.findByTableNameContainingIgnoreCaseOrChangedBy_UsernameContainingIgnoreCase(q, q)

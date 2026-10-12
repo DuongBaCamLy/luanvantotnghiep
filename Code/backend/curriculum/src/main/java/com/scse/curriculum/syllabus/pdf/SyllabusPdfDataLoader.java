@@ -37,6 +37,9 @@ import java.util.Set;
 @Component
 public class SyllabusPdfDataLoader {
 
+    private static final com.fasterxml.jackson.databind.ObjectMapper EXPORT_NOTES =
+            new com.fasterxml.jackson.databind.ObjectMapper();
+
     private final SyllabusRepository syllabusRepository;
     private final SyllabusAccessService syllabusAccessService;
     private final ClassSectionRepository classSectionRepository;
@@ -208,6 +211,7 @@ this.targetTemplateProfileResolver = targetTemplateProfileResolver;
                 .orElse(syllabus.getSemester());
 
         String courseCode = course == null ? null : course.getCourseCode();
+        var topicSupplement = readTopicSupplement(syllabus.getNotes());
 CourseProgram syllabusCourseProgram = courseProgramRepository
         .findBySyllabus_Id(syllabus.getId())
         .stream()
@@ -256,7 +260,9 @@ String targetTemplateProfile = targetTemplateProfileResolver.resolve(
                 syllabus.getApprovedAt(),
                 syllabus.getUpdatedAt(),
                 syllabus.getChangeSummary(),
-                syllabus.getNotes(),
+                com.scse.curriculum.syllabus.template.Ds2027ReadingNotes.forDisplay(
+                        com.scse.curriculum.syllabus.template.Ds2027RubricNotes.forDisplay(
+                                syllabus.getNotes(), courseCode, targetTemplateProfile), courseCode, targetTemplateProfile),
                 clos.stream().map(item -> new SyllabusPdfDocument.CloRow(
                         item.getId(),
                         item.getCode(),
@@ -280,15 +286,17 @@ String targetTemplateProfile = targetTemplateProfileResolver.resolve(
                         item.getTeachingMethod(),
                         item.getLearningActivity(),
                         item.getNotes(),
-                        new ArrayList<>(topicCloCodes.getOrDefault(item.getId(), Set.of())))).toList(),
+                        new ArrayList<>(topicCloCodes.getOrDefault(item.getId(), Set.of())),
+                        exportSupplement(item.getAssessments(), topicSupplement, topics.indexOf(item), "assessments"),
+                        exportSupplement(item.getResources(), topicSupplement, topics.indexOf(item), "resources"))).toList(),
                 assessments.stream().map(item -> new SyllabusPdfDocument.AssessmentRow(
                         item.getId(),
                         item.getName(),
                         item.getNameVn(),
                         item.getAssessmentType(),
-                        item.getWeightPercent(),
-                        item.getMinScore(),
-                        item.getMaxScore(),
+                        com.scse.curriculum.syllabus.template.SourceAssessmentValues.visible(syllabus.getNotes(),item.getOrderIndex(),item.getName(),"weightPercent",item.getWeightPercent()),
+                        com.scse.curriculum.syllabus.template.SourceAssessmentValues.visible(syllabus.getNotes(),item.getOrderIndex(),item.getName(),"minScore",item.getMinScore()),
+                        com.scse.curriculum.syllabus.template.SourceAssessmentValues.visible(syllabus.getNotes(),item.getOrderIndex(),item.getName(),"maxScore",item.getMaxScore()),
                         item.getOrderIndex(),
                         assessmentCloRows.getOrDefault(item.getId(), List.of()))).toList(),
                 syllabusBooks.stream()
@@ -309,6 +317,24 @@ String targetTemplateProfile = targetTemplateProfileResolver.resolve(
                                         : item.getBook().getBookType().name()))
                         .toList());
     }
+    private com.fasterxml.jackson.databind.JsonNode readTopicSupplement(String notes) {
+        if (notes == null || notes.isBlank()) return null;
+        try {
+            return EXPORT_NOTES.readTree(notes).path("topicDetails");
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
+
+    private String exportSupplement(String value, com.fasterxml.jackson.databind.JsonNode supplement,
+                                    int index, String field) {
+        // Explicit empty values are edits, not an invitation to restore old import data.
+        if (value != null) return value;
+        if (supplement == null) return "";
+        var detail = supplement.path(String.valueOf(index)).path(field);
+        return detail.isTextual() ? detail.asText() : "";
+    }
+
     /**
      * Old seed data used "Course Code" (and occasionally the course code itself)
      * as a placeholder in unrelated Module Handbook fields. An official PDF must

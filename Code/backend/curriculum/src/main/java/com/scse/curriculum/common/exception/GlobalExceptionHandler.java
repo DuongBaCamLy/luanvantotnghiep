@@ -10,6 +10,7 @@ import org.springframework.http.ResponseEntity;
 import com.scse.curriculum.common.security.UnsafeInputException;
 import com.scse.curriculum.syllabus.dto.SubmissionValidationResponse;
 import com.scse.curriculum.syllabus.exception.SyllabusSubmissionValidationException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -17,6 +18,12 @@ import java.util.Map;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    @ExceptionHandler(NoResourceFoundException.class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    public Map<String, String> handleNoResourceFound(NoResourceFoundException ex) {
+        return Map.of("message", "Resource not found.");
+    }
 
     @ExceptionHandler(ResourceNotFoundException.class)
     @ResponseStatus(HttpStatus.NOT_FOUND)

@@ -18,6 +18,7 @@ import com.scse.curriculum.course.entity.Course;
 import com.scse.curriculum.course.repository.CourseRepository;
 import com.scse.curriculum.department.entity.Department;
 import com.scse.curriculum.enrollment.repository.EnrollmentRepository;
+import com.scse.curriculum.notification.service.NotificationService;
 import com.scse.curriculum.syllabus.entity.Syllabus;
 import com.scse.curriculum.syllabus.repository.SyllabusRepository;
 import com.scse.curriculum.user.entity.UserAccount;
@@ -36,6 +37,8 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.contains;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -78,6 +81,9 @@ private Cohort itCohort;
 
     @Mock
     private CurrentUserService currentUserService;
+
+    @Mock
+    private NotificationService notificationService;
 
     @Mock private com.scse.curriculum.cohort.service.CohortOperationalGuard cohortOperationalGuard;
     @InjectMocks
@@ -515,7 +521,118 @@ void departmentHeadCanAssignActiveInstructorWhenProgramIsInManagedMajor() {
     assertThat(result.getInstructorUserId()).isEqualTo(201);
     assertThat(result.getProgramId()).isEqualTo(70);
     assertThat(result.getCohortId()).isEqualTo(700);
+
+    verify(notificationService).createNotification(
+            eq(201),
+            any(String.class),
+            contains("CS101"),
+            eq("SYLLABUS_CREATION_ASSIGNED"));
 }
+
+    @Test
+    void updateNotifiesNewInstructorWhenReassigned() {
+        ClassSection section = createSection(
+                65, csCourse, csInstructorAccount, null);
+        section.setProgram(csProgram);
+        section.setCohort(csCohort);
+
+        when(currentUserService.getCurrentUser())
+                .thenReturn(adminAccount);
+        when(repository.findByIdInScope(65, null))
+                .thenReturn(Optional.of(section));
+        when(courseRepository.findById(10))
+                .thenReturn(Optional.of(csCourse));
+        when(userAccountRepository.findById(201))
+                .thenReturn(Optional.of(itInstructorAccount));
+
+        stubCurriculumContext(csCourse, csProgram, csCohort);
+
+        when(repository.findByCourse_Id(10))
+                .thenReturn(List.of());
+        when(repository.save(any(ClassSection.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        ClassSectionResponse result =
+                service.update(65, createRequest(10, 201));
+
+        assertThat(result.getInstructorUserId()).isEqualTo(201);
+
+        verify(notificationService).createNotification(
+                eq(201),
+                any(String.class),
+                contains("CS101"),
+                eq("SYLLABUS_CREATION_ASSIGNED"));
+    }
+
+    @Test
+    void updateDoesNotNotifyWhenInstructorUnchanged() {
+        ClassSection section = createSection(
+                66, csCourse, csInstructorAccount, null);
+        section.setProgram(csProgram);
+        section.setCohort(csCohort);
+
+        when(currentUserService.getCurrentUser())
+                .thenReturn(adminAccount);
+        when(repository.findByIdInScope(66, null))
+                .thenReturn(Optional.of(section));
+        when(courseRepository.findById(10))
+                .thenReturn(Optional.of(csCourse));
+        when(userAccountRepository.findById(101))
+                .thenReturn(Optional.of(csInstructorAccount));
+
+        stubCurriculumContext(csCourse, csProgram, csCohort);
+
+        when(repository.findByCourse_Id(10))
+                .thenReturn(List.of());
+        when(repository.save(any(ClassSection.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        ClassSectionResponse result =
+                service.update(66, createRequest(10, 101));
+
+        assertThat(result.getInstructorUserId()).isEqualTo(101);
+        org.mockito.Mockito.verifyNoInteractions(notificationService);
+    }
+
+    @Test
+    void updateNotifiesWhenAssignmentReactivated() {
+        ClassSection section = createSection(
+                67, csCourse, csInstructorAccount, null);
+        section.setProgram(csProgram);
+        section.setCohort(csCohort);
+        section.setIsActive(false);
+
+        CreateClassSectionRequest request =
+                createRequest(10, 101);
+        request.setIsActive(true);
+
+        when(currentUserService.getCurrentUser())
+                .thenReturn(adminAccount);
+        when(repository.findByIdInScope(67, null))
+                .thenReturn(Optional.of(section));
+        when(courseRepository.findById(10))
+                .thenReturn(Optional.of(csCourse));
+        when(userAccountRepository.findById(101))
+                .thenReturn(Optional.of(csInstructorAccount));
+
+        stubCurriculumContext(csCourse, csProgram, csCohort);
+
+        when(repository.findByCourse_Id(10))
+                .thenReturn(List.of());
+        when(repository.save(any(ClassSection.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        ClassSectionResponse result =
+                service.update(67, request);
+
+        assertThat(result.getIsActive()).isTrue();
+
+        verify(notificationService).createNotification(
+                eq(101),
+                any(String.class),
+                contains("CS101"),
+                eq("SYLLABUS_CREATION_ASSIGNED"));
+    }
 
     @Test
     void cannotDeleteSectionThatAlreadyHasSyllabus() {

@@ -25,6 +25,8 @@ public class BulkConfirmSyllabusImportRequest {
     /** Required for Instructor imports; ignored for unrestricted roles. */
     private Integer assignmentId;
     private Long sourceSnapshotId;
+    /** Stored preview source, used only for the verified DS2021 appendix mapping. */
+    private Long sourceDocumentId;
 
     private String importMode = "CREATE";
     private String originalFileName;

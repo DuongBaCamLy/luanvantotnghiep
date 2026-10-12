@@ -164,6 +164,39 @@ private TargetTemplateProfileResolver targetTemplateProfileResolver =
     }
 
     @Test
+    void new2027UpdatePreservesUnspecifiedAssessmentScoresAndWeight() {
+        var cohort = com.scse.curriculum.cohort.entity.Cohort.builder().name("CS2027").build();
+        when(courseProgramRepository.findBySyllabus_Id(100))
+                .thenReturn(List.of(CourseProgram.builder().syllabus(syllabus).cohort(cohort)
+                        .program(com.scse.curriculum.program.entity.Program.builder().id(1).code("CS").build()).build()));
+        when(repository.save(syllabus)).thenReturn(syllabus);
+        var dto = new CreateSyllabusRequest.AssessmentDTO();
+        dto.setId(31);dto.setName("Source assessment");dto.setOrderIndex(1);
+        var request = new CreateSyllabusRequest();request.setAssessments(List.of(dto));
+        request.setNotes("{\"sourceFaithful2027\":true}");
+        var response=service.update(100, request);
+        assertThat(assessment.getWeightPercent()).isEqualTo(0f);
+        assertThat(assessment.getMinScore()).isEqualTo(0f);
+        assertThat(assessment.getMaxScore()).isEqualTo(100f);
+        assertThat(response.getAssessments().getFirst().getWeightPercent()).isNull();
+        assertThat(response.getAssessments().getFirst().getMinScore()).isNull();
+        assertThat(response.getAssessments().getFirst().getMaxScore()).isNull();
+        assertThat(syllabus.getAssessments()).containsExactly(assessment);
+    }
+
+    @Test
+    void legacyUpdateRetainsExistingAssessmentDefaults() {
+        when(repository.save(syllabus)).thenReturn(syllabus);
+        var dto = new CreateSyllabusRequest.AssessmentDTO();
+        dto.setId(31);dto.setName("Legacy assessment");dto.setOrderIndex(1);
+        var request = new CreateSyllabusRequest();request.setAssessments(List.of(dto));
+        service.update(100, request);
+        assertThat(assessment.getWeightPercent()).isEqualTo(0f);
+        assertThat(assessment.getMinScore()).isEqualTo(0f);
+        assertThat(assessment.getMaxScore()).isEqualTo(100f);
+    }
+
+    @Test
     void fullDraftUpdateKeepsChildIdsMappingsReadingsAndScores() {
         when(repository.save(syllabus)).thenReturn(syllabus);
 

@@ -2,6 +2,7 @@ package com.scse.curriculum.deadline.controller;
 
 import java.util.List;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -27,6 +28,7 @@ import com.scse.curriculum.deadline.service.SyllabusDeadlineService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
+@ConditionalOnProperty(name = "app.deadline.admin-api-enabled", havingValue = "true", matchIfMissing = false)
 @RestController
 @RequestMapping("/api/admin/syllabus-deadlines")
 @RequiredArgsConstructor

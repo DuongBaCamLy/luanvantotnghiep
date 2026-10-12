@@ -80,9 +80,9 @@ export const syllabusPdfApi = {
 }
 
 export const syllabusWordApi = {
-  downloadCurrent: async (syllabusId: number): Promise<void> => {
+  downloadCurrent: async (syllabusId: number, fallbackName?: string): Promise<void> => {
     const response = await api.get<Blob>(`/api/syllabuses/${syllabusId}/word/current`, { responseType: "blob" })
-    downloadResponse(response, `Syllabus_${syllabusId}_Current.docx`)
+    downloadResponse(response, fallbackName || `Syllabus_${syllabusId}_Current.docx`)
   },
   downloadOriginal: async (syllabusId: number): Promise<void> => {
     const response = await api.get<Blob>(`/api/syllabuses/${syllabusId}/word/original`, { responseType: "blob" })

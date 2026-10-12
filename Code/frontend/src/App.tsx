@@ -15,7 +15,6 @@ import ClassSectionManagementPage from "@/pages/admin/ClassSectionManagementPage
 import InstructorAssignmentsPage from "@/pages/syllabus/InstructorAssignmentsPage"
 
 import AuditLogPage from "@/pages/admin/AuditLogPage"
-import SystemSettingsPage from "@/pages/admin/SystemSettingsPage"
 import PloManagementPage from "@/pages/admin/PloManagementPage"
 import CloPloHeatmapPage from "@/pages/admin/CloPloHeatmapPage"
 
@@ -35,7 +34,6 @@ import ProgramCurriculumPage from "@/pages/program/ProgramCurriculumPage"
 import SyllabusCurriculumMapPage from "@/pages/program/SyllabusCurriculumMapPage"
 import DeptHeadDashboardPage from "@/pages/admin/DeptHeadDashboardPage"
 import DeanDashboardPage from "@/pages/admin/DeanDashboardPage"
-import DeptHeadCoursesPage from "@/pages/admin/DeptHeadCoursesPage"
 import DeptHeadApprovalPage from "@/pages/admin/DeptHeadApprovalPage"
 const ROLE_HOME: Record<UserRole, string> = {
   ADMIN: "/admin",
@@ -84,9 +82,7 @@ function sharedWorkspaceRoutes(root: string) {
           element={
             isInstructor
               ? <InstructorAssignmentsPage />
-              : isDeptHead
-                ? <DeptHeadCoursesPage />
-                : <ClassSectionManagementPage />
+              : <ClassSectionManagementPage />
           }
         />
       )}
@@ -203,10 +199,6 @@ function sharedWorkspaceRoutes(root: string) {
           />
 
 
-          <Route
-            path={`${root}/settings`}
-            element={<SystemSettingsPage />}
-          />
         </>
       )}
 

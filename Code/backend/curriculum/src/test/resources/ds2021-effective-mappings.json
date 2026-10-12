@@ -1,0 +1,952 @@
+[
+  {
+    "id": 141,
+    "programId": 3,
+    "cohortId": null,
+    "courseId": 98,
+    "courseCode": "PE015IU",
+    "courseName": "Philosophy Marx - Lenin",
+    "syllabusId": null,
+    "syllabusStatus": null
+  },
+  {
+    "id": 142,
+    "programId": 3,
+    "cohortId": null,
+    "courseId": 99,
+    "courseCode": "PE016IU",
+    "courseName": "Political economics of Marxism and Leninism",
+    "syllabusId": null,
+    "syllabusStatus": null
+  },
+  {
+    "id": 143,
+    "programId": 3,
+    "cohortId": null,
+    "courseId": 100,
+    "courseCode": "PE017IU",
+    "courseName": "Scientific socialism",
+    "syllabusId": null,
+    "syllabusStatus": null
+  },
+  {
+    "id": 144,
+    "programId": 3,
+    "cohortId": null,
+    "courseId": 101,
+    "courseCode": "PE018IU",
+    "courseName": "History of Vietnamese Communist Party",
+    "syllabusId": null,
+    "syllabusStatus": null
+  },
+  {
+    "id": 145,
+    "programId": 3,
+    "cohortId": null,
+    "courseId": 102,
+    "courseCode": "PE019IU",
+    "courseName": "Ho Chi Minh's Thoughts",
+    "syllabusId": null,
+    "syllabusStatus": null
+  },
+  {
+    "id": 146,
+    "programId": 3,
+    "cohortId": null,
+    "courseId": 91,
+    "courseCode": "MA001IU",
+    "courseName": "Calculus",
+    "syllabusId": null,
+    "syllabusStatus": null
+  },
+  {
+    "id": 147,
+    "programId": 3,
+    "cohortId": null,
+    "courseId": 92,
+    "courseCode": "MA003IU",
+    "courseName": "Calculus",
+    "syllabusId": null,
+    "syllabusStatus": null
+  },
+  {
+    "id": 148,
+    "programId": 3,
+    "cohortId": null,
+    "courseId": 82,
+    "courseCode": "IT154IU",
+    "courseName": "Linear Algebra",
+    "syllabusId": null,
+    "syllabusStatus": null
+  },
+  {
+    "id": 149,
+    "programId": 3,
+    "cohortId": null,
+    "courseId": 95,
+    "courseCode": "MA026IU",
+    "courseName": "Probability, Statistics and Random Process",
+    "syllabusId": null,
+    "syllabusStatus": null
+  },
+  {
+    "id": 150,
+    "programId": 3,
+    "cohortId": null,
+    "courseId": 105,
+    "courseCode": "PH013IU",
+    "courseName": "Physics 1 (General Mechanics)",
+    "syllabusId": null,
+    "syllabusStatus": null
+  },
+  {
+    "id": 151,
+    "programId": 3,
+    "cohortId": null,
+    "courseId": 106,
+    "courseCode": "PH014IU",
+    "courseName": "Physics 2 (Fluid Mechanics and Thermal Physics)",
+    "syllabusId": null,
+    "syllabusStatus": null
+  },
+  {
+    "id": 152,
+    "programId": 3,
+    "cohortId": null,
+    "courseId": 96,
+    "courseCode": "PE008IU",
+    "courseName": "Critical Thinking",
+    "syllabusId": null,
+    "syllabusStatus": null
+  },
+  {
+    "id": 153,
+    "programId": 3,
+    "cohortId": null,
+    "courseId": 97,
+    "courseCode": "PE014IU",
+    "courseName": "Environmental Science",
+    "syllabusId": null,
+    "syllabusStatus": null
+  },
+  {
+    "id": 154,
+    "programId": 3,
+    "cohortId": null,
+    "courseId": 1,
+    "courseCode": "CH011IU",
+    "courseName": "Chemistry for Engineer",
+    "syllabusId": null,
+    "syllabusStatus": null
+  },
+  {
+    "id": 155,
+    "programId": 3,
+    "cohortId": null,
+    "courseId": 2,
+    "courseCode": "CH012IU",
+    "courseName": "Chemistry Laboratory",
+    "syllabusId": null,
+    "syllabusStatus": null
+  },
+  {
+    "id": 156,
+    "programId": 3,
+    "cohortId": null,
+    "courseId": 20,
+    "courseCode": "EN008IU",
+    "courseName": "Listening AE1 (Listening & Note-takingg)",
+    "syllabusId": null,
+    "syllabusStatus": null
+  },
+  {
+    "id": 157,
+    "programId": 3,
+    "cohortId": null,
+    "courseId": 19,
+    "courseCode": "EN007IU",
+    "courseName": "Academic English 1 (writing skill)",
+    "syllabusId": null,
+    "syllabusStatus": null
+  },
+  {
+    "id": 158,
+    "programId": 3,
+    "cohortId": null,
+    "courseId": 22,
+    "courseCode": "EN012IU",
+    "courseName": "Speaking AE2 (Effective Presentations)",
+    "syllabusId": null,
+    "syllabusStatus": null
+  },
+  {
+    "id": 159,
+    "programId": 3,
+    "cohortId": null,
+    "courseId": 21,
+    "courseCode": "EN011IU",
+    "courseName": "Writing AE2 (Research Paper Writing)",
+    "syllabusId": null,
+    "syllabusStatus": null
+  },
+  {
+    "id": 160,
+    "programId": 3,
+    "cohortId": null,
+    "courseId": 65,
+    "courseCode": "IT135IU",
+    "courseName": "Introduction to Data Science",
+    "syllabusId": null,
+    "syllabusStatus": null
+  },
+  {
+    "id": 161,
+    "programId": 3,
+    "cohortId": null,
+    "courseId": 77,
+    "courseCode": "IT149IU",
+    "courseName": "Fundamentals of Programming",
+    "syllabusId": null,
+    "syllabusStatus": null
+  },
+  {
+    "id": 162,
+    "programId": 3,
+    "cohortId": null,
+    "courseId": 79,
+    "courseCode": "IT151IU",
+    "courseName": "Statistical Methods",
+    "syllabusId": null,
+    "syllabusStatus": null
+  },
+  {
+    "id": 163,
+    "programId": 3,
+    "cohortId": null,
+    "courseId": 31,
+    "courseCode": "IT069IU",
+    "courseName": "Object-Oriented Programming",
+    "syllabusId": null,
+    "syllabusStatus": null
+  },
+  {
+    "id": 164,
+    "programId": 3,
+    "cohortId": null,
+    "courseId": 23,
+    "courseCode": "IT013IU",
+    "courseName": "Algorithms and Data Structure",
+    "syllabusId": null,
+    "syllabusStatus": null
+  },
+  {
+    "id": 165,
+    "programId": 3,
+    "cohortId": null,
+    "courseId": 34,
+    "courseCode": "IT079IU",
+    "courseName": "Principles of Database Management",
+    "syllabusId": null,
+    "syllabusStatus": null
+  },
+  {
+    "id": 166,
+    "programId": 3,
+    "cohortId": null,
+    "courseId": 86,
+    "courseCode": "IT159IU",
+    "courseName": "Artificial Intelligence",
+    "syllabusId": null,
+    "syllabusStatus": null
+  },
+  {
+    "id": 167,
+    "programId": 3,
+    "cohortId": null,
+    "courseId": 66,
+    "courseCode": "IT136IU",
+    "courseName": "Regression Analysis",
+    "syllabusId": null,
+    "syllabusStatus": null
+  },
+  {
+    "id": 168,
+    "programId": 3,
+    "cohortId": null,
+    "courseId": 67,
+    "courseCode": "IT137IU",
+    "courseName": "Data Analysis",
+    "syllabusId": null,
+    "syllabusStatus": null
+  },
+  {
+    "id": 169,
+    "programId": 3,
+    "cohortId": null,
+    "courseId": 68,
+    "courseCode": "IT138IU",
+    "courseName": "Data Science and Data Visualization",
+    "syllabusId": null,
+    "syllabusStatus": null
+  },
+  {
+    "id": 170,
+    "programId": 3,
+    "cohortId": null,
+    "courseId": 69,
+    "courseCode": "IT139IU",
+    "courseName": "Scalable and Distributed Computing",
+    "syllabusId": null,
+    "syllabusStatus": null
+  },
+  {
+    "id": 171,
+    "programId": 3,
+    "cohortId": null,
+    "courseId": 70,
+    "courseCode": "IT140IU",
+    "courseName": "Fundamental Concepts of Data Security",
+    "syllabusId": null,
+    "syllabusStatus": null
+  },
+  {
+    "id": 172,
+    "programId": 3,
+    "cohortId": null,
+    "courseId": 87,
+    "courseCode": "IT160IU",
+    "courseName": "Data Mining",
+    "syllabusId": null,
+    "syllabusStatus": null
+  },
+  {
+    "id": 173,
+    "programId": 3,
+    "cohortId": null,
+    "courseId": 71,
+    "courseCode": "IT142IU",
+    "courseName": "Analytics for Observational Data",
+    "syllabusId": null,
+    "syllabusStatus": null
+  },
+  {
+    "id": 174,
+    "programId": 3,
+    "cohortId": null,
+    "courseId": 88,
+    "courseCode": "IT161IU",
+    "courseName": "Big Data Technology",
+    "syllabusId": null,
+    "syllabusStatus": null
+  },
+  {
+    "id": 175,
+    "programId": 3,
+    "cohortId": null,
+    "courseId": 72,
+    "courseCode": "IT144IU",
+    "courseName": "Business Process Analysis",
+    "syllabusId": null,
+    "syllabusStatus": null
+  },
+  {
+    "id": 176,
+    "programId": 3,
+    "cohortId": null,
+    "courseId": 73,
+    "courseCode": "IT145IU",
+    "courseName": "Decision Support Systems",
+    "syllabusId": null,
+    "syllabusStatus": null
+  },
+  {
+    "id": 177,
+    "programId": 3,
+    "cohortId": null,
+    "courseId": 74,
+    "courseCode": "IT146IU",
+    "courseName": "Theory of Networks",
+    "syllabusId": null,
+    "syllabusStatus": null
+  },
+  {
+    "id": 178,
+    "programId": 3,
+    "cohortId": null,
+    "courseId": 26,
+    "courseCode": "IT056IU",
+    "courseName": "IT Project Management",
+    "syllabusId": null,
+    "syllabusStatus": null
+  },
+  {
+    "id": 179,
+    "programId": 3,
+    "cohortId": null,
+    "courseId": 42,
+    "courseCode": "IT094IU",
+    "courseName": "Information System Management",
+    "syllabusId": null,
+    "syllabusStatus": null
+  },
+  {
+    "id": 180,
+    "programId": 3,
+    "cohortId": null,
+    "courseId": 75,
+    "courseCode": "IT147IU",
+    "courseName": "Mobile Cloud Computing",
+    "syllabusId": null,
+    "syllabusStatus": null
+  },
+  {
+    "id": 181,
+    "programId": 3,
+    "cohortId": null,
+    "courseId": 76,
+    "courseCode": "IT148IU",
+    "courseName": "Experimental design",
+    "syllabusId": null,
+    "syllabusStatus": null
+  },
+  {
+    "id": 182,
+    "programId": 3,
+    "cohortId": null,
+    "courseId": 89,
+    "courseCode": "IT162IU",
+    "courseName": "Machine learning platforms",
+    "syllabusId": null,
+    "syllabusStatus": null
+  },
+  {
+    "id": 183,
+    "programId": 3,
+    "cohortId": null,
+    "courseId": 80,
+    "courseCode": "IT152IU",
+    "courseName": "Data mining for IoT",
+    "syllabusId": null,
+    "syllabusStatus": null
+  },
+  {
+    "id": 184,
+    "programId": 3,
+    "cohortId": null,
+    "courseId": 78,
+    "courseCode": "IT150IU",
+    "courseName": "Blockchain",
+    "syllabusId": null,
+    "syllabusStatus": null
+  },
+  {
+    "id": 185,
+    "programId": 3,
+    "cohortId": null,
+    "courseId": 55,
+    "courseCode": "IT120IU",
+    "courseName": "Entrepreneurship",
+    "syllabusId": null,
+    "syllabusStatus": null
+  },
+  {
+    "id": 186,
+    "programId": 3,
+    "cohortId": null,
+    "courseId": 84,
+    "courseCode": "IT157IU",
+    "courseName": "Deep Learning",
+    "syllabusId": null,
+    "syllabusStatus": null
+  },
+  {
+    "id": 187,
+    "programId": 3,
+    "cohortId": null,
+    "courseId": 90,
+    "courseCode": "IT163IU",
+    "courseName": "Optimization and Applications",
+    "syllabusId": null,
+    "syllabusStatus": null
+  },
+  {
+    "id": 188,
+    "programId": 3,
+    "cohortId": null,
+    "courseId": 35,
+    "courseCode": "IT082IU",
+    "courseName": "Internship",
+    "syllabusId": null,
+    "syllabusStatus": null
+  },
+  {
+    "id": 189,
+    "programId": 3,
+    "cohortId": null,
+    "courseId": 36,
+    "courseCode": "IT083IU",
+    "courseName": "Special Study of the Field",
+    "syllabusId": null,
+    "syllabusStatus": null
+  },
+  {
+    "id": 190,
+    "programId": 3,
+    "cohortId": null,
+    "courseId": 27,
+    "courseCode": "IT058IU",
+    "courseName": "Thesis",
+    "syllabusId": null,
+    "syllabusStatus": null
+  },
+  {
+    "id": 191,
+    "programId": 3,
+    "cohortId": null,
+    "courseId": 109,
+    "courseCode": "PT001IU",
+    "courseName": "Physical Training",
+    "syllabusId": null,
+    "syllabusStatus": null
+  },
+  {
+    "id": 192,
+    "programId": 3,
+    "cohortId": null,
+    "courseId": 110,
+    "courseCode": "PT002IU",
+    "courseName": "Physical Training 2",
+    "syllabusId": null,
+    "syllabusStatus": null
+  },
+  {
+    "id": 768,
+    "programId": 3,
+    "cohortId": 7,
+    "courseId": 91,
+    "courseCode": "MA001IU",
+    "courseName": "Calculus",
+    "syllabusId": null,
+    "syllabusStatus": null
+  },
+  {
+    "id": 769,
+    "programId": 3,
+    "cohortId": 7,
+    "courseId": 92,
+    "courseCode": "MA003IU",
+    "courseName": "Calculus",
+    "syllabusId": null,
+    "syllabusStatus": null
+  },
+  {
+    "id": 770,
+    "programId": 3,
+    "cohortId": 7,
+    "courseId": 82,
+    "courseCode": "IT154IU",
+    "courseName": "Linear Algebra",
+    "syllabusId": null,
+    "syllabusStatus": null
+  },
+  {
+    "id": 771,
+    "programId": 3,
+    "cohortId": 7,
+    "courseId": 95,
+    "courseCode": "MA026IU",
+    "courseName": "Probability, Statistics and Random Process",
+    "syllabusId": null,
+    "syllabusStatus": null
+  },
+  {
+    "id": 772,
+    "programId": 3,
+    "cohortId": 7,
+    "courseId": 105,
+    "courseCode": "PH013IU",
+    "courseName": "Physics 1 (General Mechanics)",
+    "syllabusId": null,
+    "syllabusStatus": null
+  },
+  {
+    "id": 773,
+    "programId": 3,
+    "cohortId": 7,
+    "courseId": 106,
+    "courseCode": "PH014IU",
+    "courseName": "Physics 2 (Fluid Mechanics and Thermal Physics)",
+    "syllabusId": null,
+    "syllabusStatus": null
+  },
+  {
+    "id": 774,
+    "programId": 3,
+    "cohortId": 7,
+    "courseId": 97,
+    "courseCode": "PE014IU",
+    "courseName": "Environmental Science",
+    "syllabusId": null,
+    "syllabusStatus": null
+  },
+  {
+    "id": 775,
+    "programId": 3,
+    "cohortId": 7,
+    "courseId": 2,
+    "courseCode": "CH012IU",
+    "courseName": "Chemistry Laboratory",
+    "syllabusId": null,
+    "syllabusStatus": null
+  },
+  {
+    "id": 776,
+    "programId": 3,
+    "cohortId": 7,
+    "courseId": 20,
+    "courseCode": "EN008IU",
+    "courseName": "Listening AE1 (Listening & Note-takingg)",
+    "syllabusId": null,
+    "syllabusStatus": null
+  },
+  {
+    "id": 777,
+    "programId": 3,
+    "cohortId": 7,
+    "courseId": 19,
+    "courseCode": "EN007IU",
+    "courseName": "Academic English 1 (writing skill)",
+    "syllabusId": null,
+    "syllabusStatus": null
+  },
+  {
+    "id": 778,
+    "programId": 3,
+    "cohortId": 7,
+    "courseId": 22,
+    "courseCode": "EN012IU",
+    "courseName": "Speaking AE2 (Effective Presentations)",
+    "syllabusId": null,
+    "syllabusStatus": null
+  },
+  {
+    "id": 779,
+    "programId": 3,
+    "cohortId": 7,
+    "courseId": 21,
+    "courseCode": "EN011IU",
+    "courseName": "Writing AE2 (Research Paper Writing)",
+    "syllabusId": null,
+    "syllabusStatus": null
+  },
+  {
+    "id": 780,
+    "programId": 3,
+    "cohortId": 7,
+    "courseId": 65,
+    "courseCode": "IT135IU",
+    "courseName": "Introduction to Data Science",
+    "syllabusId": null,
+    "syllabusStatus": null
+  },
+  {
+    "id": 781,
+    "programId": 3,
+    "cohortId": 7,
+    "courseId": 77,
+    "courseCode": "IT149IU",
+    "courseName": "Fundamentals of Programming",
+    "syllabusId": null,
+    "syllabusStatus": null
+  },
+  {
+    "id": 782,
+    "programId": 3,
+    "cohortId": 7,
+    "courseId": 79,
+    "courseCode": "IT151IU",
+    "courseName": "Statistical Methods",
+    "syllabusId": null,
+    "syllabusStatus": null
+  },
+  {
+    "id": 783,
+    "programId": 3,
+    "cohortId": 7,
+    "courseId": 31,
+    "courseCode": "IT069IU",
+    "courseName": "Object-Oriented Programming",
+    "syllabusId": null,
+    "syllabusStatus": null
+  },
+  {
+    "id": 784,
+    "programId": 3,
+    "cohortId": 7,
+    "courseId": 23,
+    "courseCode": "IT013IU",
+    "courseName": "Algorithms and Data Structure",
+    "syllabusId": null,
+    "syllabusStatus": null
+  },
+  {
+    "id": 785,
+    "programId": 3,
+    "cohortId": 7,
+    "courseId": 34,
+    "courseCode": "IT079IU",
+    "courseName": "Principles of Database Management",
+    "syllabusId": null,
+    "syllabusStatus": null
+  },
+  {
+    "id": 786,
+    "programId": 3,
+    "cohortId": 7,
+    "courseId": 86,
+    "courseCode": "IT159IU",
+    "courseName": "Artificial Intelligence",
+    "syllabusId": null,
+    "syllabusStatus": null
+  },
+  {
+    "id": 787,
+    "programId": 3,
+    "cohortId": 7,
+    "courseId": 66,
+    "courseCode": "IT136IU",
+    "courseName": "Regression Analysis",
+    "syllabusId": null,
+    "syllabusStatus": null
+  },
+  {
+    "id": 788,
+    "programId": 3,
+    "cohortId": 7,
+    "courseId": 67,
+    "courseCode": "IT137IU",
+    "courseName": "Data Analysis",
+    "syllabusId": null,
+    "syllabusStatus": null
+  },
+  {
+    "id": 789,
+    "programId": 3,
+    "cohortId": 7,
+    "courseId": 68,
+    "courseCode": "IT138IU",
+    "courseName": "Data Science and Data Visualization",
+    "syllabusId": null,
+    "syllabusStatus": null
+  },
+  {
+    "id": 790,
+    "programId": 3,
+    "cohortId": 7,
+    "courseId": 69,
+    "courseCode": "IT139IU",
+    "courseName": "Scalable and Distributed Computing",
+    "syllabusId": null,
+    "syllabusStatus": null
+  },
+  {
+    "id": 791,
+    "programId": 3,
+    "cohortId": 7,
+    "courseId": 70,
+    "courseCode": "IT140IU",
+    "courseName": "Fundamental Concepts of Data Security",
+    "syllabusId": null,
+    "syllabusStatus": null
+  },
+  {
+    "id": 792,
+    "programId": 3,
+    "cohortId": 7,
+    "courseId": 87,
+    "courseCode": "IT160IU",
+    "courseName": "Data Mining",
+    "syllabusId": null,
+    "syllabusStatus": null
+  },
+  {
+    "id": 793,
+    "programId": 3,
+    "cohortId": 7,
+    "courseId": 71,
+    "courseCode": "IT142IU",
+    "courseName": "Analytics for Observational Data",
+    "syllabusId": null,
+    "syllabusStatus": null
+  },
+  {
+    "id": 794,
+    "programId": 3,
+    "cohortId": 7,
+    "courseId": 88,
+    "courseCode": "IT161IU",
+    "courseName": "Big Data Technology",
+    "syllabusId": null,
+    "syllabusStatus": null
+  },
+  {
+    "id": 795,
+    "programId": 3,
+    "cohortId": 7,
+    "courseId": 72,
+    "courseCode": "IT144IU",
+    "courseName": "Business Process Analysis",
+    "syllabusId": null,
+    "syllabusStatus": null
+  },
+  {
+    "id": 796,
+    "programId": 3,
+    "cohortId": 7,
+    "courseId": 73,
+    "courseCode": "IT145IU",
+    "courseName": "Decision Support Systems",
+    "syllabusId": null,
+    "syllabusStatus": null
+  },
+  {
+    "id": 797,
+    "programId": 3,
+    "cohortId": 7,
+    "courseId": 74,
+    "courseCode": "IT146IU",
+    "courseName": "Theory of Networks",
+    "syllabusId": null,
+    "syllabusStatus": null
+  },
+  {
+    "id": 798,
+    "programId": 3,
+    "cohortId": 7,
+    "courseId": 26,
+    "courseCode": "IT056IU",
+    "courseName": "IT Project Management",
+    "syllabusId": null,
+    "syllabusStatus": null
+  },
+  {
+    "id": 799,
+    "programId": 3,
+    "cohortId": 7,
+    "courseId": 42,
+    "courseCode": "IT094IU",
+    "courseName": "Information System Management",
+    "syllabusId": null,
+    "syllabusStatus": null
+  },
+  {
+    "id": 800,
+    "programId": 3,
+    "cohortId": 7,
+    "courseId": 96,
+    "courseCode": "PE008IU",
+    "courseName": "Critical Thinking",
+    "syllabusId": null,
+    "syllabusStatus": null
+  },
+  {
+    "id": 801,
+    "programId": 3,
+    "cohortId": 7,
+    "courseId": 76,
+    "courseCode": "IT148IU",
+    "courseName": "Experimental design",
+    "syllabusId": null,
+    "syllabusStatus": null
+  },
+  {
+    "id": 802,
+    "programId": 3,
+    "cohortId": 7,
+    "courseId": 89,
+    "courseCode": "IT162IU",
+    "courseName": "Machine learning platforms",
+    "syllabusId": null,
+    "syllabusStatus": null
+  },
+  {
+    "id": 803,
+    "programId": 3,
+    "cohortId": 7,
+    "courseId": 80,
+    "courseCode": "IT152IU",
+    "courseName": "Data mining for IoT",
+    "syllabusId": null,
+    "syllabusStatus": null
+  },
+  {
+    "id": 804,
+    "programId": 3,
+    "cohortId": 7,
+    "courseId": 78,
+    "courseCode": "IT150IU",
+    "courseName": "Blockchain",
+    "syllabusId": null,
+    "syllabusStatus": null
+  },
+  {
+    "id": 805,
+    "programId": 3,
+    "cohortId": 7,
+    "courseId": 55,
+    "courseCode": "IT120IU",
+    "courseName": "Entrepreneurship",
+    "syllabusId": null,
+    "syllabusStatus": null
+  },
+  {
+    "id": 806,
+    "programId": 3,
+    "cohortId": 7,
+    "courseId": 84,
+    "courseCode": "IT157IU",
+    "courseName": "Deep Learning",
+    "syllabusId": null,
+    "syllabusStatus": null
+  },
+  {
+    "id": 807,
+    "programId": 3,
+    "cohortId": 7,
+    "courseId": 90,
+    "courseCode": "IT163IU",
+    "courseName": "Optimization and Applications",
+    "syllabusId": null,
+    "syllabusStatus": null
+  },
+  {
+    "id": 808,
+    "programId": 3,
+    "cohortId": 7,
+    "courseId": 35,
+    "courseCode": "IT082IU",
+    "courseName": "Internship",
+    "syllabusId": null,
+    "syllabusStatus": null
+  },
+  {
+    "id": 809,
+    "programId": 3,
+    "cohortId": 7,
+    "courseId": 36,
+    "courseCode": "IT083IU",
+    "courseName": "Special Study of the Field",
+    "syllabusId": null,
+    "syllabusStatus": null
+  },
+  {
+    "id": 810,
+    "programId": 3,
+    "cohortId": 7,
+    "courseId": 27,
+    "courseCode": "IT058IU",
+    "courseName": "Thesis",
+    "syllabusId": null,
+    "syllabusStatus": null
+  }
+]

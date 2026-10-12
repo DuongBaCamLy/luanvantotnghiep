@@ -3,6 +3,7 @@ import { FileStack, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 
 import { syllabusImportApi } from "@/api/syllabusImportApi"
+import { syllabusImportReadiness } from "@/lib/syllabusImportReadiness"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
@@ -33,7 +34,7 @@ export default function BulkImportSyllabusDialog({ open, onClose, programId, coh
   const [new2027Confirmed, setNew2027Confirmed] = useState(false)
 
   const isNew2027Target =
-  String(result?.targetTemplateProfile ?? "").trim().toUpperCase() === "NEW_2027"
+    String(result?.targetTemplateProfile ?? "").trim().toUpperCase() === "NEW_2027"
   const targetSections =
     result ? parseTargetTemplateSections(result) : []
   const targetMetadataError =
@@ -51,6 +52,12 @@ export default function BulkImportSyllabusDialog({ open, onClose, programId, coh
 
   const extract = async () => {
     if (!file) return
+
+    if (!/\.pdf$/i.test(file.name)) {
+      toast.error("Only PDF program documents are supported.")
+      return
+    }
+
     if (file.size > 200 * 1024 * 1024) {
       toast.error("The PDF exceeds the 200 MB upload limit.")
       return
@@ -59,7 +66,7 @@ export default function BulkImportSyllabusDialog({ open, onClose, programId, coh
       setLoading(true)
       const response = await syllabusImportApi.previewBulk(file, programId, cohortId)
       const metadataError =
-        isNew2027Target
+        String(response.targetTemplateProfile ?? "").trim().toUpperCase() === "NEW_2027"
           ? validateNew2027TargetTemplateResponse(response)
           : null
 
@@ -94,16 +101,18 @@ export default function BulkImportSyllabusDialog({ open, onClose, programId, coh
 
   return (
     <Dialog open={open} onOpenChange={(value) => !value && close()}>
-      <DialogContent className={`max-h-[92vh] overflow-hidden border-[#cfe2e4] bg-white p-0 ${isNew2027Target ? "sm:max-w-5xl" : "sm:max-w-xl"}`}>
-        <div className="h-1 bg-gradient-to-r from-[#007d84] via-[#20a0a5] to-[#f0a72f]" />
-        <div className="space-y-5 px-6 pb-2 pt-5">
+      <DialogContent className={`flex max-h-[92dvh] flex-col gap-0 overflow-hidden border-[#cfe2e4] bg-white p-0 ${isNew2027Target ? "sm:max-w-5xl" : "sm:max-w-xl"}`}>
+        <div className="h-1 shrink-0 bg-gradient-to-r from-[#007d84] via-[#20a0a5] to-[#f0a72f]" />
+        <div className="min-h-0 space-y-5 overflow-y-auto px-4 pb-5 pt-5 sm:px-6">
           <DialogHeader className="text-left">
             <DialogTitle className="text-xl text-[#006f76]">Import Program Document</DialogTitle>
-            <DialogDescription>{cohortName} · PDF or DOCX containing multiple syllabuses</DialogDescription>
+            <DialogDescription>
+              {cohortName} · Upload a PDF program document containing multiple syllabuses.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
-            <Label>PDF or Word document</Label>
-            <Input type="file" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" disabled={loading} onChange={(event) => {
+            <Label>PDF Program Document</Label>
+            <Input type="file" accept=".pdf,application/pdf" disabled={loading} onChange={(event) => {
               setFile(event.target.files?.[0] ?? null)
               setResult(null)
               setNew2027Confirmed(false)
@@ -116,13 +125,26 @@ export default function BulkImportSyllabusDialog({ open, onClose, programId, coh
               ? result.items.map((item) => item.preview.data?.sourceCourseCode || "Unknown").filter((code) => !allowed.has(normalize(code)))
               : []
             return <>
-            <div className="grid grid-cols-3 gap-3 rounded-xl border border-[#d9e8ea] bg-[#f5fafa] p-4 text-center">
-              <Stat value={result.pageCount} label="Pages" />
-              <Stat value={result.syllabusCount} label="Detected" />
-              <Stat value={result.items.filter((item) => item.preview.valid).length} label="Ready" />
-            </div>
-            <p className="text-xs font-semibold text-[#006f76]">Source type: {result.sourceType === "DOCX" ? "WORD" : "PDF"}</p>
-            {blocked.length > 0 && <p className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-800">You are not assigned to these courses and cannot import their syllabuses: <b>{blocked.join(", ")}</b>. No syllabus will be saved.</p>}
+              <div className="grid grid-cols-3 gap-3 rounded-xl border border-[#d9e8ea] bg-[#f5fafa] p-4 text-center">
+                <Stat value={result.pageCount} label="Pages" />
+                <Stat value={result.syllabusCount} label="Detected" />
+                <Stat value={result.items.filter((item) => item.preview.valid).length} label="Validation passed" />
+              </div>
+              <p className="text-xs font-semibold text-[#006f76]">Source type: {result.sourceType === "DOCX" ? "WORD" : "PDF"}</p>
+              <p className="text-xs text-slate-600">Validation passed means the preview meets import checks; it does not certify academic accuracy. Review course issues and source evidence before continuing.</p>
+              {isNew2027Target && <div className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">{(["READY_COMPLETE", "READY_WITH_WARNINGS", "BLOCKED_DATA_ERROR", "SOURCE_REVIEW_REQUIRED"] as const).map((state) => <div key={state} className="rounded-lg border border-slate-200 bg-slate-50 p-2"><b className="block text-base text-[#006f76]">{result.items.filter((item) => syllabusImportReadiness(item.preview) === state).length}</b><span>{state.replaceAll("_", " ")}</span></div>)}</div>}
+              <details className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                <summary className="cursor-pointer text-xs font-semibold text-slate-800">Course validation details · {result.items.filter((item) => !item.preview.valid).length} need attention</summary>
+                <div className="mt-3 max-h-60 space-y-2 overflow-y-auto">
+                  {result.items.map((item, index) => (
+                    <div key={`${item.startPage}-${index}`} className="rounded-md border border-slate-200 bg-white p-3 text-xs">
+                      <p className="font-semibold text-slate-800">{item.preview.data?.sourceCourseCode || "Unresolved course"} · Pages {item.startPage}–{item.endPage} · {isNew2027Target ? syllabusImportReadiness(item.preview).replaceAll("_", " ") : item.preview.valid ? "Validation passed" : "Needs attention"}</p>
+                      {item.preview.issues?.length ? <ul className="mt-2 list-disc space-y-1 pl-4 text-slate-600">{item.preview.issues.map((issue, issueIndex) => <li key={issueIndex}><span className="font-semibold">{issue.severity}:</span> {issue.message}</li>)}</ul> : <p className="mt-1 text-slate-500">No preview issues reported. Academic source verification is still required.</p>}
+                    </div>
+                  ))}
+                </div>
+              </details>
+              {blocked.length > 0 && <p className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-800">You are not assigned to these courses and cannot import their syllabuses: <b>{blocked.join(", ")}</b>. No syllabus will be saved.</p>}
             </>
           })()}
 
@@ -132,7 +154,7 @@ export default function BulkImportSyllabusDialog({ open, onClose, programId, coh
                 <div>
                   <p className="text-sm font-bold text-[#006f76]">Review Template 2027</p>
                   <p className="mt-1 text-xs text-slate-500">
-                    Source semantic content remains unchanged; only the target review structure is NEW_2027.
+                    Review extracted values against the source. Parsed values are not certified; fields not extracted remain unverified.
                   </p>
                 </div>
                 <span className="rounded-full border border-[#b9d9dc] bg-[#eef8f8] px-2.5 py-1 text-[11px] font-semibold text-[#006f76]">
@@ -145,14 +167,14 @@ export default function BulkImportSyllabusDialog({ open, onClose, programId, coh
                   {targetMetadataError} Nothing can be saved until the backend returns the complete NEW_2027 contract.
                 </p>
               ) : (
-                <div className="max-h-[46vh] space-y-3 overflow-y-auto pr-1">
+                <div className="space-y-3">
                   {targetSections.map((section) => (
                     <section key={section.key} className="overflow-hidden rounded-lg border border-slate-200">
                       <div className="border-b bg-slate-50 px-3 py-2">
                         <p className="text-xs font-bold text-slate-800">{section.label}</p>
                         {section.key === "cloLlo" && (
                           <p className="mt-1 text-[11px] font-medium text-amber-700">
-                            No canonical LLO model exists in the source. LLO values will stay Missing / Absent in source; nothing is generated.
+                            Structured LLO data is not available in this preview. This does not establish that LLOs are absent from the source. No values are generated.
                           </p>
                         )}
                       </div>
@@ -230,7 +252,7 @@ export default function BulkImportSyllabusDialog({ open, onClose, programId, coh
             </div>
           )}
         </div>
-        <DialogFooter className="border-t border-[#e2ecee] bg-[#f7fafb] px-6 py-4">
+        <DialogFooter className="shrink-0 border-t border-[#e2ecee] bg-[#f7fafb] px-6 py-4">
           <Button variant="ghost" onClick={close}>Cancel</Button>
           {!result ? (
             <Button className="bg-[#007d84] hover:bg-[#006b71]" disabled={!file || loading} onClick={extract}>
@@ -285,7 +307,7 @@ export default function BulkImportSyllabusDialog({ open, onClose, programId, coh
                 close()
               }}
             >
-              {isNew2027Target ? "Confirm & Import" : "Import"} {result.syllabusCount}
+              {isNew2027Target ? "Continue to Import Review" : `Import ${result.syllabusCount}`}
             </Button>
           )}
         </DialogFooter>
@@ -326,8 +348,8 @@ const recordOf = (
   value: unknown,
 ): Record<string, unknown> =>
   value !== null
-  && typeof value === "object"
-  && !Array.isArray(value)
+    && typeof value === "object"
+    && !Array.isArray(value)
     ? value as Record<string, unknown>
     : {}
 
@@ -427,8 +449,8 @@ const sourceProvenanceEntry = (
 ) => {
   const raw =
     data.sourceProvenance
-      ?.[sectionKey]
-      ?.[fieldKey]
+    ?.[sectionKey]
+    ?.[fieldKey]
 
   if (!raw) {
     return undefined
@@ -476,7 +498,7 @@ const evidenceFromProvenance = (
    * Patch 3.1B is authoritative when provenance is present.
    */
   if (provenance) {
-    if (provenance.state === "PARSED") {
+    if (provenance.state === "PARSED" && sample !== undefined) {
       return {
         state: "PARSED",
         sample,
@@ -485,11 +507,11 @@ const evidenceFromProvenance = (
 
     if (provenance.state === "ABSENT_IN_SOURCE") {
       return {
-        state: "ABSENT_IN_SOURCE",
+        state: "UNRESOLVED",
         note:
           provenance.sourceLabel
-            ? `Source field "${provenance.sourceLabel}" was identified as absent from canonical parsed content.`
-            : `The recognized source structure does not expose ${description || "this canonical field"}.`,
+            ? `The parser did not extract "${provenance.sourceLabel}". Absence from the original source has not been verified.`
+            : `The parser did not extract ${description || "this canonical field"}. Check the original source; no value is inferred.`,
       }
     }
 
@@ -530,9 +552,9 @@ const evidenceFromProvenance = (
   }
 
   return {
-    state: "ABSENT_IN_SOURCE",
+    state: "UNRESOLVED",
     note:
-      `The recognized source structure does not expose ${description || "this canonical field"}.`,
+      `No extraction evidence is available for ${description || "this canonical field"}. Absence from the original source has not been verified.`,
   }
 }
 
@@ -547,10 +569,9 @@ const notModeledEvidence = (
 
 const missingLloEvidence =
   (): SourceEvidence => ({
-    state: "ABSENT_IN_SOURCE",
+    state: "UNRESOLVED",
     note:
-      "No canonical LLO model exists in the CS2026 source import data. "
-      + "LLO values stay Missing / Absent in source; nothing is generated.",
+      "Structured LLO data is not available in this preview. Verify the original source; no LLO values are inferred or generated.",
   })
 
 const rubricCriteriaRows = (
@@ -974,7 +995,7 @@ const summarizeSourceEvidence = (
 
   const state: SourceEvidenceSummaryState =
     total > 0
-    && parsed === total
+      && parsed === total
       ? "PARSED"
       : total > 0
         && absent === total
@@ -1016,20 +1037,20 @@ const summarizeSourceEvidence = (
 
   const affected =
     showAffected
-    && affectedCodes.length > 0
+      && affectedCodes.length > 0
       ? (
-          affectedCodes
-            .slice(
-              0,
-              affectedLimit,
-            )
-            .join(", ")
-          + (
-            affectedCodes.length > affectedLimit
-              ? ` +${affectedCodes.length - affectedLimit} more`
-              : ""
+        affectedCodes
+          .slice(
+            0,
+            affectedLimit,
           )
+          .join(", ")
+        + (
+          affectedCodes.length > affectedLimit
+            ? ` +${affectedCodes.length - affectedLimit} more`
+            : ""
         )
+      )
       : undefined
 
   const note =
@@ -1042,7 +1063,7 @@ const summarizeSourceEvidence = (
   return {
     state,
     summary:
-      `${parsed}/${total} parsed · ${absent} absent · ${unresolved} unresolved`,
+      `${parsed}/${total} extracted · ${absent} reported absent · ${unresolved} not verified`,
     example,
     affected,
     note,
@@ -1053,7 +1074,7 @@ const evidenceLabel = (
   state: SourceEvidenceSummaryState,
 ) => {
   if (state === "PARSED") {
-    return "Parsed"
+    return "Extracted"
   }
 
   if (state === "ABSENT_IN_SOURCE") {
@@ -1061,7 +1082,7 @@ const evidenceLabel = (
   }
 
   if (state === "UNRESOLVED") {
-    return "Unresolved"
+    return "Not verified"
   }
 
   if (state === "NOT_MODELED") {

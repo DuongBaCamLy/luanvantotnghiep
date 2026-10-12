@@ -1,4 +1,5 @@
-﻿import SyllabusRevisionHistory from "@/components/syllabus/SyllabusRevisionHistory"
+﻿import ApprovalHistoryTable from "@/components/approval/ApprovalHistoryTable"
+import SyllabusRevisionHistory from "@/components/syllabus/SyllabusRevisionHistory"
 import { syllabusHistoryApi } from "@/api/syllabusHistoryApi"
 import { formatVersionLabel } from "@/lib/syllabusVersion"
 import { useEffect, useMemo, useState } from "react"
@@ -12,6 +13,7 @@ import {
   Edit3,
   FileSearch2,
   GitCompareArrows,
+  History,
   LoaderCircle,
   ShieldCheck,
   XCircle,
@@ -20,10 +22,11 @@ import { useLocation, useNavigate, useParams } from "react-router-dom"
 import { toast } from "sonner"
 
 import { syllabusApi } from "@/api/syllabusApi"
-import { syllabusPdfApi } from "@/api/syllabusPdfApi"
+import { syllabusPdfApi, syllabusWordApi } from "@/api/syllabusPdfApi"
 import { approvalRequestApi } from "@/api/approvalRequestApi"
 import SyllabusForm from "@/components/syllabus/SyllabusForm"
 import New2027SyllabusView from "@/components/syllabus/New2027SyllabusView"
+import { isNew2027Syllabus } from "@/lib/new2027SyllabusDraft"
 import SyllabusPdfPreviewDialog from "@/components/syllabus/SyllabusPdfPreviewDialog"
 import ApprovalReviewDialog, { type ReviewDecision } from "@/components/approval/ApprovalReviewDialog"
 import { Badge } from "@/components/ui/badge"
@@ -52,9 +55,6 @@ const normalizeRole = (value: unknown) => String(value ?? "")
 const normalizeStatus = (value: unknown) => String(value ?? "")
   .trim()
   .toUpperCase()
-
-const isNew2027Syllabus = (syllabus?: Syllabus | null) =>
-  String(syllabus?.targetTemplateProfile ?? "").trim().toUpperCase() === "NEW_2027"
 
 const statusLabel = (status: unknown, role: string) => {
   const normalized = normalizeStatus(status)
@@ -113,7 +113,7 @@ const safeFilePart = (value: unknown, fallback = "NA") => String(value ?? "")
 
 const pdfErrorMessage = async (error: unknown) => {
   if (!axios.isAxiosError(error)) {
-    return error instanceof Error ? error.message : "Unable to export the syllabus PDF."
+    return error instanceof Error ? error.message : "Unable to export the syllabus document."
   }
 
   const responseData = error.response?.data
@@ -154,6 +154,8 @@ export default function SyllabusDetailPage() {
   || role === "DEAN_SECRETARY"
   const [previewOpen, setPreviewOpen] = useState(false)
   const [downloading, setDownloading] = useState(false)
+  const [downloadingWord, setDownloadingWord] = useState(false)
+  const [reviewResult, setReviewResult] = useState("")
   const [reviewDecision, setReviewDecision] = useState<ReviewDecision | null>(null)
 
   const {
@@ -245,11 +247,11 @@ export default function SyllabusDetailPage() {
         queryClient.invalidateQueries({ queryKey: ["depthead-courses"] }),
         queryClient.invalidateQueries({ queryKey: ["notifications"] }),
       ])
-      toast.success(reviewDecision === "APPROVED"
-        ? isDean
-  ? "Syllabus received final approval."
-  : "Syllabus forwarded to the Dean."
-        : "Syllabus returned to the instructor for revision.")
+      const message = reviewDecision === "APPROVED"
+        ? isDean ? "Syllabus received final approval." : "Syllabus forwarded to the final approval queue."
+        : "Syllabus returned to the instructor for revision."
+      setReviewResult(message)
+      toast.success(message)
     },
   })
   const isRevisionState = ["APPROVED", "REJECTED", "REVISION_REQUESTED"].includes(currentStatus)
@@ -294,6 +296,7 @@ export default function SyllabusDetailPage() {
         syllabus.id,
         `Syllabus_${safeFilePart(syllabus.courseCode)}_${safeFilePart(versionLabel(syllabus))}_Official.pdf`,
       )
+      toast.success("PDF document exported.")
     } catch (error) {
       toast.error(await pdfErrorMessage(error))
     } finally {
@@ -332,6 +335,9 @@ export default function SyllabusDetailPage() {
             <Button type="button" variant="outline" onClick={() => navigate(syllabusBasePath)}>
               <ArrowLeft className="size-4" />Back to Catalog
             </Button>
+            <Button type="button" variant="outline" onClick={() => document.getElementById("approval-history")?.scrollIntoView({ behavior: "smooth", block: "start" })}>
+              <History className="size-4" />View Review
+            </Button>
             <Button type="button" variant="outline" onClick={() => setPreviewOpen(true)}>
               <FileSearch2 className="size-4" />Preview PDF
             </Button>
@@ -344,9 +350,21 @@ export default function SyllabusDetailPage() {
                 onClick={() => void handleDownload()}
               >
                 {downloading ? <LoaderCircle className="size-4 animate-spin" /> : <Download className="size-4" />}
-                Official PDF
+                Export PDF
               </Button>
             )}
+            {["INSTRUCTOR", "ADMIN", "DEPT_HEAD", "DEAN"].includes(role) && <Button type="button" variant="outline" disabled={downloadingWord}
+              onClick={() => {
+                setDownloadingWord(true)
+                void syllabusWordApi.downloadCurrent(syllabus.id,
+                  `Syllabus_${safeFilePart(syllabus.courseCode)}_${safeFilePart(versionLabel(syllabus))}_Current.docx`)
+                  .then(() => toast.success("Word document exported."))
+                  .catch(async (error: unknown) => toast.error(await pdfErrorMessage(error)))
+                  .finally(() => setDownloadingWord(false))
+              }}>
+              {downloadingWord ? <LoaderCircle className="size-4 animate-spin" /> : <Download className="size-4" />}
+              Export Word
+            </Button>}
             {isApproved && previousComparableLoading && (
   <Button
     type="button"
@@ -428,6 +446,8 @@ export default function SyllabusDetailPage() {
         </div>
       </section>
 
+      {reviewResult && <p role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm text-emerald-800">{reviewResult}</p>}
+
       {reviewDecision && pendingReviewRequest && (
         <ApprovalReviewDialog
           open
@@ -486,6 +506,12 @@ export default function SyllabusDetailPage() {
   </section>
 )}
 
+      <div id="approval-history" className="scroll-mt-24">
+        <ApprovalHistoryTable key={syllabus.id} syllabusId={syllabus.id} initialVersionNumber={syllabus.versionNumber}
+          onOpenSyllabus={() => document.getElementById("syllabus-content")?.scrollIntoView({ behavior: "smooth", block: "start" })} />
+      </div>
+
+      <div id="syllabus-content" className="scroll-mt-24">
       {isNew2027 ? (
         <New2027SyllabusView syllabus={syllabus} />
       ) : (
@@ -507,6 +533,8 @@ export default function SyllabusDetailPage() {
           />
         </section>
       )}
+
+      </div>
 
       <SyllabusRevisionHistory syllabusId={syllabus.id} />
 

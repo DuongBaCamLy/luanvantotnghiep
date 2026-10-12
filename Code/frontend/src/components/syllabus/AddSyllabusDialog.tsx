@@ -64,7 +64,8 @@ export default function AddSyllabusDialog({ open, onOpenChange, scopeProgramId, 
           <DialogHeader>
             <DialogTitle>Add New Syllabus</DialogTitle>
             <DialogDescription>
-              Add a DOCX/PDF template or create the syllabus manually. Imported content is reviewed in the editable form before saving.
+              Upload a PDF syllabus or create the syllabus manually.
+              Imported content is reviewed in the editable form before saving.
             </DialogDescription>
           </DialogHeader>
 
@@ -76,8 +77,12 @@ export default function AddSyllabusDialog({ open, onOpenChange, scopeProgramId, 
             <div className={`grid gap-3 ${hasCurriculumScope ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
               <button type="button" disabled={coursesLoading || scopedCoursesLoading || availableCourses.length === 0} onClick={() => setImportOpen(true)} className="rounded-xl border border-slate-200 p-4 text-left transition hover:border-[#007d84] hover:bg-[#f2f8f9] disabled:cursor-not-allowed disabled:opacity-50">
                 <FileUp className="mb-3 size-5 text-[#007d84]" />
-                <p className="text-sm font-semibold text-slate-900">Add Template</p>
-                <p className="mt-1 text-xs leading-5 text-slate-500">Upload DOCX (recommended) or PDF, then extract and auto-fill the form.</p>
+                <p className="text-sm font-semibold text-slate-900">
+                  Upload PDF Syllabus
+                </p>
+                <p className="mt-1 text-xs leading-5 text-slate-500">
+                  Upload a PDF syllabus, extract its content, and review the information before saving.
+                </p>
               </button>
               {hasCurriculumScope && onBulkImportRequested && (
                 <button type="button" disabled={coursesLoading || scopedCoursesLoading || availableCourses.length === 0} onClick={() => setBulkImportOpen(true)} className="rounded-xl border border-slate-200 p-4 text-left transition hover:border-[#007d84] hover:bg-[#f2f8f9] disabled:cursor-not-allowed disabled:opacity-50">

@@ -88,6 +88,11 @@ class SyllabusPdfRendererTest {
                 base.creditLab(), base.responsiblePersons(), base.createdBy(), base.approvedBy(),
                 base.submittedAt(), base.approvedAt(), base.updatedAt(), base.changeSummary(),
                 "{\"schemaVersion\":1,\"assessmentPassNote\":\"Pass requirement from source\","
+                        + "\"sourceSemester\":\"7,9\",\"sourceAlignmentPreserved\":true,"
+                        + "\"ploCodes\":[\"PLO1\",\"PLO2\",\"PLO3\",\"PLO4\",\"PLO5\",\"PLO6\",\"PLO7\"],"
+                        + "\"cloPloMatrix\":{\"CLO1\":{\"PLO1\":\"4\",\"PLO7\":\"3\"}},\"sourceContentRows\":["
+                        + "{\"name\":\"Verified source content A\",\"weight\":\"1\",\"level\":\"I, T\",\"relatedCloCodes\":[]},"
+                        + "{\"name\":\"Verified source content B\",\"weight\":\"2\",\"level\":\"T, U\",\"relatedCloCodes\":[]}],"
                         + "\"plannedActivities\":[{\"week\":1,\"topic\":\"Course overview\","
                         + "\"clo\":\"CLO1\",\"assessments\":\"\","
                         + "\"learningActivities\":\"Lecture, Discussion\","
@@ -119,9 +124,16 @@ class SyllabusPdfRendererTest {
             }
 
             assertTrue(text.contains("CS2027"));
-            assertTrue(text.contains("No source LLO data is available. LLO values are not generated."));
+            assertTrue(text.contains("Structured LLO data has not been verified against the source."));
+            assertTrue(text.contains("No LLO values are generated."));
             assertTrue(text.contains("Lecture, Discussion"));
             assertTrue(text.contains("[1]. Chapter 1"));
+            assertTrue(text.contains("Verified source content A"));
+            assertTrue(text.contains("Verified source content B"));
+            assertTrue(text.contains("Week, hours and related CLOs are not inferred"));
+            assertTrue(text.contains("7,9"));
+            assertTrue(text.contains("PLO6"));
+            assertTrue(text.contains("PLO7"));
             assertTrue(!text.contains("2. Learning Outcomes Matrix"));
         }
     }
@@ -174,7 +186,7 @@ class SyllabusPdfRendererTest {
         assertTrue(hasLandscapePage);
     }
 
-    private SyllabusPdfDocument sampleDocument() {
+    SyllabusPdfDocument sampleDocument() {
         var clos = List.of(
                 new SyllabusPdfDocument.CloRow(
                         1, "CLO1", "KNOWLEDGE", "UNDERSTAND",

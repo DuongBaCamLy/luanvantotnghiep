@@ -34,6 +34,7 @@ class SyllabusXlsxPreviewTest {
     @Mock private com.scse.curriculum.syllabus.service.SyllabusIdentityService syllabusIdentityService;
     @Mock private com.scse.curriculum.syllabus.history.SyllabusHistoryService syllabusHistoryService;
     @Mock private com.scse.curriculum.cohort.service.CohortOperationalGuard cohortOperationalGuard;
+    @org.mockito.Spy private com.scse.curriculum.syllabus.template.TargetTemplateProfileResolver targetTemplateProfileResolver = new com.scse.curriculum.syllabus.template.TargetTemplateProfileResolver();
     @InjectMocks private SyllabusImportServiceImpl service;
 
     private byte[] completedWorkbook() throws Exception {
@@ -51,6 +52,8 @@ class SyllabusXlsxPreviewTest {
 
     @Test
     void instructorCannotConfirmWorkbookForAnotherCourse() throws Exception {
+        when(cohortRepository.findById(12)).thenReturn(java.util.Optional.of(
+                com.scse.curriculum.cohort.entity.Cohort.builder().id(12).name("CS2026").build()));
         var course = com.scse.curriculum.course.entity.Course.builder().id(20).courseCode("IT999IU").build();
         var user = com.scse.curriculum.user.entity.UserAccount.builder()
                 .role(com.scse.curriculum.user.entity.UserRole.INSTRUCTOR).build();
