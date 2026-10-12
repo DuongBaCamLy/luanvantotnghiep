@@ -1,0 +1,258 @@
+{
+  "sourceSha256": "fd279731316e301fce93cd25c9231959b1f73631f62c7d38e883d87bfaba1f32",
+  "sourceProgram": "DS2026",
+  "courses": [
+    {
+      "courseCode": "MA001IU",
+      "startPage": 156,
+      "endPage": 158,
+      "reviewedPages": [
+        156,
+        157,
+        158
+      ],
+      "method": "Direct visual transcription from the exact DS2026 PDF; all three physical source pages reviewed",
+      "fieldPages": {
+        "general": [
+          156,
+          157
+        ],
+        "objectives": [
+          157
+        ],
+        "clos": [
+          157
+        ],
+        "topics": [
+          157,
+          158
+        ],
+        "sourceOutcomeMatrix": [
+          157
+        ],
+        "examForms": [
+          158
+        ],
+        "examRequirements": [
+          158
+        ],
+        "readings": [
+          158
+        ]
+      },
+      "data": {
+        "sourceCourseCode": "MA001IU",
+        "sourceCourseName": "Calculus 1",
+        "courseDesignation": "This course equip students with basic concepts of calculus: limits, continuity, differentiation, and integration. Applications of these concepts are extensively discussed.",
+        "courseTypes": "General knowledge",
+        "semester": "7",
+        "personResponsible": "Nguyen Ngoc Hai, Dr.",
+        "language": "English",
+        "teachingMethods": "Quiz\nLabs",
+        "workloadTotal": "(Estimated) 170 hours",
+        "workloadContact": "Lecture: 50 hours",
+        "workloadPrivate": "120 hours",
+        "creditPoints": "4",
+        "lectureCredits": "4",
+        "laboratoryCredits": "0",
+        "objectives": "To provide the students with the main ideas and techniques of calculus, concerning limits, continuity, differentiation and integration. To provide an understanding of the practical meaning, significance and applications of these ideas and techniques, through practical examples taken from many areas of engineering, business and the life sciences To develop skills in mathematical modeling and problem solving, in thinking logically, and in creatively applying existing knowledge to new situations To develop confidence and fluency in discussing mathematics in English.",
+        "examForms": "Multiple-choice questions, short-answer questions",
+        "examRequirements": "Student responsibility: Students are expected to spend at least 8 hours per week self – studying. This time should be made up of reading, working on exercises and problems and group assignment. Attendance: Regular on-time attendance in this course is expected. It is compulsory that students attend at least 80% of the course to be eligible for the final examination. Missed tests: Students are not allowed to miss any of the tests (both on-going assessment and final test). There are very few exceptions. (Only with extremely reasonable excuses, e.g., certified paper from doctors, may students re-take the tests.)",
+        "clos": [
+          {
+            "code": "CLO1",
+            "description": "Understanding of the practical meaning, significance and applications of these ideas and techniques, through practical examples taken from many areas of engineering, business and the life sciences Explain the role of a Data Science Process in data analytics.",
+            "orderIndex": 1
+          },
+          {
+            "code": "CLO2",
+            "description": "Develop skills in mathematical modeling and problem solving, in thinking logically, and in creatively applying existing knowledge to new situations.",
+            "orderIndex": 2
+          },
+          {
+            "code": "CLO3",
+            "description": "Develop confidence and fluency in discussing mathematics in English.",
+            "orderIndex": 3
+          }
+        ],
+        "topics": [
+          {
+            "name": "Functions",
+            "orderInWeek": 1
+          },
+          {
+            "name": "Limits",
+            "orderInWeek": 2
+          },
+          {
+            "name": "Continuity",
+            "orderInWeek": 3
+          },
+          {
+            "name": "Derivatives",
+            "orderInWeek": 4
+          },
+          {
+            "name": "Differentiation",
+            "orderInWeek": 5
+          },
+          {
+            "name": "Derivatives of Basic Elementary Functions",
+            "orderInWeek": 6
+          },
+          {
+            "name": "Differentiation Rules",
+            "orderInWeek": 7
+          },
+          {
+            "name": "Applications of Differentiation: L'Hôpital's Rule",
+            "orderInWeek": 8
+          },
+          {
+            "name": "Optimization",
+            "orderInWeek": 9
+          },
+          {
+            "name": "Newton’s Method",
+            "orderInWeek": 10
+          },
+          {
+            "name": "Anti-derivatives",
+            "orderInWeek": 11
+          },
+          {
+            "name": "Indefinite Integrals",
+            "orderInWeek": 12
+          },
+          {
+            "name": "Definite Integrals",
+            "orderInWeek": 13
+          },
+          {
+            "name": "Fundamental Theorem of Calculus",
+            "orderInWeek": 14
+          },
+          {
+            "name": "Techniques of Integration",
+            "orderInWeek": 15
+          },
+          {
+            "name": "Improper Integrals",
+            "orderInWeek": 16
+          },
+          {
+            "name": "Applications of Integration",
+            "orderInWeek": 17
+          }
+        ],
+        "readings": [
+          {
+            "title": "J. Stewart, Calculus: Concepts and Contexts 5th, 2005\nJ. Rogawski, Calculus: Early Transcendentals 3rd, 2015",
+            "type": "RAW_SOURCE"
+          }
+        ],
+        "assessments": [],
+        "weeklyActivities": [],
+        "cloPloMappings": [],
+        "topicCloMappings": [],
+        "assessmentCloMappings": []
+      },
+      "notes": {
+        "sourceSupplementalSections": {
+          "1": [
+            {
+              "title": "Original general-information values",
+              "headers": [
+                "Source field",
+                "Source value"
+              ],
+              "rows": [
+                [
+                  "Course name — Vietnamese",
+                  "Toán 1"
+                ],
+                [
+                  "Credit points",
+                  "4 credits (Theory: 4 + Practice: 0)"
+                ],
+                [
+                  "ECTS",
+                  "6.18 ECTS"
+                ],
+                [
+                  "Number of periods",
+                  "Theory: 60; Practice: 0"
+                ],
+                [
+                  "Relation to curriculum — no selection specified",
+                  "Compulsory / elective / specialisation Names of other study programmes with which the module is shared"
+                ]
+              ],
+              "pages": [
+                156,
+                157
+              ]
+            }
+          ],
+          "5": [
+            {
+              "title": "Original Course Outcomes–Student Outcomes matrix; no DS PLO equivalence is inferred",
+              "headers": [
+                "Course Outcome",
+                "Student Outcome 1",
+                "Student Outcome 2",
+                "Student Outcome 3",
+                "Student Outcome 4",
+                "Student Outcome 5",
+                "Student Outcome 6"
+              ],
+              "rows": [
+                [
+                  "1",
+                  "x",
+                  "",
+                  "",
+                  "",
+                  "",
+                  ""
+                ],
+                [
+                  "2",
+                  "x",
+                  "",
+                  "",
+                  "",
+                  "",
+                  ""
+                ],
+                [
+                  "3",
+                  "",
+                  "",
+                  "x",
+                  "",
+                  "",
+                  ""
+                ]
+              ],
+              "pages": [
+                157
+              ]
+            }
+          ]
+        }
+      },
+      "unverifiedFields": [
+        "Relation-to-curriculum choice is not selected; the source template text is retained.",
+        "CLO1 includes a Data Science Process phrase in the Calculus 1 source; retained verbatim for academic review.",
+        "Student Outcomes 1–6 are retained as the original matrix; no equivalence to target DS PLOs is inferred."
+      ],
+      "missingFields": [
+        "Content Weight and Level cells are blank in the source.",
+        "No weekly schedule, assessment-weight plan or rubric is present in these three source pages.",
+        "CLO competency level and bilingual CLO descriptions are not specified.",
+        "No source LLO table is present."
+      ]
+    }
+  ]
+}

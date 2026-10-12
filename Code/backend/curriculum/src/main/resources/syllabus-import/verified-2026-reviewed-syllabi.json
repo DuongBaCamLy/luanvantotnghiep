@@ -1,0 +1,3906 @@
+{
+  "sourceSha256": "b24a4b9a0d052f8decc79410b92150415126bb5aabce6fa550bf4706d940f68a",
+  "courses": [
+    {
+      "courseCode": "PE015IU",
+      "startPage": 54,
+      "endPage": 62,
+      "reviewedPages": [
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62
+      ],
+      "method": "Direct visual page review; OCR used only to assist reading; original repetitions retained.",
+      "fieldPages": {
+        "general": [
+          55
+        ],
+        "objectives": [
+          55
+        ],
+        "clos": [
+          56,
+          57,
+          58
+        ],
+        "topics": [
+          59,
+          60
+        ],
+        "weeklyActivities": [
+          59,
+          60,
+          61
+        ],
+        "assessments": [
+          61
+        ],
+        "readings": [
+          55,
+          56
+        ],
+        "examRequirements": [
+          62
+        ]
+      },
+      "data": {
+        "sourceCourseCode": "PE015IU",
+        "sourceCourseName": "Philosophy Marx - Lenin",
+        "personResponsible": "Khoa Chính trị - Hành chính, ĐHQG-HCM",
+        "creditPoints": "3",
+        "workloadContact": "30 (trên lớp) [lý thuyết]; 15 (trên lớp) [thực hành]",
+        "workloadPrivate": "90 (về nhà)",
+        "objectives": "2.1. Môn học trang bị cho sinh viên những nội dung cơ bản về thế giới quan, phương pháp luận triết học Mác – Lênin.\n2.2. Giúp cho sinh viên vận dụng những tri thức về thế giới quan, phương pháp luận triết học triết học Mác – Lênin một cách sáng tạo trong hoạt động nhận thức và thực tiễn, nhằm giải quyết những vấn đề mà đời sống xã hội của đất nước, của thời đại đang đặt ra.",
+        "contentNote": "Môn học trang bị cho sinh viên những kiến thức cơ bản về triết học Mác-Lênin",
+        "dateRevised": "07 tháng 02 năm 2020",
+        "clos": [
+          {
+            "code": "LO.1",
+            "description": "TRIẾT HỌC VÀ VAI TRÒ CỦA TRIẾT HỌC TRONG ĐỜI SỐNG XÃ HỘI",
+            "descriptionVn": "TRIẾT HỌC VÀ VAI TRÒ CỦA TRIẾT HỌC TRONG ĐỜI SỐNG XÃ HỘI",
+            "competencyLevel": "KNOWLEDGE",
+            "orderIndex": 1
+          },
+          {
+            "code": "LO.2",
+            "description": "CHỦ NGHĨA DUY VẬT BIỆN CHỨNG",
+            "descriptionVn": "CHỦ NGHĨA DUY VẬT BIỆN CHỨNG",
+            "competencyLevel": "KNOWLEDGE",
+            "orderIndex": 2
+          },
+          {
+            "code": "LO.3",
+            "description": "CHỦ NGHĨA DUY VẬT LỊCH SỬ",
+            "descriptionVn": "CHỦ NGHĨA DUY VẬT LỊCH SỬ",
+            "competencyLevel": "KNOWLEDGE",
+            "orderIndex": 3
+          },
+          {
+            "code": "LO.4",
+            "description": "THỂ HIỆN KHẢ NĂNG KHÁI QUÁT HÓA, TƯ DUY, TRANH LUẬN, PHẢN BIỆN, LÀM VIỆC NHÓM",
+            "descriptionVn": "THỂ HIỆN KHẢ NĂNG KHÁI QUÁT HÓA, TƯ DUY, TRANH LUẬN, PHẢN BIỆN, LÀM VIỆC NHÓM",
+            "competencyLevel": "SKILL",
+            "orderIndex": 4
+          },
+          {
+            "code": "LO.5",
+            "description": "THỂ HIỆN Ý THỨC, NHẬN THỨC TRONG VÀ SAU KHI HỌC TẬP",
+            "descriptionVn": "THỂ HIỆN Ý THỨC, NHẬN THỨC TRONG VÀ SAU KHI HỌC TẬP",
+            "competencyLevel": "ATTITUDE",
+            "orderIndex": 5
+          }
+        ],
+        "topics": [
+          {
+            "name": "Giới thiệu về môn học",
+            "nameVn": "Giới thiệu về môn học",
+            "orderInWeek": 1
+          },
+          {
+            "name": "Chương 1\nTRIẾT HỌC VÀ VAI TRÒ CỦA TRIẾT HỌC TRONG ĐỜI SỐNG XÃ HỘI",
+            "nameVn": "Chương 1\nTRIẾT HỌC VÀ VAI TRÒ CỦA TRIẾT HỌC TRONG ĐỜI SỐNG XÃ HỘI",
+            "orderInWeek": 2
+          },
+          {
+            "name": "Chương 2\nCHỦ NGHĨA DUY VẬT BIỆN CHỨNG",
+            "nameVn": "Chương 2\nCHỦ NGHĨA DUY VẬT BIỆN CHỨNG",
+            "orderInWeek": 3
+          },
+          {
+            "name": "Chương 3\nCHỦ NGHĨA DUY VẬT LỊCH SỬ",
+            "nameVn": "Chương 3\nCHỦ NGHĨA DUY VẬT LỊCH SỬ",
+            "orderInWeek": 4
+          }
+        ],
+        "assessments": [
+          {
+            "name": "Thuyết trình nhóm",
+            "nameVn": "Thuyết trình nhóm",
+            "weightPercent": 15.0,
+            "orderIndex": 1,
+            "assessmentType": "Thuyết trình nhóm"
+          },
+          {
+            "name": "Bài thi giữa kỳ",
+            "nameVn": "Bài thi giữa kỳ",
+            "weightPercent": 20.0,
+            "orderIndex": 2,
+            "assessmentType": "Bài thi giữa kỳ"
+          },
+          {
+            "name": "Thảo luận, chuyên cần tại lớp (Discussion in Class)",
+            "nameVn": "Thảo luận, chuyên cần tại lớp (Discussion in Class)",
+            "weightPercent": 15.0,
+            "orderIndex": 3,
+            "assessmentType": "Thảo luận, chuyên cần tại lớp (Discussion in Class)"
+          },
+          {
+            "name": "Thi cuối kỳ",
+            "nameVn": "Thi cuối kỳ",
+            "weightPercent": 50.0,
+            "orderIndex": 4,
+            "assessmentType": "Thi cuối kỳ"
+          }
+        ],
+        "readings": [
+          {
+            "type": "RAW_SOURCE",
+            "title": "- Bộ Giáo dục và Đào tạo (2019), Giáo trình Triết học Mác – Lênin, Nxb. Chính trị quốc gia, Hà Nội.\n- Bộ Giáo dục và Đào tạo (2012), Giáo trình Những Nguyên lý cơ bản của chủ nghĩa Mác – Lênin, Nxb. Chính trị quốc gia, Hà Nội.\n- Hội đồng Trung ương (2008), Giáo trình Triết học Mác-Lênin, Nxb. Chính trị quốc gia, Hà Nội."
+          }
+        ],
+        "weeklyActivities": [],
+        "cloPloMappings": [],
+        "topicCloMappings": [],
+        "assessmentCloMappings": [],
+        "examRequirements": "- Khi có các thắc mắc liên quan môn học, sinh viên có thể liên lạc với quản lý Bộ môn Hồ Chí Minh học & Lịch sử Đảng và Khoa Chính trị - Hành chính qua email: daotao.spas@vnuhcm.edu.vn\n- Quy định về Bài thuyết trình nhóm GHW\nThành lập nhóm: 5 sinh viên/nhóm. Hạn chót đăng ký đề tài nhóm Quản lý trên forum là Buổi 2 hoặc trực tiếp nộp cho GV buổi 1.\nTuần 4 (buổi thứ 4) thuyết trình theo thứ tự. Lưu ý các nhóm cần có mặt đủ và mang theo tất cả các tài liệu liên quan đến GHW khi đi thuyết trình.\nHình thức nộp bài: Nộp file và biên bản làm việc nhóm qua mail cho GV\n- Quy định về giờ giấc, chuyên cần, kỷ luật trong khóa học: Lên lớp đúng giờ, dự tối thiểu 80% thời gian học trên lớp (chỉ được phép vắng mặt tối đa 20% số tiết học). Nếu vắng quá số tiết quy định sẽ bị cấm thi theo quy chế. Có đầy đủ điểm kiểm tra, điểm thi kết thúc học phần & nhiệt tình thảo luận, phát biểu xây dựng bài, nghiêm túc trong giờ học."
+      },
+      "notes": {
+        "sourceCloLanguage": "VI",
+        "sourceContentLanguage": "VI",
+        "sourceSupplementalSections": {
+          "1": [
+            {
+              "title": "Thông tin nguồn",
+              "headers": [
+                "Trường nguồn",
+                "Giá trị"
+              ],
+              "rows": [
+                [
+                  "Thuộc khối kiến thức",
+                  "Cơ sở"
+                ],
+                [
+                  "Ngày nguồn",
+                  "07 tháng 02 năm 2020"
+                ]
+              ],
+              "pages": [
+                55,
+                62
+              ]
+            }
+          ],
+          "3": [
+            {
+              "title": "Tiêu chí đánh giá trong bảng chuẩn đầu ra nguồn",
+              "headers": [
+                "Mã nguồn",
+                "Tiêu chí đánh giá"
+              ],
+              "rows": [
+                [
+                  "LO.1.1",
+                  "Khái lược được triết học, một số khái niệm cơ bản trong triết học"
+                ],
+                [
+                  "LO.1.2",
+                  "Nhận biết được sự đối lập giữa chủ nghĩa duy vật và chủ nghĩa duy tâm trong việc giải quyết vấn đề cơ bản của triết học"
+                ],
+                [
+                  "LO.1.3",
+                  "Nắm được chủ nghĩa duy vật biện chứng – hình thức phát triển cao nhất của chủ nghĩa duy vật biện chứng."
+                ],
+                [
+                  "LO.1.4",
+                  "Nắm rõ được sự ra đời, đối tượng, chức năng và vai trò của triết học Mác - Lênin"
+                ],
+                [
+                  "LO.2.1",
+                  "Hiểu rõ vật chất theo quan điểm của chủ nghĩa duy vật biện chứng"
+                ],
+                [
+                  "LO.2.2",
+                  "Hiểu rõ ý thức theo quan điểm của chủ nghĩa duy vật biện chứng"
+                ],
+                [
+                  "LO.2.3",
+                  "Giải quyết được mối quan hệ giữa vật chất và ý thức theo quan điểm của chủ nghĩa duy vật biện chứng"
+                ],
+                [
+                  "LO.2.4",
+                  "Hiểu rõ được phép biện chứng và phép biện chứng duy vật"
+                ],
+                [
+                  "LO.2.5",
+                  "Hiểu rõ được hai nguyên lý cơ bản của phép biện chứng duy vật và rút ra ý nghĩa phương pháp luận của từng nguyên lý"
+                ],
+                [
+                  "LO.2.6",
+                  "Hiểu rõ được các cặp phạm trù cơ bản của phép biện chứng duy vật và rút ra ý nghĩa phương pháp luận từng cặp phạm trù"
+                ],
+                [
+                  "LO.2.7",
+                  "Hiểu rõ được các quy luật cơ bản của cơ bản của phép biện chứng duy vật và rút ra ý nghĩa phương pháp luận từng quy luật"
+                ],
+                [
+                  "LO.2.8",
+                  "Hiểu rõ được thực tiễn, nhận thức, vai trò của thực tiễn đối với nhận thức và chân lý"
+                ],
+                [
+                  "LO.3.1",
+                  "Nắm được vai trò của sản xuất vật chất và phương thức sản xuất đối với sự tồn tại và phát triển xã hội"
+                ],
+                [
+                  "LO.3.2",
+                  "Hiểu rõ được mối quan hệ biện chứng giữa lực lượng sản xuất và quan hệ sản xuất"
+                ],
+                [
+                  "LO.3.3",
+                  "Hiểu rõ được mối quan hệ biện chứng giữa CSHT và KTTT; sự phát triển tự nhiên của các hình thái KT-XH"
+                ],
+                [
+                  "LO.3.4",
+                  "Hiểu rõ được giai cấp, đấu tranh giai cấp; dân tộc và mối quan hệ giữa giai cấp, dân tộc và nhân loại"
+                ],
+                [
+                  "LO.3.5",
+                  "Hiểu rõ được nhà nước và mạng xã hội"
+                ],
+                [
+                  "LO.3.6",
+                  "Hiểu rõ được mối quan hệ biện chứng giữa tồn tại xã hội và ý thức xã hội"
+                ],
+                [
+                  "LO.3.7",
+                  "Hiểu rõ được con người, bản chất con người; hiện tượng tha hóa và giải phóng con người; mối quan hệ giữa cá nhân và xã hội, vai trò của quần chúng nhân dân"
+                ],
+                [
+                  "LO.4.1",
+                  "Có kỹ năng khái quát hóa để rút ra Từ khóa tri thức đối với mỗi nội dung và tư duy có hệ thống"
+                ],
+                [
+                  "LO.4.2",
+                  "Có kỹ năng trình bày, thuyết minh, phản biện, tranh luận, hùng biện những tri thức lý luận đang học tập, nghiên cứu dựa trên thực tiễn"
+                ],
+                [
+                  "LO.4.3",
+                  "Có kỹ năng giao tiếp xã hội, hợp tác và làm việc nhóm, chia sẻ tri thức và kinh nghiệm, khả năng điều hành nhóm làm việc"
+                ],
+                [
+                  "LO.5.1",
+                  "Có ý thức trách nhiệm bảo vệ tính khoa học, cách mạng, nhân văn của CN Mác - Lênin"
+                ],
+                [
+                  "LO.5.2",
+                  "Có ý thức, trách nhiệm cá nhân đối với tập thể, cộng đồng"
+                ],
+                [
+                  "LO.5.3",
+                  "Có nhận thức về sự cần thiết học tập, nghiên cứu suốt đời và vận dụng nó trong cuộc sống."
+                ]
+              ],
+              "pages": [
+                56,
+                57,
+                58
+              ]
+            }
+          ],
+          "5": [
+            {
+              "title": "Chuẩn đầu ra CDIO CTĐT trong nguồn (không tự chuyển thành PLO)",
+              "headers": [
+                "LO",
+                "Mục tiêu môn học",
+                "Chuẩn đầu ra CDIO CTĐT",
+                "Mức độ giảng dạy (I/T/U)"
+              ],
+              "rows": [
+                [
+                  "LO.1",
+                  "2.1",
+                  "1.1.3",
+                  "I3"
+                ],
+                [
+                  "LO.2",
+                  "2.1; 2.2",
+                  "1.1.3",
+                  "T4"
+                ],
+                [
+                  "LO.3",
+                  "2.1; 2.2",
+                  "1.1.3",
+                  "T4"
+                ],
+                [
+                  "LO.4",
+                  "2.1; 2.2",
+                  "2.1.1; 2.3.1; 2.4.4; 2.5; 3.1.5",
+                  "U4"
+                ],
+                [
+                  "LO.5",
+                  "2.1; 2.2",
+                  "3.1",
+                  "U3"
+                ]
+              ],
+              "pages": [
+                56,
+                57,
+                58
+              ]
+            }
+          ],
+          "9": [
+            {
+              "title": "Kế hoạch giảng dạy theo buổi học — TT/tiết là giá trị nguồn, không phải tuần/giờ suy diễn",
+              "headers": [
+                "TT (tiết)",
+                "Nội dung giảng dạy",
+                "LO",
+                "Hoạt động dạy và học",
+                "Đánh giá"
+              ],
+              "rows": [
+                [
+                  "1 (1 tiết)",
+                  "Giới thiệu về môn học",
+                  "LO.1, LO.4;",
+                  "Dạy:\n- Giới thiệu đề cương môn học\n- Giới thiệu nội dung đề tài thuyết trình nhóm GHW)\nHọc ở lớp:\n- Chia nhóm (5 SV/nhóm)\n- Giới thiệu nhóm học tập\nHọc ngoài lớp:\n-Chọn đề tài thuyết trình của nhóm (GHW)\n- Đọc trước tài liệu chương 1.",
+                  ""
+                ],
+                [
+                  "2 (15 tiết)",
+                  "Chương 1\nTRIẾT HỌC VÀ VAI TRÒ CỦA TRIẾT HỌC TRONG ĐỜI SỐNG XÃ HỘI",
+                  "LO.1; LO.4 LO.5",
+                  "Dạy:\nI. TRIẾT HỌC VÀ VẤN ĐỀ CƠ BẢN CỦA TRIẾT HỌC\n1. Khái lược về triết học\n2. Vấn đề cơ bản của triết học\n3. Biện chứng và siêu hình\nII. TRIẾT HỌC MÁC - LÊNIN VÀ VAI TRÒ CỦA TRIẾT HỌC MÁC - LÊNIN TRONG ĐỜI SỐNG XÃ HỘI\n1. Sự ra đời và phát triển của triết học Mác - Lênin\n2. Đối tượng và chức năng của triết học Mác - Lênin\n3. Vai trò của triết học Mác - Lênin trong đời sống xã hội và trong sự nghiệp đổi mới ở Việt Nam hiện nay\nHọc ở lớp: Thảo luận và phát biểu trên lớp\nHọc ngoài lớp:\n- Phác thảo nội dung thuyết trình nhóm GHW\n- Đọc trước tài liệu chương 2.",
+                  "Thi giữa kỳ (Quiz)"
+                ],
+                [
+                  "3 (15 tiết)",
+                  "Chương 2\nCHỦ NGHĨA DUY VẬT BIỆN CHỨNG",
+                  "LO.2 LO.4 LO.5",
+                  "Dạy:\nI. VẬT CHẤT VÀ Ý THỨC\n1. Vật chất và các hình thức tồn tại của vật chất\n2. Nguồn gốc, bản chất và kết cấu của ý thức\n3. Mối quan hệ giữa vật chất và ý thức\nII. PHÉP BIỆN CHỨNG DUY VẬT\n1. Hai loại hình biện chứng và phép biện chứng duy vật\n2. Nội dung của phép biện chứng duy vật\nIII. LÝ LUẬN NHẬN THỨC\n1. Các nguyên tắc của lý luận nhận thức duy vật biện chứng\n2. Nguồn gốc, bản chất của nhận thức\n3. Thực tiễn và vai trò của thực tiễn đối với nhận thức\n4. Các giai đoạn cơ bản của quá trình nhận thức\n5. Chân lý\nHọc ở lớp: Thảo luận và phát biểu trên lớp\nHọc ngoài lớp:\nĐọc trước tài liệu chương 3",
+                  "Thi giữa kỳ (Quiz)\nThi cuối kỳ (FEX)"
+                ],
+                [
+                  "4 (14 tiết)",
+                  "Chương 3\nCHỦ NGHĨA DUY VẬT LỊCH SỬ",
+                  "LO.3 LO.4 LO.5",
+                  "Dạy:\nI. HỌC THUYẾT HÌNH THÁI KINH TẾ - XÃ HỘI\n1. Sản xuất vật chất là cơ sở của sự tồn tại và phát triển xã hội\n2. Biện chứng giữa lực lượng sản xuất và quan hệ sản xuất\n3. Biện chứng giữa cơ sở hạ tầng và kiến trúc thượng tầng của xã hội\n4. Sự phát triển các hình thái kinh tế - xã hội là một quá trình lịch sử - tự nhiên\nII. GIAI CẤP VÀ DÂN TỘC 160\n1. Vấn đề giai cấp và đấu tranh giai cấp\n2. Dân tộc\n3. Mối quan hệ giai cấp - dân tộc - nhân loại\nIII. NHÀ NƯỚC VÀ CÁCH MẠNG XÃ HỘI\n1. Nhà nước\n2. Cách mạng xã hội\nIV. Ý THỨC XÃ HỘI\n1. Khái niệm tồn tại xã hội và các yếu tố cơ bản của tồn tại xã hội\n2. Ý thức xã hội và kết cấu của ý thức xã hội\nV. TRIẾT HỌC VỀ CON NGƯỜI\n1. Khái niệm con người và bản chất con người\n2. Hiện tượng tha hóa con người và vấn đề giải phóng con người\n3. Quan hệ cá nhân và xã hội; vai trò của quần chúng nhân dân và lãnh tụ trong lịch sử\n4. Vấn đề con người trong sự nghiệp cách mạng ở Việt Nam\nHọc ở lớp: Thảo luận và phát biểu trên lớp\nHọc ngoài lớp: Hoàn thiện bài thuyết trình",
+                  "Thuyết trình nhóm (GHW)\nThi cuối kỳ (FEX)"
+                ]
+              ],
+              "pages": [
+                59,
+                60,
+                61
+              ]
+            }
+          ],
+          "10": [
+            {
+              "title": "Đánh giá môn học — nguyên văn bảng nguồn",
+              "headers": [
+                "STT",
+                "Mã",
+                "Tên",
+                "Mô tả",
+                "Tỷ trọng",
+                "Hình thức",
+                "LO"
+              ],
+              "rows": [
+                [
+                  "1",
+                  "GHW",
+                  "Thuyết trình nhóm",
+                  "Thuyết trình nhóm về đề tài đã phân công",
+                  "15%",
+                  "Thuyết trình và bản báo cáo nhóm",
+                  "LO.2 LO.3 LO.4 LO.5"
+                ],
+                [
+                  "2",
+                  "Quiz",
+                  "Bài thi giữa kỳ",
+                  "Thi theo đề thi chung",
+                  "20%",
+                  "Tự luận đề mở",
+                  "LO.1 LO.2;"
+                ],
+                [
+                  "3",
+                  "DIC",
+                  "Thảo luận, chuyên cần tại lớp (Discussion in Class)",
+                  "Điểm thảo luận được tính theo phương pháp tương đối. SV có số lần thảo luận tại lớp nhiều nhất sẽ được điểm tối đa, điểm của các bạn khác được tính dựa theo bạn có số lần thảo luận cao nhất.",
+                  "15%",
+                  "Phát biểu/đặt câu hỏi trên lớp hoặc phiếu trả lời trong các nghiên cứu tình huống tại lớp",
+                  "LO.4 LO.5"
+                ],
+                [
+                  "4",
+                  "FEX",
+                  "Thi cuối kỳ",
+                  "Đề thi bao quát toàn bộ nội dung môn học",
+                  "50%",
+                  "Tự luận đề đóng",
+                  "LO.2; LO.3; LO.4;"
+                ]
+              ],
+              "pages": [
+                61
+              ]
+            }
+          ],
+          "11": [
+            {
+              "title": "Tiêu chí đánh giá chuẩn đầu ra môn học",
+              "headers": [
+                "TT",
+                "Chuẩn đầu ra",
+                "Nội dung",
+                "Phương pháp",
+                "Tiêu chí đánh giá"
+              ],
+              "rows": [
+                [
+                  "LO.1",
+                  "Nhận biết được sự đối lập giữa chủ nghĩa duy vật và chủ nghĩa duy tâm trong việc giải quyết vấn đề cơ bản của triết học; vai trò của triết học Mác - Lênin",
+                  "Chương 1",
+                  "Thi giữa kỳ (Quiz)",
+                  "Ngân hàng đề thi của GV"
+                ],
+                [
+                  "LO.2 LO.4",
+                  "Nắm rõ nội dung: Vật chất, ý thức và mối quan hệ giữa chúng; các nguyên lý, các quy luật và các phạm trù cơ bản của phép biện chứng duy vật",
+                  "Chương 2",
+                  "Thuyết trình nhóm (GHW)\nThi cuối kỳ (FEX)",
+                  "Tiêu chí đánh giá thuyết trình nhóm\nNgân hàng đề thi của GV"
+                ],
+                [
+                  "LO.3 LO.4",
+                  "Nhận biết và nắm được nội dung của chủ nghĩa duy vật lịch sử",
+                  "Chương 3",
+                  "Thảo luận tại lớp (Discussion in Class)\nThi cuối kỳ (FEX)",
+                  "Tiêu chí đánh giá thuyết trình nhóm, thảo luận tại lớp\nNgân hàng đề thi của GV"
+                ]
+              ],
+              "pages": [
+                61,
+                62
+              ]
+            }
+          ]
+        },
+        "sourceWorkloadUnit": "tiết"
+      },
+      "unverifiedFields": [],
+      "missingFields": [
+        "courseDesignation",
+        "courseTypes",
+        "semester",
+        "language",
+        "relation",
+        "teachingMethods",
+        "workloadTotal",
+        "lectureCredits",
+        "laboratoryCredits",
+        "prerequisites",
+        "LLO",
+        "PLO mapping",
+        "rubric levels",
+        "passing score"
+      ]
+    },
+    {
+      "courseCode": "PE016IU",
+      "startPage": 63,
+      "endPage": 77,
+      "reviewedPages": [
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77
+      ],
+      "method": "Direct visual page review; OCR used only to assist reading; original wording retained.",
+      "fieldPages": {
+        "general": [
+          64
+        ],
+        "objectives": [
+          64
+        ],
+        "clos": [
+          66,
+          67,
+          68,
+          69,
+          70
+        ],
+        "topics": [
+          70,
+          71,
+          72,
+          73,
+          74
+        ],
+        "assessments": [
+          75
+        ],
+        "readings": [
+          65,
+          66
+        ],
+        "examRequirements": [
+          76,
+          77
+        ],
+        "weeklyActivities": [
+          70,
+          71,
+          72,
+          73,
+          74
+        ]
+      },
+      "data": {
+        "sourceCourseCode": "PE016IU",
+        "sourceCourseName": "Marxist – Leninist Political Economy",
+        "personResponsible": "Khoa Chính trị - Hành chính, ĐHQG-HCM",
+        "creditPoints": "2",
+        "workloadContact": "20 (trên lớp) [lý thuyết]; 10 (trên lớp) [thực hành]",
+        "workloadPrivate": "60 (về nhà)",
+        "dateRevised": "07 tháng 02 năm 2020",
+        "clos": [
+          {
+            "code": "LO.1",
+            "description": "ĐỐI TƯỢNG, PHƯƠNG PHÁP NGHIÊN CỨU VÀ CHỨC NĂNG CỦA KINH TẾ CHÍNH TRỊ MÁC - LÊNIN",
+            "descriptionVn": "ĐỐI TƯỢNG, PHƯƠNG PHÁP NGHIÊN CỨU VÀ CHỨC NĂNG CỦA KINH TẾ CHÍNH TRỊ MÁC - LÊNIN",
+            "competencyLevel": "KNOWLEDGE",
+            "orderIndex": 1
+          },
+          {
+            "code": "LO.2",
+            "description": "HÀNG HÓA, THỊ TRƯỜNG VÀ VAI TRÒ CỦA CÁC CHỦ THỂ THAM GIA THỊ TRƯỜNG.",
+            "descriptionVn": "HÀNG HÓA, THỊ TRƯỜNG VÀ VAI TRÒ CỦA CÁC CHỦ THỂ THAM GIA THỊ TRƯỜNG.",
+            "competencyLevel": "KNOWLEDGE",
+            "orderIndex": 2
+          },
+          {
+            "code": "LO.3",
+            "description": "GIÁ TRỊ THẶNG DƯ TRONG NỀN KINH TẾ THỊ TRƯỜNG",
+            "descriptionVn": "GIÁ TRỊ THẶNG DƯ TRONG NỀN KINH TẾ THỊ TRƯỜNG",
+            "competencyLevel": "KNOWLEDGE",
+            "orderIndex": 3
+          },
+          {
+            "code": "LO.4",
+            "description": "CẠNH TRANH VÀ ĐỘC QUYỀN TRONG NỀN KINH TẾ THỊ TRƯỜNG",
+            "descriptionVn": "CẠNH TRANH VÀ ĐỘC QUYỀN TRONG NỀN KINH TẾ THỊ TRƯỜNG",
+            "competencyLevel": "KNOWLEDGE",
+            "orderIndex": 4
+          },
+          {
+            "code": "LO.5",
+            "description": "KINH TẾ THỊ TRƯỜNG ĐỊNH HƯỚNG XÃ HỘI CHỦ NGHĨA VÀ CÁC QUAN HỆ LỢI ÍCH KINH TẾ Ở VIỆT NAM",
+            "descriptionVn": "KINH TẾ THỊ TRƯỜNG ĐỊNH HƯỚNG XÃ HỘI CHỦ NGHĨA VÀ CÁC QUAN HỆ LỢI ÍCH KINH TẾ Ở VIỆT NAM",
+            "competencyLevel": "KNOWLEDGE",
+            "orderIndex": 5
+          },
+          {
+            "code": "LO.6",
+            "description": "CÔNG NGHIỆP HÓA, HIỆN ĐẠI HÓA VÀ HỘI NHẬP KINH TẾ QUỐC TẾ CỦA VIỆT NAM",
+            "descriptionVn": "CÔNG NGHIỆP HÓA, HIỆN ĐẠI HÓA VÀ HỘI NHẬP KINH TẾ QUỐC TẾ CỦA VIỆT NAM",
+            "competencyLevel": "KNOWLEDGE",
+            "orderIndex": 6
+          },
+          {
+            "code": "LO.7",
+            "description": "THỂ HIỆN KHẢ NĂNG KHÁI QUÁT HÓA, TƯ DUY, TRANH LUẬN, PHẢN BIỆN, LÀM VIỆC NHÓM",
+            "descriptionVn": "THỂ HIỆN KHẢ NĂNG KHÁI QUÁT HÓA, TƯ DUY, TRANH LUẬN, PHẢN BIỆN, LÀM VIỆC NHÓM",
+            "competencyLevel": "SKILL",
+            "orderIndex": 7
+          },
+          {
+            "code": "LO.8",
+            "description": "THỂ HIỆN Ý THỨC, NHẬN THỨC TRONG VÀ SAU KHI HỌC TẬP",
+            "descriptionVn": "THỂ HIỆN Ý THỨC, NHẬN THỨC TRONG VÀ SAU KHI HỌC TẬP",
+            "competencyLevel": "ATTITUDE",
+            "orderIndex": 8
+          }
+        ],
+        "topics": [
+          {
+            "name": "Giới thiệu về môn học",
+            "nameVn": "Giới thiệu về môn học",
+            "orderInWeek": 1
+          },
+          {
+            "name": "Chương 1\nĐỐI TƯỢNG, PHƯƠNG PHÁP NGHIÊN CỨU VÀ CHỨC NĂNG CỦA KINH TẾ CHÍNH TRỊ MÁC - LÊNIN",
+            "nameVn": "Chương 1\nĐỐI TƯỢNG, PHƯƠNG PHÁP NGHIÊN CỨU VÀ CHỨC NĂNG CỦA KINH TẾ CHÍNH TRỊ MÁC - LÊNIN",
+            "orderInWeek": 2
+          },
+          {
+            "name": "Chương 2\nHÀNG HÓA, THỊ TRƯỜNG VÀ VAI TRÒ CỦA CÁC CHỦ THỂ THAM GIA THỊ TRƯỜNG.",
+            "nameVn": "Chương 2\nHÀNG HÓA, THỊ TRƯỜNG VÀ VAI TRÒ CỦA CÁC CHỦ THỂ THAM GIA THỊ TRƯỜNG.",
+            "orderInWeek": 3
+          },
+          {
+            "name": "Chương 3\nGIÁ TRỊ THẶNG DƯ TRONG NỀN KINH TẾ THỊ TRƯỜNG",
+            "nameVn": "Chương 3\nGIÁ TRỊ THẶNG DƯ TRONG NỀN KINH TẾ THỊ TRƯỜNG",
+            "orderInWeek": 4
+          },
+          {
+            "name": "Chương 4\nCẠNH TRANH VÀ ĐỘC QUYỀN TRONG NỀN KINH TẾ THỊ TRƯỜNG",
+            "nameVn": "Chương 4\nCẠNH TRANH VÀ ĐỘC QUYỀN TRONG NỀN KINH TẾ THỊ TRƯỜNG",
+            "orderInWeek": 5
+          },
+          {
+            "name": "Chương 5\nKINH TẾ THỊ TRƯỜNG ĐỊNH HƯỚNG XÃ HỘI CHỦ NGHĨA VÀ CÁC QUAN HỆ LỢI ÍCH KINH TẾ Ở VIỆT NAM",
+            "nameVn": "Chương 5\nKINH TẾ THỊ TRƯỜNG ĐỊNH HƯỚNG XÃ HỘI CHỦ NGHĨA VÀ CÁC QUAN HỆ LỢI ÍCH KINH TẾ Ở VIỆT NAM",
+            "orderInWeek": 6
+          },
+          {
+            "name": "Chương 6\nCÔNG NGHIỆP HÓA, HIỆN ĐẠI HÓA VÀ HỘI NHẬP KINH TẾ QUỐC TẾ CỦA VIỆT NAM",
+            "nameVn": "Chương 6\nCÔNG NGHIỆP HÓA, HIỆN ĐẠI HÓA VÀ HỘI NHẬP KINH TẾ QUỐC TẾ CỦA VIỆT NAM",
+            "orderInWeek": 7
+          }
+        ],
+        "assessments": [
+          {
+            "name": "Thuyết trình nhóm",
+            "nameVn": "Thuyết trình nhóm",
+            "weightPercent": 15.0,
+            "orderIndex": 1,
+            "assessmentType": "Thuyết trình nhóm"
+          },
+          {
+            "name": "Bài thi giữa kỳ",
+            "nameVn": "Bài thi giữa kỳ",
+            "weightPercent": 20.0,
+            "orderIndex": 2,
+            "assessmentType": "Bài thi giữa kỳ"
+          },
+          {
+            "name": "Thảo luận, chuyên cần tại lớp (Discussion in Class)",
+            "nameVn": "Thảo luận, chuyên cần tại lớp (Discussion in Class)",
+            "weightPercent": 15.0,
+            "orderIndex": 3,
+            "assessmentType": "Thảo luận, chuyên cần tại lớp (Discussion in Class)"
+          },
+          {
+            "name": "Thi cuối kỳ",
+            "nameVn": "Thi cuối kỳ",
+            "weightPercent": 50.0,
+            "orderIndex": 4,
+            "assessmentType": "Thi cuối kỳ"
+          }
+        ],
+        "readings": [
+          {
+            "type": "RAW_SOURCE",
+            "title": "- Tài liệu bắt buộc: Giáo trình kinh tế chính trị Mác – Lê nin dành cho bậc đại học không chuyên kinh tế chính trị.\n- Tài liệu đọc thêm::\n+ Robert, JR và Robert F. Hebert (2003), Lịch sử các học thuyết kinh tế, Bản tiếng Việt, Nxb Thống kê.\n+ Viện Kinh tế chính trị học, Học viện Chính trị quốc gia Hồ Chí Minh (2018), Giáo trình Kinh tế chính trị Mác – Lê nin, NXB Lý luận Chính trị.\n+ Các. Mác – Ph. Ăng gen: Toàn tập, tập 20, tập 23, tập 25, Nxb Chính trị quốc gia, 1994.\n+ V.I.Lê nin toàn cập, tập 3, tập 27, NXB Tiến bộ Maxcova, 1976.\n+ Davig Begg, Stanley Fisher, Rudiger Dornbusch, Kinh tế học, Nhà xuất bản Giáo dục Hà Nội 1992.\n+ Đảng Cộng sản Việt Nam (2016), Văn kiện Đại hội Đại biểu toàn quốc lần thứ XII, Nxb Chính trị quốc gia, Hà Nội.\n+ Đảng Cộng sản Việt Nam (2016), Báo cáo tổng kết một số vấn đề lý luận – thực tiễn qua ba mươi năm đổi mới (1986 – 2016), NXB Chính trị quốc gia, Hà Nội.\n+ Đảng Cộng sản Việt Nam (2017), Nghị quyết số 11-NQ/TW ngày 03/6/2017 về: “Hoàn thiện thể chế kinh tế thị trường định hướng xã hội chủ nghĩa”\n+ Chỉ thị số 16/CT-TTg (2017) “về việc tăng cường năng lực tiếp cận cuộc cách mạng công nghiệp lần thứ 4”.\n+ Jeremy Rifkin (2014), Cuộc cách mạng công nghiệp lần thứ ba, bản dịch tiếng Việt, NXB Lao động xã hội.\n+ Manfred B. Steger (2011), Toàn cầu hóa, Nxb Tri thức.\n+ Klaus Schwab (2015): Cách mạng công nghiệp lần thứ tư, Nxb Chính trị quốc gia – Sự thật, 2018."
+          }
+        ],
+        "weeklyActivities": [],
+        "cloPloMappings": [],
+        "topicCloMappings": [],
+        "assessmentCloMappings": [],
+        "objectives": "2.1. Một là, trang bị cho sinh viên những kiến thức cơ bản, cốt lõi của Kinh tế chính trị Mác – Lênin trong bối cảnh phát triển kinh tế của đất nước và thế giới ngày nay. Đảm bảo tính cơ bản, hệ thống, khoa học, cập nhật tri thức mới, gắn với thực tiễn, tính sáng tạo, kỹ năng, tư duy, phẩm chất người học, tính liên thông khắc phục trùng lắp, tăng cường tích hợp và giảm tải, lược bớt những nội dung không còn phù hợp hoặc những nội dung mang tính kinh viện đối với sinh viên các trường Cao đẳng, Đại học không chuyên lý luận.\n2.2. Hai là, trên cơ sở đó hình thành tư duy, kỹ năng phân tích, đánh giá và nhận diện bản chất của các quan hệ lợi ích kinh tế trong phát triển kinh tế - xã hội của đất nước góp phần giúp sinh viên xây dựng trách nhiệm xã hội phù hợp trong vị trí việc làm và cuộc sống sau khi ra trường.\n2.3. Ba là, góp phần xây dựng lập trường, ý thức hệ tư tưởng Mác – Lê nin đối với sinh viên.",
+        "contentNote": "Nội dung chương trình gồm 6 chương: Trong đó chương 1 bàn về đối tượng, phương pháp nghiên cứu và chức năng của Kinh tế chính trị Mác – Lênin. Từ chương 2 đến chương 6 trình bày nội dung cốt lõi của Kinh tế chính trị Mác – Lê nin theo mục tiêu của môn học. Cụ thể các vấn đề như: Hàng hóa, thị trường và vai trò của các chủ thể trong nền kinh tế thị trường; Sản xuất giá trị thặng dư trong nền kinh tế thị trường; Cạnh tranh và độc quyền trong nền kinh tế thị trường; Kinh tế thị trường định hướng xã hội chủ nghĩa và các quan hệ lợi ích kinh tế ở Việt Nam; Công nghiệp hóa, hiện đại hóa và hội nhập kinh tế quốc tế ở Việt Nam.",
+        "examRequirements": "- Khi có các thắc mắc liên quan môn học, sinh viên có thể liên lạc với giảng viên qua email: lethong0804@gmail.com\n- Quy định về Bài thuyết trình nhóm GHW\nThành lập nhóm: 5 sinh viên/nhóm. Hạn chót đăng ký đề tài nhóm Quản lý trên forum là Buổi 2 hoặc trực tiếp nộp cho GV buổi 1.\nTuần 4 (buổi thứ 4) thuyết trình theo thứ tự. Lưu ý các nhóm cần có mặt đủ và mang theo tất cả các tài liệu liên quan đến GHW khi đi thuyết trình.\nHình thức nộp bài: Nộp file và biên bản làm việc nhóm qua mail cho GV\n- Quy định về giờ giấc, chuyên cần, kỷ luật trong khóa học: Lên lớp đúng giờ, dự tối thiểu 80% thời gian học trên lớp (chỉ được phép vắng mặt tối đa 20% số tiết học). Nếu vắng quá số tiết quy định sẽ bị cấm thi theo quy chế. Có đầy đủ điểm kiểm tra, điểm thi kết thúc học phần & nhiệt tình thảo luận, phát biểu xây dựng bài, nghiêm túc trong giờ học."
+      },
+      "notes": {
+        "sourceCloLanguage": "VI",
+        "sourceContentLanguage": "VI",
+        "sourceSupplementalSections": {
+          "1": [
+            {
+              "title": "Thông tin nguyên bản nguồn",
+              "headers": [
+                "Trường nguồn",
+                "Giá trị"
+              ],
+              "rows": [
+                [
+                  "Thuộc khối kiến thức",
+                  "Cơ sở"
+                ],
+                [
+                  "Môn song hành",
+                  "1. Triết học Mác - Lênin"
+                ],
+                [
+                  "Ngày nguồn",
+                  "07 tháng 02 năm 2020"
+                ]
+              ],
+              "pages": [
+                64,
+                77
+              ]
+            }
+          ],
+          "3": [
+            {
+              "title": "Tiêu chí đánh giá trong bảng chuẩn đầu ra nguồn",
+              "headers": [
+                "Mã nguồn",
+                "Tiêu chí đánh giá"
+              ],
+              "rows": [
+                [
+                  "LO.1.1",
+                  "Nắm được sự hình thành và phát triển của Kinh tế chính trị Mác - Lênin"
+                ],
+                [
+                  "LO.1.2",
+                  "Xác định được đối tượng nghiên cứu của kinh tế chính trị Mác - Lênin."
+                ],
+                [
+                  "LO.1.3",
+                  "Hiểu rõ được phương pháp nghiên cứu của kinh tế chính trị Mác - Lênin"
+                ],
+                [
+                  "LO.1.4",
+                  "Hiểu rõ các chức năng của môn học kinh tế chính trị Mác - Lênin."
+                ],
+                [
+                  "LO.2.1",
+                  "Hiểu rõ sản xuất hàng hóa và điều kiện ra đời của sản xuất hàng hóa"
+                ],
+                [
+                  "LO.2.2",
+                  "Hiểu rõ hàng hóa, hai thuộc tính của hàng hóa và mối quan hệ giữa hai thuộc tính"
+                ],
+                [
+                  "LO.2.3",
+                  "Hiểu rõ mối quan hệ giữa tính hai mặt của lao động sản xuất hàng hóa với hai thuộc tính của hàng hóa"
+                ],
+                [
+                  "LO.2.4",
+                  "Hiểu rõ mặt chất và lượng của giá trị hàng hóa và các nhân tố ảnh hưởng đến lượng giá trị hàng hóa."
+                ],
+                [
+                  "LO.2.5",
+                  "Hiểu rõ được nguồn gốc, bản chất và chức năng của tiền tệ."
+                ],
+                [
+                  "LO.2.6",
+                  "Hiểu rõ về thị trường, vai trò của thị trường, cơ chế thị trường và nền kinh tế thị trường."
+                ],
+                [
+                  "LO.2.7",
+                  "Hiểu rõ được một số quy luật kinh tế chủ yếu của kinh tế thị trường."
+                ],
+                [
+                  "LO.2.8",
+                  "Hiểu rõ vai trò của các chủ thể tham gia thị trường."
+                ],
+                [
+                  "LO.3.1",
+                  "Hiểu rõ được tư bản là gì, công thức chung của tư bản và mâu thuẫn công thức chung của tư bản."
+                ],
+                [
+                  "LO.3.2",
+                  "Hiểu rõ được hàng hóa sức lao động là gì, tại sao nghiên cứu hàng hóa sức lao động giải quyết mâu thuẫn công thức chung của tư bản."
+                ],
+                [
+                  "LO.3.3",
+                  "Hiểu rõ được giá trị thặng dư là gì. Xác định được có mấy phương pháp sản xuất giá trị thặng dư."
+                ],
+                [
+                  "LO.3.4",
+                  "Hiểu rõ được bản chất của tích lũy tư bản, nhưng nhân tố làm tăng quy mô tích lũy tư bản và hệ quả của tích lũy tư bản."
+                ],
+                [
+                  "LO.3.5",
+                  "Hiểu rõ được các khái niệm: chi phí sản xuất, lợi nhuận, tỷ suất lợi nhuận, lợi nhuận bình quân, lợi nhuận thương nghiệp, các nhân tố ảnh hưởng đến tỷ suất lợi nhuận."
+                ],
+                [
+                  "LO.3.6",
+                  "Hiểu rõ được lợi tức là gì."
+                ],
+                [
+                  "LO.3.7",
+                  "Hiểu rõ được địa tô tư bản chủ nghĩa. Có mấy loại địa tô tư bản chủ nghĩa và giá cả ruộng đất."
+                ],
+                [
+                  "LO.4.1",
+                  "Hiểu rõ được quan hệ giữa cạnh tranh và độc quyền trong nền kinh tế thị trường."
+                ],
+                [
+                  "LO.4.2",
+                  "Hiểu rõ được nguyên nhân hình thành độc quyền trong nền kinh tế thị trường."
+                ],
+                [
+                  "LO.4.3",
+                  "Hiểu rõ được những đặc điểm kinh tế cơ bản của độc quyền trong chủ nghĩa tư bản theo quan điểm của V.I. Lênin"
+                ],
+                [
+                  "LO.4.4",
+                  "Hiểu rõ được nguyên nhân hình thành và phát triển của chủ nghĩa tư bản độc quyền nhà nước."
+                ],
+                [
+                  "LO.4.5",
+                  "Hiểu rõ được bản chất của chủ nghĩa tư bản độc quyền nhà nước và những biểu hiện chủ yếu của độc quyền nhà nước trong chủ nghĩa tư bản."
+                ],
+                [
+                  "LO.4.6",
+                  "Nắm được vai trò lịch sử của chủ nghĩa tư bản."
+                ],
+                [
+                  "LO.5.1",
+                  "Hiểu rõ được khái niệm kinh tế thị trường định hướng xã hội chủ nghĩa ở Việt Nam"
+                ],
+                [
+                  "LO.5.2",
+                  "Hiểu rõ được tính tất yếu khách quan của việc phát triển kinh tế thị trường định hướng xã hội chủ nghĩa ở Việt Nam"
+                ],
+                [
+                  "LO.5.3",
+                  "Nắm được những đặc trưng của kinh tế thị trường định hướng xã hội chủ nghĩa ở Việt Nam."
+                ],
+                [
+                  "LO.5.4",
+                  "Hiểu rõ thể chế kinh tế thị trường định hướng xã hội chủ nghĩa là gì và sự cần thiết phải hoàn thiện nó."
+                ],
+                [
+                  "LO.5.5",
+                  "Nắm được những nội dung cơ bản của hoàn thiện thể chế kinh tế thị trường định hướng xã hội chủ nghĩa ở Việt Nam."
+                ],
+                [
+                  "LO.5.6",
+                  "Hiểu rõ được khái niệm lợi ích kinh tế và quan hệ lợi ích kinh tế"
+                ],
+                [
+                  "LO.5.7",
+                  "Hiểu rõ được vai trò của nhà nước trong đảm bảo hài hòa các quan hệ lợi ích"
+                ],
+                [
+                  "LO.6.1",
+                  "Hiểu rõ được cách mạng công nghiệp là gì, khái quát được các cuộc cách mạng đã diễn ra trong lịch sử."
+                ],
+                [
+                  "LO.6.2",
+                  "Hiểu rõ vai trò của cách mạng công nghiệp đối với sự phát triển."
+                ],
+                [
+                  "LO.6.3",
+                  "Hiểu được công nghiệp hóa là gì và các mô hình công nghiệp hóa tiêu biểu trên thế giới."
+                ],
+                [
+                  "LO.6.4",
+                  "Hiểu rõ tính tất yếu khách quan của công nghiệp hóa, hiện đại hóa ở Việt Nam."
+                ],
+                [
+                  "LO.6.5",
+                  "Nắm được những nội dung của công nghiệp hóa, hiện đại hóa ở Việt Nam."
+                ],
+                [
+                  "LO.6.6",
+                  "Nắm được công nghiệp hóa, hiện đại hóa ở Việt Nam trong bối cảnh của cuộc cách mạng công nghiệp lần thứ 4."
+                ],
+                [
+                  "LO.6.7",
+                  "Hiểu rõ được hội nhập kinh tế quốc tế là gì. Vì sao hội nhập kinh tế quốc tế là sự cần thiết khách quan."
+                ],
+                [
+                  "LO.6.8",
+                  "Nắm được những nội dung và tác động tích cực và tiêu cực của hội nhập kinh tế quốc tế."
+                ],
+                [
+                  "LO.6.9",
+                  "Nắm được phương hướng nâng cao hiệu quả hội nhập kinh tế quốc tế trong phát triển của Việt Nam"
+                ],
+                [
+                  "LO.7.1",
+                  "Có kỹ năng khái quát hóa để rút ra Từ khóa tri thức đối với mỗi nội dung và tư duy có hệ thống"
+                ],
+                [
+                  "LO.7.2",
+                  "Có kỹ năng trình bày, thuyết minh, phản biện, tranh luận, hùng biện những tri thức lý luận đang học tập, nghiên cứu dựa trên thực tiễn"
+                ],
+                [
+                  "LO.7.3",
+                  "Có kỹ năng giao tiếp xã hội, hợp tác và làm việc nhóm, chia sẻ tri thức và kinh nghiệm, khả năng điều hành nhóm làm việc"
+                ],
+                [
+                  "LO.8.1",
+                  "Có ý thức trách nhiệm bảo vệ tính khoa học, cách mạng, nhân văn của CN Mác – Lênin"
+                ],
+                [
+                  "LO.8.2",
+                  "Có ý thức, trách nhiệm cá nhân đối với tập thể, cộng đồng"
+                ],
+                [
+                  "LO.8.3",
+                  "Có nhận thức về sự cần thiết học tập, nghiên cứu suốt đời và vận dụng nó trong cuộc sống."
+                ]
+              ],
+              "pages": [
+                66,
+                67,
+                68,
+                69,
+                70
+              ]
+            }
+          ],
+          "5": [
+            {
+              "title": "Mức độ giảng dạy nguồn; cột CDIO để trống trong nguồn",
+              "headers": [
+                "LO",
+                "Mức độ giảng dạy (I/T/U)"
+              ],
+              "rows": [
+                [
+                  "LO.1",
+                  "I3"
+                ],
+                [
+                  "LO.2",
+                  "T4"
+                ],
+                [
+                  "LO.3",
+                  "T4"
+                ],
+                [
+                  "LO.4",
+                  "T3"
+                ],
+                [
+                  "LO.5",
+                  "T4"
+                ],
+                [
+                  "LO.6",
+                  "T4"
+                ],
+                [
+                  "LO.7",
+                  "U4"
+                ],
+                [
+                  "LO.8",
+                  "U3"
+                ]
+              ],
+              "pages": [
+                66,
+                67,
+                68,
+                69,
+                70
+              ]
+            },
+            {
+              "title": "Mục tiêu môn học trong các ô nguyên bản nguồn",
+              "headers": [
+                "Nhóm tiêu chí",
+                "Mục tiêu môn học"
+              ],
+              "rows": [
+                [
+                  "LO.1",
+                  "2.1"
+                ],
+                [
+                  "LO.2",
+                  "2.1"
+                ],
+                [
+                  "LO.3.1–LO.3.2",
+                  "2.1"
+                ],
+                [
+                  "LO.3.3",
+                  "2.1; 2.3"
+                ],
+                [
+                  "LO.3.4",
+                  "2.3"
+                ],
+                [
+                  "LO.3.5–LO.3.6",
+                  "2.1"
+                ],
+                [
+                  "LO.3.7",
+                  "2.1; 2.3"
+                ],
+                [
+                  "LO.4.1–LO.4.4",
+                  "2.1"
+                ],
+                [
+                  "LO.4.5",
+                  "2.3"
+                ],
+                [
+                  "LO.4.6",
+                  "2.1"
+                ],
+                [
+                  "LO.5.1–LO.5.5",
+                  "2.1"
+                ],
+                [
+                  "LO.5.6",
+                  "2.2"
+                ],
+                [
+                  "LO.5.7",
+                  "2.1"
+                ],
+                [
+                  "LO.6.1–LO.6.5",
+                  "2.1"
+                ],
+                [
+                  "LO.6.6",
+                  "2.3"
+                ],
+                [
+                  "LO.6.7",
+                  "2.1"
+                ],
+                [
+                  "LO.6.8–LO.6.9",
+                  "2.3"
+                ],
+                [
+                  "LO.7",
+                  "2.1; 2.2; 2.4"
+                ],
+                [
+                  "LO.8",
+                  "2.1; 2.2; 2.3"
+                ]
+              ],
+              "pages": [
+                66,
+                67,
+                68,
+                69
+              ]
+            }
+          ],
+          "10": [
+            {
+              "title": "Đánh giá môn học — nguyên văn bảng nguồn",
+              "headers": [
+                "STT",
+                "Mã",
+                "Tên",
+                "Mô tả",
+                "Tỷ trọng",
+                "Hình thức",
+                "LO"
+              ],
+              "rows": [
+                [
+                  "1",
+                  "GHW",
+                  "Thuyết trình nhóm",
+                  "Thuyết trình nhóm về đề tài đã phân công",
+                  "15%",
+                  "Thuyết trình và bản báo cáo nhóm",
+                  "LO.4 LO.5 LO6 LO.7 LO.8"
+                ],
+                [
+                  "2",
+                  "Quiz",
+                  "Bài thi giữa kỳ",
+                  "Thi theo đề thi chung",
+                  "20%",
+                  "Tự luận đề mở",
+                  "LO.2 LO.3"
+                ],
+                [
+                  "3",
+                  "DIC",
+                  "Thảo luận, chuyên cần tại lớp (Discussion in Class)",
+                  "Điểm thảo luận được tính theo phương pháp tương đối. SV có số lần thảo luận tại lớp nhiều nhất sẽ được điểm tối đa, điểm của các bạn khác được tính dựa theo bạn có số lần thảo luận cao nhất.",
+                  "15%",
+                  "Phát biểu/đặt câu hỏi trên lớp hoặc phiếu trả lời trong các nghiên cứu tình huống tại lớp",
+                  "LO.7 LO.8"
+                ],
+                [
+                  "4",
+                  "FEX",
+                  "Thi cuối kỳ",
+                  "Đề thi bao quát toàn bộ nội dung môn học",
+                  "50%",
+                  "Tự luận đề đóng",
+                  "LO.2 LO.3 LO.4 LO.5 LO.6 LO.7 LO.8"
+                ]
+              ],
+              "pages": [
+                75
+              ]
+            }
+          ],
+          "9": [
+            {
+              "title": "Kế hoạch giảng dạy theo buổi học — TT/tiết giữ nguyên; không suy diễn tuần/giờ",
+              "headers": [
+                "TT (tiết)",
+                "Nội dung giảng dạy",
+                "LO",
+                "Hoạt động dạy và học",
+                "Đánh giá"
+              ],
+              "rows": [
+                [
+                  "1 (1 tiết)",
+                  "Giới thiệu về môn học",
+                  "LO.1, LO.7;",
+                  "Dạy:\n- Tự giới thiệu về giảng viên\n- Giới thiệu đề cương và tài liệu môn học\n- Hướng dẫn cách thức dạy và học và cách đánh giá.\n- Giới thiệu nội dung đề tài thuyết trình nhóm GHW)\nHọc ở lớp:\n- Chia nhóm (5 SV/nhóm)\n- Giới thiệu nhóm học tập\nHọc ngoài lớp:\n-Chọn đề tài thuyết trình của nhóm (GHW)\n- Đọc trước tài liệu chương 1.",
+                  ""
+                ],
+                [
+                  "2 (2 tiết)",
+                  "Chương 1\nĐỐI TƯỢNG, PHƯƠNG PHÁP NGHIÊN CỨU VÀ CHỨC NĂNG CỦA KINH TẾ CHÍNH TRỊ MÁC - LÊNIN",
+                  "LO.1; LO.7 LO.8",
+                  "Dạy:\nI. SỰ HÌNH THÀNH VÀ PHÁT TRIỂN CỦA KTCT MÁC – LÊNIN\n1. Giai đoạn từ cổ đại đến thế kỷ 18\n2. Giai đoạn từ sau thế kỷ 18 đến nay\nII. ĐỐI TƯỢNG, PHƯƠNG PHÁP NGHIÊN CỨU CỦA KINH TẾ CHÍNH TRỊ MÁC – LÊNIN.\n1. Đối tượng nghiên cứu\n2. Phương pháp nghiên cứu\n3. Mục đích nghiên cứu\nIII. CHỨC NĂNG CỦA KINH TẾ CHÍNH TRỊ MÁC – LÊNIN.\n1. Chức năng nhận thức\n2. Chức năng thực tiễn\n3. Chức năng tư tưởng\n4. Chức năng phương pháp luận\nHọc ở lớp: Thảo luận và phát biểu trên lớp.\nHọc ngoài lớp:\n- Phác thảo nội dung thuyết trình nhóm GHW\n- Đọc trước tài liệu chương 2.",
+                  "Thi giữa kỳ (Quiz)"
+                ],
+                [
+                  "3 (6 tiết)",
+                  "Chương 2\nHÀNG HÓA, THỊ TRƯỜNG VÀ VAI TRÒ CỦA CÁC CHỦ THỂ THAM GIA THỊ TRƯỜNG.",
+                  "LO.2; LO.7 LO.8",
+                  "Dạy:\nI. LÝ LUẬN CỦA CÁC MÁC VỀ SẢN XUẤT HÀNG HÓA VÀ HÀNG HÓA.\n1. Sản xuất hàng hóa\n-Khái niệm sản xuất hàng hóa\n- Điều kiện ra đời của sản xuất hàng hóa.\n2. Hàng hóa\n- Khái niệm hàng hóa\n- Hai thuộc tính của hàng hóa\n- Lượng giá trị và các nhân tố ảnh hưởng đến lượng giá trị của hàng hóa\n- Tính hai mặt của lao động sản xuất hàng hóa.\n3. Tiền\n- Nguồn gốc và bản chất của tiền\n- Chức năng của tiền\n4. Dịch vụ và một số hàng hóa đặc biệt.\nII. THỊ TRƯỜNG VÀ VAI TRÒ CỦA CÁC CHỦ THỂ THAM GIA THỊ TRƯỜNG.\n1. Thị trường\n- Khái niệm về thị trường\n- Vai trò của thị trường.\n- Cơ chế thị trường\n- Nền kinh tế thị trường.\n2. Vai trò của các chủ thể tham gia thị trường.\n- Người sản xuất.\n- Người tiêu dùng.\n- Các chủ thể trung gian trong thị trường.\n- Nhà nước.\nHọc ở lớp: Thảo luận và phát biểu trên lớp\nHọc ngoài lớp:\nĐọc trước tài liệu chương 3",
+                  "Thi giữa kỳ (Quiz)\nThi cuối kỳ (FEX)"
+                ],
+                [
+                  "4 (6 tiết)",
+                  "Chương 3\nGIÁ TRỊ THẶNG DƯ TRONG NỀN KINH TẾ THỊ TRƯỜNG",
+                  "LO.3; LO.7 LO.8",
+                  "Dạy:\nI. LÝ LUẬN CỦA CÁC MÁC VỀ GIÁ TRỊ THẶNG DƯ.\n1. Nguồn gốc của giá trị thặng dư\n2. Bản chất của giá trị thặng dư\n3. Các phương pháp sản xuất giá trị thặng dư trong nền kinh tế thị trường tư bản chủ nghĩa.\nII. TÍCH LŨY TƯ BẢN.\n- Bản chất của tích lũy tư bản\n- Những nhân tố góp phần làm tăng quy mô tích lũy.\n- Một số hệ quả của tích lũy tư bản.\nIII. CÁC HÌNH THỨC BIỂU HIỆN GIÁ TRỊ THẶNG DƯ TRONG NỀN KINH TẾ THỊ TRƯỜNG.\n1. Lợi nhuận\n2. Lợi tức\n3. Địa tô tư bản chủ nghĩa\nHọc ở lớp: Thảo luận và phát biểu trên lớp\nHọc ngoài lớp: Hoàn thiện bài thuyết trình\nĐọc trước tài liệu chương 4",
+                  "Thi giữa kỳ (Quiz)\nThi cuối kỳ (FEX)"
+                ],
+                [
+                  "5 (5 tiết)",
+                  "Chương 4\nCẠNH TRANH VÀ ĐỘC QUYỀN TRONG NỀN KINH TẾ THỊ TRƯỜNG",
+                  "LO.4; LO.7 LO.8",
+                  "Dạy:\nI. QUAN HỆ GIỮA CẠNH TRANH VÀ ĐỘC QUYỀN TRONG NỀN KINH TẾ THỊ TRƯỜNG.\nII. ĐỘC QUYỀN VÀ ĐỘC QUYỀN NHÀ NƯỚC TRONG NỀN KINH TẾ THỊ TRƯỜNG.\n1. Lý luận của V.I. Lênin về độc quyền trong nền kinh tế thị trường.\n- Nguyên nhân hình thành và tác động của độc quyền.\n- Những đặc điểm kinh tế cơ bản của độc quyền trong chủ nghĩa tư bản\n2. Lý luận của V.I. Lê nin về độc quyền nhà nước trong chủ nghĩa tư bản.\n- Nguyên nhân ra đời và phát triển của độc quyền nhà nước trong chủ nghĩa tư bản.\n- Bản chất của độc quyền nhà nước trong chủ nghĩa tư bản..\n- Những biểu hiện chủ yếu của độc quyền nhà nước trong chủ nghĩa tư bản.\n- Vai trò lịch sử của chủ nghĩa tư bản.\nHọc ở lớp: Thảo luận và phát biểu trên lớp\nHọc ngoài lớp:\nĐọc trước tài liệu chương 5",
+                  "Thuyết trình nhóm (GHW)\nThi cuối kỳ (FEX)"
+                ],
+                [
+                  "6 (5 tiết)",
+                  "Chương 5\nKINH TẾ THỊ TRƯỜNG ĐỊNH HƯỚNG XÃ HỘI CHỦ NGHĨA VÀ CÁC QUAN HỆ LỢI ÍCH KINH TẾ Ở VIỆT NAM",
+                  "LO.5; LO.7 LO.8",
+                  "Dạy:\nI. KINH TẾ THỊ TRƯỜNG ĐỊNH HƯỚNG XÃ HỘI CHỦ NGHĨA Ở VIỆT NAM\n1. Khái niệm kinh tế thị trường định hướng xã hội chủ nghĩa ở Việt Nam\n2. Tính tất yếu khách quan của việc phát triển kinh tế thị trường định hướng xã hội chủ nghĩa ở Việt Nam.\n3. Đặc trưng của kinh tế thị trường định hướng xã hội chủ nghĩa ở Việt Nam.\nII. HOÀN THIỆN THỂ CHẾ KINH TẾ THỊ TRƯỜNG ĐỊNH HƯỚNG XÃ HỘI CHỦ NGHĨA Ở VIỆT NAM.\n1. Sự cần thiết phải hoàn thiện thể chế kinh tế thị trường định hướng xã hội chủ nghĩa ở Việt Nam\n2. Hoàn thiện thể chế kinh tế thị trường định hướng xã hội chủ nghĩa ở Việt Nam một số khía cạnh chủ yếu.\nIII. CÁC QUAN HỆ LỢI ÍCH KINH TẾ Ở VIỆT NAM.\n1. Lợi ích kinh tế và quan hệ lợi ích kinh tế.\n2. Vai trò của nhà nước trong đảm bảo hài hòa các quan hệ lợi ích\nHọc ở lớp: Thảo luận và phát biểu trên lớp\nHọc ngoài lớp: Hoàn thiện bài thuyết trình\nĐọc trước tài liệu chương 6",
+                  "Thuyết trình nhóm (GHW)\nThi cuối kỳ (FEX)"
+                ],
+                [
+                  "7 (5 tiết)",
+                  "Chương 6\nCÔNG NGHIỆP HÓA, HIỆN ĐẠI HÓA VÀ HỘI NHẬP KINH TẾ QUỐC TẾ CỦA VIỆT NAM",
+                  "LO.6; LO.7 LO.8",
+                  "Dạy:\nI. CÔNG NGHIỆP HÓA, HIỆN ĐẠI HÓA Ở VIỆT NAM.\n1. Khái quát cách mạng công nghiệp và công nghiệp hóa.\n- Khái quát về cách mạng công nghiệp\n- Công nghiệp hóa và các mô hình công nghiệp hóa trên thế giới\n2. Tính tất yếu khách quan và nội dung của công nghiệp hóa, hiện đại hóa ở Việt Nam.\n- Tính tất yếu của công nghiệp hóa, hiện đại hóa ở Việt Nam.\n- Nội dung công nghiệp hóa, hiện đại hóa ở Việt Nam\n3. Công nghiệp hóa, hiện đại hóa ở Việt Nam trong bối cảnh cách mạng công nghiệp lần thứ 4.\nII. HỘI NHẬP KINH TẾ QUỐC TẾ CỦA VIỆT NAM.\n1. Khái niệm và các hình thức hội nhập kinh tế quốc tế.\n- Khái niệm và sự cần thiết khách quan của hội nhập kinh tế quốc tế.\n- Những nội dung của hội nhập kinh tế quốc tế\n2. Tác động của hội nhập kinh tế quốc tế đến phát triển của Việt Nam.\n- Tác động tích cực.\n- Tác động tiêu cực\n3. Phương hướng nâng cao hiệu quả hội nhập kinh tế quốc tế trong phát triển của Việt Nam\nHọc ở lớp: Thảo luận và phát biểu trên lớp\nHọc ngoài lớp: Hoàn thiện bài thuyết trình.",
+                  "Thuyết trình nhóm (GHW)\nThi cuối kỳ (FEX)"
+                ]
+              ],
+              "pages": [
+                70,
+                71,
+                72,
+                73,
+                74
+              ]
+            }
+          ],
+          "11": [
+            {
+              "title": "Tiêu chí đánh giá chuẩn đầu ra môn học",
+              "headers": [
+                "TT",
+                "Chuẩn đầu ra",
+                "Nội dung",
+                "Phương pháp",
+                "Tiêu chí đánh giá"
+              ],
+              "rows": [
+                [
+                  "LO.1",
+                  "Nhận biết được vị trí của Kinh tế chính trị Mác – Lênin trong hệ thống lịch sử tư tưởng kinh tế và nắm được đối tượng, phương pháp và chức năng của kinh tế chính trị Mác – Lênin.",
+                  "Chương 1",
+                  "Thi giữa kỳ (Quiz)",
+                  "Ngân hàng đề thi của GV"
+                ],
+                [
+                  "LO.2 LO.7",
+                  "Nắm rõ nội dung: sản xuất hàng hóa, điều kiện ra đời của sản xuất hàng hóa, khái niệm hàng hóa và hai thuộc tính của hàng hóa, chất và lượng của giá trị hàng hóa, mối quan hệ giữa tính hai mặt của lao động sản xuất hàng hóa với hai thuộc tính của hàng hóa, các nhân tố ảnh hưởng đến lượng giá trị của hàng hóa, nguồn gốc ra đời, bản chất và chức năng của tiền. Thị trường, cơ chế thị trường, nền kinh tế thị trường và vai trò các chủ thể tham gia thị trường",
+                  "Chương 2",
+                  "Thuyết trình nhóm (GHW)\nThi cuối kỳ (FEX)",
+                  "Tiêu chí đánh giá thuyết trình nhóm\nNgân hàng đề thi của GV"
+                ],
+                [
+                  "LO.3 LO.7",
+                  "Hiểu rõ và nắm được những nội dung: tư bản là gì?. Công thức chung và mâu thuẫn công thức chung của tư bản. Hàng hóa sức lao động và tính chất đặc biệt của giá trị sử dụng hàng hóa sức lao động. Giá trị thặng dư và hai phương pháp sản xuất giá trị thặng dư. Tích lũy tư bản và những nhân tố làm tăng quy mô tích lũy. Các khái niệm về chi phí sản xuất, lợi nhuận, lợi tức và địa tô tư bản chủ nghĩa",
+                  "Chương 3",
+                  "Thảo luận tại lớp (Discussion in Class)\nThi cuối kỳ (FEX)",
+                  "Tiêu chí đánh giá thuyết trình nhóm, thảo luận tại lớp\nNgân hàng đề thi của GV"
+                ],
+                [
+                  "LO.4 LO.7",
+                  "Hiểu rõ và nắm được những nội dung: quan hệ giữa cạnh tranh và độc quyền trong nền kinh tế thị trường. Tổ chức độc quyền là gì?, nguyên nhân hình thành các tổ chức độc quyền. Những đặc điểm kinh tế cơ bản của độc quyền theo quan điểm của V.I. Lênin. Lý luận về độc quyền nhà nước trong chủ nghĩa tư bản. Vai trò lịch sử của chủ nghĩa tư bản.",
+                  "Chương 4",
+                  "Thảo luận tại lớp (Discussion in Class)\nThi cuối kỳ (FEX)",
+                  "Tiêu chí đánh giá thuyết trình nhóm, thảo luận tại lớp\nNgân hàng đề thi của GV"
+                ],
+                [
+                  "LO.5 LO.7",
+                  "Hiểu rõ và nắm được những nội dung: kinh tế thị trường định hướng xã hội chủ nghĩa ở Việt Nam, những đặc trưng của kinh tế thị trường định hướng xã hội chủ nghĩa. Thể chế kinh tế thị trường định hướng xã hội chủ nghĩa và sự cần thiết phải hoàn thiện thể chế kinh tế thị trường định hướng xã hội chủ nghĩa. Lợi ích kinh tế và quan hệ lợi ích kinh tế. Vai trò của nhà nước trong đảm bảo hài hòa các quan hệ lợi ích.",
+                  "Chương 5",
+                  "Thảo luận tại lớp (Discussion in Class)\nThi cuối kỳ (FEX)",
+                  "Tiêu chí đánh giá thuyết trình nhóm, thảo luận tại lớp\nNgân hàng đề thi của GV"
+                ],
+                [
+                  "LO.6 LO.7",
+                  "Hiểu rõ và nắm được những nội dung: cách mạng công nghiệp là gì? Vai trò của cách mạng công nghiệp đối với sự phát triển. Công nghiệp hóa là gì?. Các mô hình công nghiệp hóa tiêu biểu trên thế giới. Công nghiệp hóa, hiện đại hóa ở Việt Nam là gì. Tính tất yếu khách quan phải công nghiệp hóa, hiện đại hóa ở Việt Nam. Công nghiệp hóa, hiện đại hóa ở Việt Nam trong bối cảnh cuộc cách mạng công nghiệp lần thứ 4. Hội nhập kinh tế quốc tế là gì, sự cần thiết khách quan phải hội nhập kinh tế quốc tế. Tác động của hội nhập kinh tế quốc tế của Việt Nam. Phương hướng nâng cao hiệu quả hội nhập kinh tế quốc tế.",
+                  "Chương 6",
+                  "Thảo luận tại lớp (Discussion in Class)\nThi cuối kỳ (FEX)",
+                  "Tiêu chí đánh giá thuyết trình nhóm, thảo luận tại lớp\nNgân hàng đề thi của GV"
+                ]
+              ],
+              "pages": [
+                75,
+                76
+              ]
+            }
+          ]
+        },
+        "sourceWorkloadUnit": "tiết"
+      },
+      "unverifiedFields": [],
+      "missingFields": [
+        "courseDesignation",
+        "courseTypes",
+        "semester",
+        "language",
+        "relation",
+        "teachingMethods",
+        "workloadTotal",
+        "lectureCredits",
+        "laboratoryCredits",
+        "prerequisites",
+        "LLO",
+        "PLO mapping",
+        "rubric levels",
+        "passing requirement"
+      ]
+    },
+    {
+      "courseCode": "PE017IU",
+      "startPage": 78,
+      "endPage": 91,
+      "reviewedPages": [
+        79,
+        80,
+        81,
+        82,
+        83,
+        84,
+        85,
+        86,
+        87,
+        88,
+        89,
+        90,
+        91
+      ],
+      "method": "Direct visual page review; original LO.1.3 duplicate code in source retained in source table, not used as inferred relation.",
+      "fieldPages": {
+        "general": [
+          79
+        ],
+        "objectives": [
+          79
+        ],
+        "clos": [
+          80,
+          81,
+          82,
+          83,
+          84
+        ],
+        "topics": [
+          84,
+          85,
+          86,
+          87,
+          88
+        ],
+        "assessments": [
+          88
+        ],
+        "readings": [
+          79,
+          80
+        ],
+        "examRequirements": [
+          90,
+          91
+        ],
+        "weeklyActivities": [
+          84,
+          85,
+          86,
+          87,
+          88
+        ],
+        "outcomeEvaluation": [
+          89,
+          90
+        ]
+      },
+      "data": {
+        "sourceCourseCode": "PE017IU",
+        "sourceCourseName": "Scientific socialism",
+        "personResponsible": "Khoa Chính trị - Hành chính, ĐHQG-HCM",
+        "creditPoints": "2",
+        "workloadContact": "30 (trên lớp) [lý thuyết]",
+        "workloadPrivate": "60 (về nhà)",
+        "prerequisites": "1. Kinh tế chính trị Mác – Lênin, 2. Triết học Mác - Lênin",
+        "dateRevised": "07 tháng 02 năm 2019",
+        "clos": [
+          {
+            "code": "LO.1",
+            "description": "NHẬP MÔN CHỦ NGHĨA XÃ HỘI KHOA HỌC",
+            "descriptionVn": "NHẬP MÔN CHỦ NGHĨA XÃ HỘI KHOA HỌC",
+            "competencyLevel": "KNOWLEDGE",
+            "orderIndex": 1
+          },
+          {
+            "code": "LO.2",
+            "description": "SỨ MỆNH LỊCH SỬ CỦA GIAI CẤP CÔNG NHÂN",
+            "descriptionVn": "SỨ MỆNH LỊCH SỬ CỦA GIAI CẤP CÔNG NHÂN",
+            "competencyLevel": "KNOWLEDGE",
+            "orderIndex": 2
+          },
+          {
+            "code": "LO.3",
+            "description": "CHỦ NGHĨA XÃ HỘI VÀ THỜI KỲ QUÁ ĐỘ LÊN CHỦ NGHĨA XÃ HỘI",
+            "descriptionVn": "CHỦ NGHĨA XÃ HỘI VÀ THỜI KỲ QUÁ ĐỘ LÊN CHỦ NGHĨA XÃ HỘI",
+            "competencyLevel": "KNOWLEDGE",
+            "orderIndex": 3
+          },
+          {
+            "code": "LO.4",
+            "description": "DÂN CHỦ XÃ HỘI CHỦ NGHĨA VÀ NHÀ NƯỚC XÃ HỘI CHỦ NGHĨA",
+            "descriptionVn": "DÂN CHỦ XÃ HỘI CHỦ NGHĨA VÀ NHÀ NƯỚC XÃ HỘI CHỦ NGHĨA",
+            "competencyLevel": "KNOWLEDGE",
+            "orderIndex": 4
+          },
+          {
+            "code": "LO.5",
+            "description": "CƠ CẤU XÃ HỘI GIAI CẤP VÀ LIÊN MINH GIAI CẤP, TẦNG LỚP TRONG THỜI KỲ QUÁ ĐỘ LÊN CHỦ NGHĨA XÃ HỘI",
+            "descriptionVn": "CƠ CẤU XÃ HỘI GIAI CẤP VÀ LIÊN MINH GIAI CẤP, TẦNG LỚP TRONG THỜI KỲ QUÁ ĐỘ LÊN CHỦ NGHĨA XÃ HỘI",
+            "competencyLevel": "KNOWLEDGE",
+            "orderIndex": 5
+          },
+          {
+            "code": "LO.6",
+            "description": "VẤN ĐỀ DÂN TỘC VÀ TÔN GIÁO TRONG THỜI KỲ QUÁ ĐỘ LÊN CHỦ NGHĨA XÃ HỘI",
+            "descriptionVn": "VẤN ĐỀ DÂN TỘC VÀ TÔN GIÁO TRONG THỜI KỲ QUÁ ĐỘ LÊN CHỦ NGHĨA XÃ HỘI",
+            "competencyLevel": "KNOWLEDGE",
+            "orderIndex": 6
+          },
+          {
+            "code": "LO.7",
+            "description": "VẤN ĐỀ GIA ĐÌNH TRONG THỜI KỲ QUÁ ĐỘ LÊN CHỦ NGHĨA XÃ HỘI",
+            "descriptionVn": "VẤN ĐỀ GIA ĐÌNH TRONG THỜI KỲ QUÁ ĐỘ LÊN CHỦ NGHĨA XÃ HỘI",
+            "competencyLevel": "KNOWLEDGE",
+            "orderIndex": 7
+          },
+          {
+            "code": "LO.8",
+            "description": "THỂ HIỆN KHẢ NĂNG KHÁI QUÁT HÓA, TƯ DUY, TRANH LUẬN, PHẢN BIỆN, LÀM VIỆC NHÓM",
+            "descriptionVn": "THỂ HIỆN KHẢ NĂNG KHÁI QUÁT HÓA, TƯ DUY, TRANH LUẬN, PHẢN BIỆN, LÀM VIỆC NHÓM",
+            "competencyLevel": "SKILL",
+            "orderIndex": 8
+          },
+          {
+            "code": "LO.9",
+            "description": "THỂ HIỆN Ý THỨC, NHẬN THỨC TRONG VÀ SAU KHI HỌC TẬP",
+            "descriptionVn": "THỂ HIỆN Ý THỨC, NHẬN THỨC TRONG VÀ SAU KHI HỌC TẬP",
+            "competencyLevel": "ATTITUDE",
+            "orderIndex": 9
+          }
+        ],
+        "topics": [
+          {
+            "name": "Giới thiệu về môn học",
+            "nameVn": "Giới thiệu về môn học",
+            "orderInWeek": 1
+          },
+          {
+            "name": "Chương 1\nNHẬP MÔN CHỦ NGHĨA XÃ HỘI KHOA HỌC",
+            "nameVn": "Chương 1\nNHẬP MÔN CHỦ NGHĨA XÃ HỘI KHOA HỌC",
+            "orderInWeek": 2
+          },
+          {
+            "name": "Chương 2\nSỨ MỆNH LỊCH SỬ CỦA GIAI CẤP CÔNG NHÂN",
+            "nameVn": "Chương 2\nSỨ MỆNH LỊCH SỬ CỦA GIAI CẤP CÔNG NHÂN",
+            "orderInWeek": 3
+          },
+          {
+            "name": "Chương 3\nCHỦ NGHĨA XÃ HỘI VÀ THỜI KỲ QUÁ ĐỘ LÊN CHỦ NGHĨA XÃ HỘI",
+            "nameVn": "Chương 3\nCHỦ NGHĨA XÃ HỘI VÀ THỜI KỲ QUÁ ĐỘ LÊN CHỦ NGHĨA XÃ HỘI",
+            "orderInWeek": 4
+          },
+          {
+            "name": "Chương 4\nDÂN CHỦ XÃ HỘI CHỦ NGHĨA VÀ NHÀ NƯỚC XÃ HỘI CHỦ NGHĨA",
+            "nameVn": "Chương 4\nDÂN CHỦ XÃ HỘI CHỦ NGHĨA VÀ NHÀ NƯỚC XÃ HỘI CHỦ NGHĨA",
+            "orderInWeek": 5
+          },
+          {
+            "name": "Chương 5\nCƠ CẤU XÃ HỘI - GIAI CẤP VÀ LIÊN MINH GIAI CẤP, TẦNG LỚP TRONG THỜI KỲ QUÁ ĐỘ LÊN CHỦ NGHĨA XÃ HỘI",
+            "nameVn": "Chương 5\nCƠ CẤU XÃ HỘI - GIAI CẤP VÀ LIÊN MINH GIAI CẤP, TẦNG LỚP TRONG THỜI KỲ QUÁ ĐỘ LÊN CHỦ NGHĨA XÃ HỘI",
+            "orderInWeek": 6
+          },
+          {
+            "name": "Chương 6\nVẤN ĐỀ DÂN TỘC VÀ TÔN GIÁO TRONG THỜI KỲ QUÁ ĐỘ LÊN CHỦ NGHĨA XÃ HỘI",
+            "nameVn": "Chương 6\nVẤN ĐỀ DÂN TỘC VÀ TÔN GIÁO TRONG THỜI KỲ QUÁ ĐỘ LÊN CHỦ NGHĨA XÃ HỘI",
+            "orderInWeek": 7
+          },
+          {
+            "name": "Chương 7\nVẤN ĐỀ GIA ĐÌNH TRONG THỜI KỲ QUÁ ĐỘ LÊN CHỦ NGHĨA XÃ HỘI",
+            "nameVn": "Chương 7\nVẤN ĐỀ GIA ĐÌNH TRONG THỜI KỲ QUÁ ĐỘ LÊN CHỦ NGHĨA XÃ HỘI",
+            "orderInWeek": 8
+          }
+        ],
+        "assessments": [
+          {
+            "name": "Thuyết trình nhóm",
+            "nameVn": "Thuyết trình nhóm",
+            "weightPercent": 15.0,
+            "orderIndex": 1,
+            "assessmentType": "Thuyết trình nhóm"
+          },
+          {
+            "name": "Bài thi giữa kỳ",
+            "nameVn": "Bài thi giữa kỳ",
+            "weightPercent": 20.0,
+            "orderIndex": 2,
+            "assessmentType": "Bài thi giữa kỳ"
+          },
+          {
+            "name": "Thảo luận, chuyên cần tại lớp (Discussion in Class)",
+            "nameVn": "Thảo luận, chuyên cần tại lớp (Discussion in Class)",
+            "weightPercent": 15.0,
+            "orderIndex": 3,
+            "assessmentType": "Thảo luận, chuyên cần tại lớp (Discussion in Class)"
+          },
+          {
+            "name": "Thi cuối kỳ",
+            "nameVn": "Thi cuối kỳ",
+            "weightPercent": 50.0,
+            "orderIndex": 4,
+            "assessmentType": "Thi cuối kỳ"
+          }
+        ],
+        "readings": [
+          {
+            "type": "RAW_SOURCE",
+            "title": "- Bộ Giáo dục và Đào tạo (2019), Giáo trình Chủ nghĩa xã hội khoa học, Nxb. Chính trị quốc gia, Hà Nội.\n- Bộ Giáo dục và Đào tạo (2012), Giáo trình Những Nguyên lý cơ bản của chủ nghĩa Mác – Lênin, Nxb. Chính trị quốc gia, Hà Nội.\n- Hội đồng Trung ương (2008), Giáo trình Chủ nghĩa xã hội khoa học, Nxb. Chính trị quốc gia, Hà Nội."
+          }
+        ],
+        "weeklyActivities": [],
+        "cloPloMappings": [],
+        "topicCloMappings": [],
+        "assessmentCloMappings": [],
+        "objectives": "2.1. Môn học trang bị cho sinh viên những nội dung cơ bản của chủ nghĩa xã hội khoa học (một trong ba bộ phận cấu thành chủ nghĩa Mác - Lênin).\n2.2. Giúp cho sinh viên vận dụng những tri thức cơ bản của chủ nghĩa xã hội khoa học một cách sáng tạo trong hoạt động nhận thức và thực tiễn, nhằm giải quyết những vấn đề mà đời sống xã hội của đất nước, của thời đại đang đặt ra.",
+        "contentNote": "Môn học trang bị cho sinh viên những kiến thức cơ bản về chủ nghĩa xã hội khoa học",
+        "examRequirements": "- Khi có các thắc mắc liên quan môn học, sinh viên có thể liên lạc với quản lý Bộ môn Hồ Chí Minh học & Lịch sử Đảng và Khoa Chính trị - Hành chính qua email: daotao.spas@vnuhcm.edu.vn\n- Quy định về Bài thuyết trình nhóm GHW\nThành lập nhóm: 5 sinh viên/nhóm. Hạn chót đăng ký đề tài nhóm Quản lý trên forum là Buổi 2 hoặc trực tiếp nộp cho GV buổi 1.\nGiảng dạy kết thúc chương 3, các nhóm thuyết trình theo thứ tự. Lưu ý các nhóm cần có mặt đủ và mang theo tất cả các tài liệu liên quan đến GHW khi đi thuyết trình.\nHình thức nộp bài: Nộp file và biên bản làm việc nhóm qua mail cho GV\n- Quy định về giờ giấc, chuyên cần, kỷ luật trong khóa học: Lên lớp đúng giờ, dự tối thiểu 80% thời gian học trên lớp (chỉ được phép vắng mặt tối đa 20% số tiết học). Nếu vắng quá số tiết quy định sẽ bị cấm thi theo quy chế. Có đầy đủ điểm kiểm tra, điểm thi kết thúc học phần & nhiệt tình thảo luận, phát biểu xây dựng bài, nghiêm túc trong giờ học."
+      },
+      "notes": {
+        "sourceCloLanguage": "VI",
+        "sourceContentLanguage": "VI",
+        "sourceSupplementalSections": {
+          "1": [
+            {
+              "title": "Thông tin nguyên bản nguồn",
+              "headers": [
+                "Trường nguồn",
+                "Giá trị"
+              ],
+              "rows": [
+                [
+                  "Thuộc khối kiến thức",
+                  "Cơ sở"
+                ],
+                [
+                  "Số tiết thực hành",
+                  ""
+                ],
+                [
+                  "Ngày nguồn",
+                  "07 tháng 02 năm 2019"
+                ]
+              ],
+              "pages": [
+                79,
+                91
+              ]
+            }
+          ],
+          "3": [
+            {
+              "title": "Tiêu chí đánh giá trong bảng chuẩn đầu ra nguồn; mã LO.1.3 ở nhóm LO.7 giữ nguyên nguồn",
+              "headers": [
+                "Mã nguồn",
+                "Tiêu chí đánh giá"
+              ],
+              "rows": [
+                [
+                  "LO.1.1",
+                  "Khái lược sự ra đời Chủ nghĩa xã hội khoa học, hoàn cảnh lịch sử và vai trò của Các Mác và Ph. Ăngghen,"
+                ],
+                [
+                  "LO.1.2",
+                  "Nhận biết được các giai đoạn phát triển cơ bản của Chủ nghĩa xã hội khoa học thể hiện qua các tác phẩm tiêu biểu từ giai đoạn C. Mác đến giai đoạn Lênin và sau Lênin"
+                ],
+                [
+                  "LO.1.3",
+                  "Nắm rõ được đối tượng, phương pháp và ý nghĩa của việc nghiên cứu Chủ nghĩa xã hội khoa học"
+                ],
+                [
+                  "LO.2.1",
+                  "Hiểu rõ khái niệm giai cấp công nhân và đặc điểm của giai cấp công nhân"
+                ],
+                [
+                  "LO.2.2",
+                  "Nắm rõ nội dung, đặc điểm sứ mệnh lịch sử của giai cấp công nhân"
+                ],
+                [
+                  "LO.2.3",
+                  "Giải thích được những điều kiện quy định sứ mệnh lịch sử của giai cấp công nhân"
+                ],
+                [
+                  "LO.2.4",
+                  "Phân tích được những điểm tương đồng và khác biệt của giai cấp công nhân hiện nay và việc thực hiện sứ mệnh của giai cấp công nhân trên thế giới hiện nay"
+                ],
+                [
+                  "LO.2.5",
+                  "Nắm rõ những đặc điểm cơ bản của giai cấp công nhân Việt Nam và nội dung sứ mệnh lịch sử của giai cấp công nhân Việt Nam hiện nay"
+                ],
+                [
+                  "LO.2.6",
+                  "Trình bày được phương hướng và một số giải pháp chủ yếu để xây dựng giai cấp công nhân Việt Nam hiện nay."
+                ],
+                [
+                  "LO.3.1",
+                  "Hiểu rõ Chủ nghĩa xã hội là giai đoạn đầu của hình thái kinh tế - xã hội cộng sản chủ nghĩa"
+                ],
+                [
+                  "LO.3.2",
+                  "Trình bày được những đặc trưng cơ bản của chủ nghĩa xã hội"
+                ],
+                [
+                  "LO.3.3",
+                  "Giải thích được tính tất yếu khách quan của thời kỳ quá độ lên chủ nghĩa xã hội và những đặc điểm cơ bản của thời kỳ quá độ lên chủ nghĩa xã hội"
+                ],
+                [
+                  "LO.3.4",
+                  "Hiểu rõ đặc trưng của thời kỳ quá độ và chủ nghĩa xã hội ở Việt Nam, trình bày được những phương hướng xây dựng chủ nghĩa xã hội ở Việt Nam hiện nay"
+                ],
+                [
+                  "LO.4.1",
+                  "Giải thích được quan niệm về dân chủ và sự ra đời và phát triển của dân chủ trong lịch sử xã hội loài người"
+                ],
+                [
+                  "LO.4.2",
+                  "Nắm rõ quá trình ra đời và bản chất của nền dân chủ xã hội chủ nghĩa"
+                ],
+                [
+                  "LO.4.3",
+                  "Hiểu được sự ra đời, bản chất và chức năng của nhà nước xã hội chủ nghĩa cũng như mối quan hệ giữa dân chủ và nhà nước"
+                ],
+                [
+                  "LO.4.4",
+                  "Hiểu được sự ra đời, phát triển và bản chất của nền dân chủ xã hội chủ nghĩa ở Việt Nam"
+                ],
+                [
+                  "LO.4.5",
+                  "Trình bày được đặc điểm và các giải pháp cơ bản nhằm xây dựng nhà nước pháp quyền xã hội chủ nghĩa ở Việt Nam hiện nay"
+                ],
+                [
+                  "LO.5.1",
+                  "Trình bày được khái niệm cơ cấu xã hội - giai cấp và sự biến đổi của cơ cấu xã hội giai cấp trong thời kỳ quá độ lên chủ nghĩa xã hội"
+                ],
+                [
+                  "LO.5.2",
+                  "Giải thích được tính tất yếu và nội dung của liên minh giai cấp, tầng lớp trong thời kỳ quá độ lên chủ nghĩa xã hội"
+                ],
+                [
+                  "LO.5.3",
+                  "Hiểu rõ cơ cấu xã hội - giai cấp ở Việt Nam trong thời kỳ quá độ và trình bày được những giải pháp cơ bản nhằm xây dựng, phát triển khối liên minh giai cấp, tầng lớp xã hội ở Việt Nam hiện nay"
+                ],
+                [
+                  "LO.6.1",
+                  "Hiểu rõ khái niệm, đặc trưng cơ bản của dân tộc và quan điểm của chủ nghĩa Mác - Leenin về vấn đề dân tộc"
+                ],
+                [
+                  "LO.6.2",
+                  "Trình bày được những đặc điểm cơ bản của dân tộc ở Việt Nam và quan điểm chính sách dân tộc của Đảng và Nhà nước Việt Nam"
+                ],
+                [
+                  "LO.6.3",
+                  "Hiểu được bản chất, nguồn gốc, tính chất của tôn giáo và nguyên tắc cơ bản giải quyết vấn đề tôn giáo trong thời kỳ quá độ lên chủ nghĩa xã hội"
+                ],
+                [
+                  "LO.6.4",
+                  "Giải thích được những đặc điểm tôn giáo ở Việt Nam và chính sách của Đảng và Nhà nước Việt Nam đối với tín ngưỡng tôn giáo hiện nay"
+                ],
+                [
+                  "LO.6.5",
+                  "Hiểu rõ được đặc điểm quan hệ dân tộc và tôn giáo ở Việt Nam và trình bày được các định hướng cơ bản nhằm giải quyết mối quan hệ giữa dân tộc và tôn giáo ở Việt Nam hiện nay"
+                ],
+                [
+                  "LO.7.1",
+                  "Khái lược được vị trí, chức năng và vai trò của gia đình trong xã hội"
+                ],
+                [
+                  "LO.7.2",
+                  "Nhận biết được các cơ sở xây dựng gia đình trong thời kỳ quá độ lên chủ nghĩa xã hội"
+                ],
+                [
+                  "LO.1.3",
+                  "Giải thích được sự biến đổi của gia đình Việt Nam trong thời kỳ quá độ và trình bày được những phương hướng cơ bản xây dựng và phát triển gia đình Việt Nam trong thời kỳ quá độ lên chủ nghĩa xã hội"
+                ],
+                [
+                  "LO.8.1",
+                  "Có kỹ năng khái quát hóa để rút ra Từ khóa tri thức đối với mỗi nội dung và tư duy có hệ thống"
+                ],
+                [
+                  "LO.8.2",
+                  "Có kỹ năng trình bày, thuyết minh, phản biện, tranh luận, hùng biện những tri thức lý luận đang học tập, nghiên cứu dựa trên thực tiễn"
+                ],
+                [
+                  "LO.8.3",
+                  "Có kỹ năng giao tiếp xã hội, hợp tác và làm việc nhóm, chia sẻ tri thức và kinh nghiệm, khả năng điều hành nhóm làm việc"
+                ],
+                [
+                  "LO.9.1",
+                  "Có ý thức trách nhiệm bảo vệ tính khoa học, cách mạng trong lý luận của chủ nghĩa Mác – Lênin về CNXH và con đường đi lên CNXH ở Việt Nam."
+                ],
+                [
+                  "LO.9.2",
+                  "Có ý thức, trách nhiệm cá nhân đối với tập thể, cộng đồng."
+                ],
+                [
+                  "LO.9.3",
+                  "Có nhận thức về sự cần thiết học tập, nghiên cứu suốt đời và vận dụng nó trong cuộc sống."
+                ]
+              ],
+              "pages": [
+                80,
+                81,
+                82,
+                83,
+                84
+              ]
+            }
+          ],
+          "5": [
+            {
+              "title": "Chuẩn đầu ra CDIO trong nguồn — không suy diễn thành PLO",
+              "headers": [
+                "LO",
+                "Chuẩn CDIO",
+                "Mức độ giảng dạy (I/T/U)"
+              ],
+              "rows": [
+                [
+                  "LO.1",
+                  "1.1.3",
+                  "I3"
+                ],
+                [
+                  "LO.2",
+                  "1.1.3",
+                  "T4"
+                ],
+                [
+                  "LO.3",
+                  "1.1.3",
+                  "I3"
+                ],
+                [
+                  "LO.4",
+                  "1.1.3",
+                  "T4"
+                ],
+                [
+                  "LO.5",
+                  "1.1.3",
+                  "I3"
+                ],
+                [
+                  "LO.6",
+                  "1.1.3",
+                  "T4"
+                ],
+                [
+                  "LO.7",
+                  "1.1.3",
+                  "I3"
+                ],
+                [
+                  "LO.8",
+                  "2.1.1; 2.3.1; 2.4.4; 2.5; 3.1.5",
+                  "U4"
+                ],
+                [
+                  "LO.9",
+                  "3.1",
+                  "U3"
+                ]
+              ],
+              "pages": [
+                80,
+                81,
+                82,
+                83,
+                84
+              ]
+            },
+            {
+              "title": "Mục tiêu môn học trong các ô nguồn; giữ riêng CDIO và PLO",
+              "headers": [
+                "Nhóm tiêu chí nguồn",
+                "Mục tiêu môn học"
+              ],
+              "rows": [
+                [
+                  "LO.1",
+                  "2.1"
+                ],
+                [
+                  "LO.2.1–LO.2.4",
+                  "2.1"
+                ],
+                [
+                  "LO.2.5–LO.2.6",
+                  "2.1; 2.2"
+                ],
+                [
+                  "LO.3",
+                  "2.1"
+                ],
+                [
+                  "LO.4.1–LO.4.4",
+                  "2.1"
+                ],
+                [
+                  "LO.4.5",
+                  "2.1; 2.2"
+                ],
+                [
+                  "LO.5",
+                  "2.1"
+                ],
+                [
+                  "LO.6.1–LO.6.3",
+                  "2.1"
+                ],
+                [
+                  "LO.6.4–LO.6.5",
+                  "2.1; 2.2"
+                ],
+                [
+                  "LO.7",
+                  "2.1"
+                ],
+                [
+                  "LO.8",
+                  "2.1; 2.2"
+                ],
+                [
+                  "LO.9",
+                  "2.1; 2.2"
+                ]
+              ],
+              "pages": [
+                80,
+                81,
+                82,
+                83,
+                84
+              ]
+            }
+          ],
+          "10": [
+            {
+              "title": "Đánh giá môn học — nguyên văn bảng nguồn",
+              "headers": [
+                "STT",
+                "Mã",
+                "Tên",
+                "Mô tả",
+                "Tỷ trọng",
+                "Hình thức",
+                "LO"
+              ],
+              "rows": [
+                [
+                  "1",
+                  "GHW",
+                  "Thuyết trình nhóm",
+                  "Thuyết trình nhóm về đề tài đã phân công",
+                  "15%",
+                  "Thuyết trình và bản báo cáo nhóm",
+                  "LO.3 LO.4 LO.5 LO.6 LO.7"
+                ],
+                [
+                  "2",
+                  "Quiz",
+                  "Bài thi giữa kỳ",
+                  "Thi theo đề thi của GV",
+                  "20%",
+                  "Tự luận đề mở",
+                  "LO.1 LO.2 LO.3"
+                ],
+                [
+                  "3",
+                  "DIC",
+                  "Thảo luận, chuyên cần tại lớp (Discussion in Class)",
+                  "Điểm thảo luận được tính theo phương pháp tương đối. SV có số lần thảo luận tại lớp nhiều nhất sẽ được điểm tối đa, điểm của các bạn khác được tính dựa theo bạn có số lần thảo luận cao nhất.",
+                  "15%",
+                  "Phát biểu/đặt câu hỏi trên lớp hoặc phiếu trả lời trong các nghiên cứu tình huống tại lớp",
+                  "LO.3 LO.4 LO.5 LO.6 LO.7"
+                ],
+                [
+                  "4",
+                  "FEX",
+                  "Thi cuối kỳ",
+                  "Đề thi bao quát toàn bộ nội dung môn học",
+                  "50%",
+                  "Tự luận đề đóng",
+                  "LO.3 LO.4 LO.5 LO.6 LO.7"
+                ]
+              ],
+              "pages": [
+                88
+              ]
+            }
+          ],
+          "9": [
+            {
+              "title": "Kế hoạch giảng dạy theo buổi học — nguyên văn TT (tiết), không gán tuần/giờ",
+              "headers": [
+                "TT (tiết)",
+                "Nội dung giảng dạy",
+                "LO",
+                "Hoạt động dạy và học",
+                "Đánh giá"
+              ],
+              "rows": [
+                [
+                  "1 (1 tiết)",
+                  "Giới thiệu về môn học",
+                  "LO.1, LO.4;",
+                  "Dạy:\n- Giới thiệu đề cương môn học\n- Giới thiệu nội dung đề tài thuyết trình nhóm GHW)\nHọc ở lớp:\n- Chia nhóm (5 SV/nhóm)\n- Giới thiệu nhóm học tập\nHọc ngoài lớp:\n-Chọn đề tài thuyết trình của nhóm (GHW)\n- Đọc trước tài liệu chương 1.",
+                  ""
+                ],
+                [
+                  "2",
+                  "Chương 1\nNHẬP MÔN CHỦ NGHĨA XÃ HỘI KHOA HỌC",
+                  "LO.1; LO.4 LO.5",
+                  "Dạy:\n1. SỰ RA ĐỜI CỦA CHỦ NGHĨA XÃ HỘI KHOA HỌC\n11.. Hoàn cảnh lịch sử sự ra đời của chủ nghĩa xã hội khoa học\n1.2. Vai trò của C. Mác và Ăngghen\n2. CÁC GIAI ĐOẠN PHÁT TRIỂN CƠ BẢN CỦA CHỦ NGHĨA XÃ HỘI KHOA HỌC\n2.1. C.Mác và Ph.Ăngghen phát triển chủ nghĩa xã hội khoa học\n2.2. V.I.Lênin vận dụng và phát triển chủ nghĩa xã hội khoa học trong điều kiện mới\n2.3. Sự vận dụng và phát triển sáng tạo chủ nghĩa xã hội khoa học từ sau khi Lênin qua đời đến nay\n3. ĐỐI TƯỢNG, PHƯƠNG PHÁP VÀ Ý NGHĨA CỦA VIỆC NGHIÊN CỨU CHỦ NGHĨA XÃ HỘI KHOA HỌC\n3.1. Đối tượng nghiên cứu của chủ nghĩa xã hội khoa học\n3.2. Phương pháp nghiên cứu của chủ nghĩa xã hội khoa học.\n3.3. Ý nghĩa của việc nghiên cứu chủ nghĩa xã hội khoa học\nHọc ở lớp: Thảo luận và phát biểu trên lớp\nHọc ngoài lớp:\n- Phác thảo nội dung thuyết trình nhóm GHW\n- Đọc trước tài liệu chương 2.",
+                  "Thi giữa kỳ (Quiz)"
+                ],
+                [
+                  "3",
+                  "Chương 2\nSỨ MỆNH LỊCH SỬ CỦA GIAI CẤP CÔNG NHÂN",
+                  "LO.2 LO.4 LO.5",
+                  "Dạy:\n1. QUAN ĐIỂM CƠ BẢN CỦA CHỦ NGHĨA MÁC - LEENIN VỀ GIAI CẤP CÔNG NHÂN VÀ SỨ MỆNH LỊCH SỬ THẾ GIỚI CỦA GIAI CẤP CÔNG NHÂN\n1.1. Khái niệm và đặc điểm của giai cấp công nhân\n1.2. Nội dung và đặc điểm sứ mệnh lịch sử của giai cấp công nhân\n1.3. Những điều kiện quy định sứ mệnh lịch sử của giai cấp công nhân\n2. GIAI CẤP CÔNG NHÂN VÀ VIỆC THỰC HIỆN SỨ MỆNH LỊCH SỬ CỦA GIAI CẤP CÔNG NHÂN HIỆN NAY\n2.1. Giai cấp công nhân hiện nay\n2.2. Thực hiện sứ mệnh lịch sử của giai cấp công nhân trên thế giới hiện nay\n3. SỨ MỆNH LỊCH SỬ CỦA GIAI CẤP CÔNG NHÂN VIỆT NAM\n3.1. Đặc điểm của giai cấp công nhân Việt Nam\n3.2. Nội dung sứ mệnh lịch sử của giai cấp công nhân Việt Nam hiện nay\n3.3. Phương hướng và một số giải pháp chủ yếu để xây dựng giai cấp công nhân Việt Nam hiện nay\nHọc ở lớp: Thảo luận và phát biểu trên lớp\nHọc ngoài lớp:\nĐọc trước tài liệu chương 3",
+                  "Thi giữa kỳ (Quiz)"
+                ],
+                [
+                  "4",
+                  "Chương 3\nCHỦ NGHĨA XÃ HỘI VÀ THỜI KỲ QUÁ ĐỘ LÊN CHỦ NGHĨA XÃ HỘI",
+                  "LO.3 LO.4 LO.5",
+                  "Dạy:\n1. CHỦ NGHĨA XÃ HỘI\n1.1. Chủ nghĩa xã hội, giai đoạn đầu của hình thái kinh tế - xã hội cộng sản chủ nghĩa\n1.2. Điều kiện ra đời chủ nghĩa xã hội\n1.3. Những đặt trưng cơ bản của chủ nghĩa xã hội\n2. THỜI KỲ QUÁ ĐỘ LÊN CHỦ NGHĨA XÃ HỘI\n2.1. Tính tất yếu khách quan của thời kỳ quá độ lên chủ nghĩa xã hội\n2.2. Đặc điểm của thời kỳ quá độ lên chủ nghĩa xã hội\n3. QUÁ ĐỘ LÊN CHỦ NGHĨA XÃ HỘI Ở VIỆT NAM\n3.1. Quá độ lên chủ nghĩa xã hội bỏ qua chế độ tư bản chủ nghĩa\n3.2. Những đặc trưng cơ bản của chủ nghĩa xã hội và phương hướng xây dựng chủ nghĩa xã hội ở Việt Nam hiện nay\nHọc ở lớp: Thảo luận và phát biểu trên lớp\nHọc ngoài lớp:\nĐọc trước tài liệu chương 4",
+                  "Thuyết trình nhóm (GHW)\nThi giữa kỳ (Quiz)"
+                ],
+                [
+                  "5",
+                  "Chương 4\nDÂN CHỦ XÃ HỘI CHỦ NGHĨA VÀ NHÀ NƯỚC XÃ HỘI CHỦ NGHĨA",
+                  "LO.2 LO.4 LO.5",
+                  "Dạy:\n1. DÂN CHỦ VÀ DÂN CHỦ XÃ HỘI CHỦ NGHĨA\n1.1. Dân chủ và sự ra đời, phát triển của dân chủ\n1.2. Dân chủ xã hội chủ nghĩa\n2. NHÀ NƯỚC XÃ HỘI CHỦ NGHĨA\n2.1. Sự ra đời, bản chất, chức năng của nhà nước xã hội chủ nghĩa\n2.2. Mối quan hệ giữa dân chủ xã hội chủ nghĩa và nhà nước xã hội chủ nghĩa\n3. DÂN CHỦ XÃ HỘI CHỦ NGHĨA VÀ NHÀ NƯỚC PHÁP QUYỀN XÃ HỘI CHỦ NGHĨA Ở VIỆT NAM\n3.1. Dân chủ xã hội chủ nghĩa ở Việt Nam\n3.2. Nhà nước pháp quyền xã hội chủ nghĩa ở Việt Nam\n3.3. Phát huy dân chủ xã hội chủ nghĩa, xây dựng nhà nước pháp quyền xã hội chủ nghĩa ở Việt Nam hiện nay\nHọc ở lớp: Thảo luận và phát biểu trên lớp\nHọc ngoài lớp:\nĐọc trước tài liệu chương 5",
+                  "Thuyết trình nhóm (GHW)\nThi cuối kỳ (FEX)"
+                ],
+                [
+                  "6",
+                  "Chương 5\nCƠ CẤU XÃ HỘI - GIAI CẤP VÀ LIÊN MINH GIAI CẤP, TẦNG LỚP TRONG THỜI KỲ QUÁ ĐỘ LÊN CHỦ NGHĨA XÃ HỘI",
+                  "LO.3 LO.4 LO.5",
+                  "Dạy:\n1. CƠ CẤU XÃ HỘI GIAI CẤP TRONG THỜI KỲ QUÁ ĐỘ LÊN CHỦ NGHĨA XÃ HỘI\n1.1. Khái niệm và vị trí của cơ cấu xã hội - giai cấp trong cơ cấu xã hội\n1.2. Sự biến đổi có tính quy luật của cơ cấu xã hội - giai cấp trong thời kỳ quá độ lên chủ nghĩa xã hội\n2. LIÊN MINH GIAI CẤP, TẦNG LỚP TRONG THỜI KỲ QUÁ ĐỘ LÊN CHỦ NGHĨA XÃ HỘI\n3. CƠ CẤU XÃ HỘI - GIAI CẤP VÀ LIÊN MINH GIAI CẤP, TẦNG LỚP TRONG THỜI KỲ QUÁ ĐỘ LÊN CHỦ NGHĨA XÃ HỘI Ở VIỆT NAM\n3.1. Cơ cấu xã hội - giai cấp trong thời kỳ quá độ lên chủ nghĩa xã hội ở Việt Nam\n3.2. Liên minh giai cấp, tầng lớp trong thời kỳ quá độ lên chủ nghĩa xã hội ở Việt Nam\nHọc ở lớp: Thảo luận và phát biểu trên lớp\nHọc ngoài lớp:\nĐọc trước tài liệu chương 6",
+                  "Thuyết trình nhóm (GHW)\nThi cuối kỳ (FEX)"
+                ],
+                [
+                  "7",
+                  "Chương 6\nVẤN ĐỀ DÂN TỘC VÀ TÔN GIÁO TRONG THỜI KỲ QUÁ ĐỘ LÊN CHỦ NGHĨA XÃ HỘI",
+                  "LO.2 LO.4 LO.5",
+                  "Dạy:\n1. DÂN TỘC TRONG THỜI KỲ QUÁ ĐỘ LÊN CHỦ NGHĨA XÃ HỘI\n1.1. Chủ nghĩa Mác - Lênin về dân tộc\n1.2. Dân tộc và quan hệ dân tộc ở Việt Nam\n2. TÔN GIÁO TRONG THỜI KỲ QUÁ ĐỘ LÊN CHỦ NGHĨA XÃ HỘI\n2.1. Chủ nghĩa Mác - Lênin về tôn giáo\n2.2.Tôn giáo ở Việt Nam và chính sách tôn giáo của Đảng, Nhà nước ta hiện nay\n3. QUAN HỆ DÂN TỘC VÀ TÔN GIÁO Ở VIỆT NAM\n3.1. Đặc điểm quan hệ dân tộc và tôn giáo ở Việt Nam\n3.2. Định hướng giải quyết mối quan hệ dân tộc và tôn giáo ở Việt Nam hiện nay\n3.3. Phương hướng và một số giải pháp chủ yếu để xây dựng giai cấp công nhân Việt Nam hiện nay\nHọc ở lớp: Thảo luận và phát biểu trên lớp\nHọc ngoài lớp:\nĐọc trước tài liệu chương 7",
+                  "Thuyết trình nhóm (GHW)\nThi cuối kỳ (FEX)"
+                ],
+                [
+                  "8",
+                  "Chương 7\nVẤN ĐỀ GIA ĐÌNH TRONG THỜI KỲ QUÁ ĐỘ LÊN CHỦ NGHĨA XÃ HỘI",
+                  "LO.2 LO.4 LO.5",
+                  "Dạy:\n1. KHÁI NIỆM, VỊ TRÍ VÀ CHỨC NĂNG CỦA GIA ĐÌNH\n1.1. Khái niệm gia đình\n1.2. Vị trí của gia đình trong xã hội\n1.3. Chức năng cơ bản của gia đình\n2. CƠ SỞ XÂY DỰNG GIA ĐÌNH TRONG THỜI KỲ QUÁ ĐỘ LÊN CHỦ NGHĨA XÃ HỘI\n2.1. Cơ sở kinh tế - xã hội\n2.2.Cơ sở chính trị - xã hội\n2.3. Cơ sở văn hóa\n3. XÂY DỰNG GIA ĐÌNH VIỆT NAM TRONG THỜI KỲ QUÁ ĐỘ LÊN CHỦ NGHĨA XÃ HỘI\n3.1. Sự biến đổi gia đình Việt Nam trong thời kỳ quá độ lên chủ nghĩa xã hội\n3.2. Phương hướng cơ bản xây dựng và phát triển gia đình Việt Nam trong thời kỳ quá độ lên chủ nghĩa xã hội\nHọc ở lớp: Thảo luận và phát biểu trên lớp\nHọc ngoài lớp:\nHoàn thiện bài thuyết trình",
+                  "Thuyết trình nhóm (GHW)\nThi cuối kỳ (FEX)"
+                ]
+              ],
+              "pages": [
+                84,
+                85,
+                86,
+                87,
+                88
+              ]
+            }
+          ],
+          "11": [
+            {
+              "title": "Tiêu chí đánh giá chuẩn đầu ra môn học — nguyên văn nguồn",
+              "headers": [
+                "TT",
+                "Chuẩn đầu ra",
+                "Nội dung",
+                "Phương pháp",
+                "Tiêu chí đánh giá"
+              ],
+              "rows": [
+                [
+                  "LO.1",
+                  "Nhận biết quá trình ra đời của Chủ nghĩa xã hội khoa học và các giai đoạn phát triển cơ bản",
+                  "Chương 1",
+                  "Thi giữa kỳ (Quiz)",
+                  "Ngân hàng đề thi của GV"
+                ],
+                [
+                  "LO.2 LO.4",
+                  "Nắm rõ nội dung: quan điểm cơ bản của chủ nghĩa Mác - Lênin về giai cấp công nhân, nội dung, biểu hiện và ý nghĩa của sứ mệnh đó trong bối cảnh hiện nay",
+                  "Chương 2",
+                  "Thi giữa kỳ (Quiz)",
+                  "Ngân hàng đề thi của GV"
+                ],
+                [
+                  "LO.3 LO.4",
+                  "Nhận biết và nắm được những quan điểm cơ bản của chủ nghĩa Mác - lênin về chủ nghĩa xã hội, thời kỳ quá độ lên chủ nghĩa xã hội và sự vận dụng sáng tạo của Đảng Cộng sản Việt Nam vào điều kiện cụ thể của Việt Nam",
+                  "Chương 3",
+                  "Thảo luận tại lớp (Discussion in Class)\nThi giữa kỳ (Quiz)",
+                  "Tiêu chí đánh giá thuyết trình nhóm, thảo luận tại lớp\nNgân hàng đề thi của GV"
+                ],
+                [
+                  "LO.3 LO.4",
+                  "Nhận biết và nắm được bản chất của nền dân chủ xã hội chủ nghĩa và nhà nước xã hội chủ nghĩa nói chung và ở Việt Nam nói riêng",
+                  "Chương 4",
+                  "Thảo luận tại lớp (Discussion in Class)\nThi cuối kỳ (FEX)",
+                  "Tiêu chí đánh giá thuyết trình nhóm, thảo luận tại lớp\nNgân hàng đề thi của Khoa"
+                ],
+                [
+                  "LO.3 LO.4",
+                  "Nhận biết và nắm được những kiến thức nền tảng về cơ cấu xã hội - giai cấp và liên minh giai cấp, tầng lớp trong thời kỳ quá độ lên chủ nghĩa xã hội",
+                  "Chương 5",
+                  "Thảo luận tại lớp (Discussion in Class)\nThi cuối kỳ (FEX)",
+                  "Tiêu chí đánh giá thuyết trình nhóm, thảo luận tại lớp\nNgân hàng đề thi của Khoa"
+                ],
+                [
+                  "LO.3 LO.4",
+                  "Nhận biết và nắm được những quan điểm cơ bản của chủ nghĩa Mác - Lênin về dân tộc, tôn giáo, mối quan hệ giữa dân tộc và tôn giáo, tầm quan trọng của vấn đề dân tộc, tôn giáo và nội dung chính sách dân tộc, tôn giáo của Đảng và Nhà nước Việt Nam",
+                  "Chương 6",
+                  "Thảo luận tại lớp (Discussion in Class)\nThi cuối kỳ (FEX)",
+                  "Tiêu chí đánh giá thuyết trình nhóm, thảo luận tại lớp\nNgân hàng đề thi của Khoa"
+                ],
+                [
+                  "LO.3 LO.4",
+                  "Nhận biết và nắm được những quan điểm cơ bản của chủ nghĩa Mác - Lênin, tư tưởng Hồ Chí Minh và Đảng Cộng sản Việt Nam về gia đình, xây dựng gia đình trong thời kỳ quá độ lên chủ nghĩa xã hội hiện nay.",
+                  "Chương 7",
+                  "Thảo luận tại lớp (Discussion in Class)\nThi cuối kỳ (FEX)",
+                  "Tiêu chí đánh giá thuyết trình nhóm, thảo luận tại lớp\nNgân hàng đề thi của Khoa"
+                ]
+              ],
+              "pages": [
+                89,
+                90
+              ]
+            }
+          ]
+        },
+        "sourceWorkloadUnit": "tiết"
+      },
+      "unverifiedFields": [],
+      "missingFields": [
+        "courseDesignation",
+        "courseTypes",
+        "semester",
+        "language",
+        "relation",
+        "teachingMethods",
+        "workloadTotal",
+        "lectureCredits",
+        "laboratoryCredits",
+        "LLO",
+        "PLO mapping",
+        "rubric levels",
+        "passing requirement"
+      ]
+    },
+    {
+      "courseCode": "PE018IU",
+      "startPage": 92,
+      "endPage": 103,
+      "reviewedPages": [
+        93,
+        94,
+        95,
+        96,
+        97,
+        98,
+        99,
+        100,
+        101,
+        102,
+        103
+      ],
+      "method": "Direct visual page review; bonus score and repeated source wording retained without numeric conversion.",
+      "fieldPages": {
+        "general": [
+          93
+        ],
+        "objectives": [
+          93,
+          94
+        ],
+        "clos": [
+          94,
+          95,
+          96,
+          97
+        ],
+        "topics": [
+          98,
+          99,
+          100
+        ],
+        "assessments": [
+          101
+        ],
+        "readings": [
+          94
+        ],
+        "examRequirements": [
+          102,
+          103
+        ],
+        "weeklyActivities": [
+          98,
+          99,
+          100,
+          101
+        ],
+        "outcomeEvaluation": [
+          101,
+          102
+        ]
+      },
+      "data": {
+        "sourceCourseCode": "PE018IU",
+        "sourceCourseName": "History of Vietnamese communist party",
+        "personResponsible": "Khoa Chính trị - Hành chính, ĐHQG-HCM",
+        "creditPoints": "2",
+        "workloadContact": "20 (trên lớp) [lý thuyết]; 10 (trên lớp) [thực hành]",
+        "workloadPrivate": "90 (về nhà)",
+        "prerequisites": "1. Triết học Mác – Lênin, 2. Kinh tế chính trị Mác – Lênin, 3. Chủ nghĩa xã hội khoa học",
+        "dateRevised": "07 tháng 02 năm 2020",
+        "clos": [
+          {
+            "code": "LO.1",
+            "description": "NHẬP MÔN ĐỐI TƯỢNG, CHỨC NĂNG, NHIỆM VỤ, NỘI DUNG VÀ PHƯƠNG PHÁP NGHIÊN CỨU, HỌC TẬP LỊCH SỬ ĐẢNG CỘNG SẢN VIỆT NAM",
+            "descriptionVn": "NHẬP MÔN ĐỐI TƯỢNG, CHỨC NĂNG, NHIỆM VỤ, NỘI DUNG VÀ PHƯƠNG PHÁP NGHIÊN CỨU, HỌC TẬP LỊCH SỬ ĐẢNG CỘNG SẢN VIỆT NAM",
+            "competencyLevel": "KNOWLEDGE",
+            "orderIndex": 1
+          },
+          {
+            "code": "LO.2",
+            "description": "ĐẢNG CỘNG SẢN VIỆT NAM RA ĐỜI VÀ LÃNH ĐẠO ĐẤU TRANH GIÀNH CHÍNH QUYỀN (1930-1945)",
+            "descriptionVn": "ĐẢNG CỘNG SẢN VIỆT NAM RA ĐỜI VÀ LÃNH ĐẠO ĐẤU TRANH GIÀNH CHÍNH QUYỀN (1930-1945)",
+            "competencyLevel": "KNOWLEDGE",
+            "orderIndex": 2
+          },
+          {
+            "code": "LO.3",
+            "description": "ĐẢNG LÃNH ĐẠO HAI CUỘC KHÁNG CHIẾN, HOÀN THÀNH GIẢI PHÓNG DÂN TỘC, THỐNG NHẤT ĐẤT NƯỚC (1945-1975)",
+            "descriptionVn": "ĐẢNG LÃNH ĐẠO HAI CUỘC KHÁNG CHIẾN, HOÀN THÀNH GIẢI PHÓNG DÂN TỘC, THỐNG NHẤT ĐẤT NƯỚC (1945-1975)",
+            "competencyLevel": "KNOWLEDGE",
+            "orderIndex": 3
+          },
+          {
+            "code": "LO.4",
+            "description": "ĐẢNG LÃNH ĐẠO CẢ NƯỚC QUÁ ĐỘ LÊN CHỦ NGHĨA XÃ HỘI VÀ TIẾN HÀNH CÔNG CUỘC ĐỔI MỚI (1975-2018)",
+            "descriptionVn": "ĐẢNG LÃNH ĐẠO CẢ NƯỚC QUÁ ĐỘ LÊN CHỦ NGHĨA XÃ HỘI VÀ TIẾN HÀNH CÔNG CUỘC ĐỔI MỚI (1975-2018)",
+            "competencyLevel": "KNOWLEDGE",
+            "orderIndex": 4
+          },
+          {
+            "code": "LO.5",
+            "description": "THỂ HIỆN KHẢ NĂNG KHÁI QUÁT HÓA, TƯ DUY, TRANH LUẬN, PHẢN BIỆN, LÀM VIỆC NHÓM",
+            "descriptionVn": "THỂ HIỆN KHẢ NĂNG KHÁI QUÁT HÓA, TƯ DUY, TRANH LUẬN, PHẢN BIỆN, LÀM VIỆC NHÓM",
+            "competencyLevel": "SKILL",
+            "orderIndex": 5
+          },
+          {
+            "code": "LO.6",
+            "description": "THỂ HIỆN Ý THỨC, NHẬN THỨC TRONG VÀ SAU KHI HỌC TẬP",
+            "descriptionVn": "THỂ HIỆN Ý THỨC, NHẬN THỨC TRONG VÀ SAU KHI HỌC TẬP",
+            "competencyLevel": "ATTITUDE",
+            "orderIndex": 6
+          }
+        ],
+        "topics": [
+          {
+            "name": "Giới thiệu về môn học",
+            "nameVn": "Giới thiệu về môn học",
+            "orderInWeek": 1
+          },
+          {
+            "name": "Chương nhập môn\nĐỐI TƯỢNG, CHỨC NĂNG, NHIỆM VỤ, NỘI DUNG VÀ PHƯƠNG PHÁP NGHIÊN CỨU, HỌC TẬP LỊCH SỬ ĐẢNG CỘNG SẢN VIỆT NAM",
+            "nameVn": "Chương nhập môn\nĐỐI TƯỢNG, CHỨC NĂNG, NHIỆM VỤ, NỘI DUNG VÀ PHƯƠNG PHÁP NGHIÊN CỨU, HỌC TẬP LỊCH SỬ ĐẢNG CỘNG SẢN VIỆT NAM",
+            "orderInWeek": 2
+          },
+          {
+            "name": "Chương 1\nĐẢNG CỘNG SẢN VIỆT NAM RA ĐỜI VÀ LÃNH ĐẠO ĐẤU TRANH GIÀNH CHÍNH QUYỀN (1930-1945)",
+            "nameVn": "Chương 1\nĐẢNG CỘNG SẢN VIỆT NAM RA ĐỜI VÀ LÃNH ĐẠO ĐẤU TRANH GIÀNH CHÍNH QUYỀN (1930-1945)",
+            "orderInWeek": 3
+          },
+          {
+            "name": "Chương 2\nĐẢNG LÃNH ĐẠO HAI CUỘC KHÁNG CHIẾN, HOÀN THÀNH GIẢI PHÓNG DÂN TỘC, THỐNG NHẤT ĐẤT NƯỚC (1945-1975)",
+            "nameVn": "Chương 2\nĐẢNG LÃNH ĐẠO HAI CUỘC KHÁNG CHIẾN, HOÀN THÀNH GIẢI PHÓNG DÂN TỘC, THỐNG NHẤT ĐẤT NƯỚC (1945-1975)",
+            "orderInWeek": 4
+          },
+          {
+            "name": "Chương 3\nĐẢNG LÃNH ĐẠO CẢ NƯỚC QUÁ ĐỘ LÊN CHỦ NGHĨA XÃ HỘI VÀ TIẾN HÀNH CÔNG CUỘC ĐỔI MỚI (1975-2018)",
+            "nameVn": "Chương 3\nĐẢNG LÃNH ĐẠO CẢ NƯỚC QUÁ ĐỘ LÊN CHỦ NGHĨA XÃ HỘI VÀ TIẾN HÀNH CÔNG CUỘC ĐỔI MỚI (1975-2018)",
+            "orderInWeek": 5
+          }
+        ],
+        "assessments": [
+          {
+            "name": "Thuyết trình nhóm",
+            "nameVn": "Thuyết trình nhóm",
+            "weightPercent": 20.0,
+            "orderIndex": 1,
+            "assessmentType": "Thuyết trình nhóm"
+          },
+          {
+            "name": "Bài thi giữa kỳ",
+            "nameVn": "Bài thi giữa kỳ",
+            "weightPercent": 30.0,
+            "orderIndex": 2,
+            "assessmentType": "Bài thi giữa kỳ"
+          },
+          {
+            "name": "Thảo luận tại lớp (Discussion in Class)",
+            "nameVn": "Thảo luận tại lớp (Discussion in Class)",
+            "weightPercent": null,
+            "orderIndex": 3,
+            "assessmentType": "Thảo luận tại lớp (Discussion in Class)"
+          },
+          {
+            "name": "Thi cuối kỳ",
+            "nameVn": "Thi cuối kỳ",
+            "weightPercent": 50.0,
+            "orderIndex": 4,
+            "assessmentType": "Thi cuối kỳ"
+          }
+        ],
+        "readings": [
+          {
+            "type": "RAW_SOURCE",
+            "title": "- Bộ Giáo dục và Đào tạo (2019), Chương trình môn học Lịch sử Đảng Cộng sản Việt Nam, ban hành 2019.\n- Hội đồng Trung ương chỉ đạo biên soạn giáo trình quốc gia các môn khoa học Mác – Lênin, Tư tưởng Hồ Chí Minh (2018), Giáo trình Lịch sử Đảng Cộng sản Việt Nam (tái bản có sửa chữa, bổ sung), Nxb. Chính trị quốc gia, Hà Nội."
+          }
+        ],
+        "weeklyActivities": [],
+        "cloPloMappings": [],
+        "topicCloMappings": [],
+        "assessmentCloMappings": [],
+        "objectives": "2.1. Về nội dung: cung cấp những tri thức có tính hệ thống, cơ bản về sự ra đời của Đảng Cộng sản Việt Nam (1920-1930), sự lãnh đạo của Đảng đối với cách mạng Việt Nam trong thời kỳ đấu tranh giành chính quyền chính quyền (1930-1945), trong hai cuộc kháng chiến chống thực dân Pháp và đế quốc Mỹ xâm lược (1945-1975), trong sự nghiệp xây dựng, bảo vệ tổ quốc thời kỳ cả nước quá độ lên chủ nghĩa xã hội, tiến hành công cuộc đổi mới (1975-2018).\n2.2. Về tư tưởng: Thông qua các sự kiện lịch sử và các kinh nghiệm về sự lãnh đạo của Đảng để xây dựng ý thức tôn trọng sự thật khách quan, nâng cao lòng tự hào, niềm tin đối với sự nghiệp lãnh đạo của Đảng.\n2.3. Về kỹ năng: Trang bị phương pháp tư duy khoa học về lịch sử, kỹ năng lựa chọn tài liệu nghiên cứu, học tập môn học và khả năng vận dụng nhận thức lịch sử vào công tác thực tiễn, phê phán quan niệm sai trái về lịch sử của Đảng.",
+        "contentNote": "Môn học trang bị cho sinh viên những kiến thức cơ bản về Lịch sử Đảng Cộng sản Việt Nam",
+        "examRequirements": "- Khi có các thắc mắc liên quan môn học, sinh viên có thể liên lạc với quản lý Bộ môn Hồ Chí Minh học & Lịch sử Đảng và Khoa Chính trị - Hành chính qua email: daotao.spas@vnuhcm.edu.vn\n- Quy định về Bài thuyết trình nhóm GHW\nThành lập nhóm: 5 sinh viên/nhóm. Hạn chót đăng ký đề tài nhóm Quản lý trên forum là Buổi 2.\nTuần 4 thuyết trình theo thứ tự. Lưu ý các nhóm cần có mặt đủ và mang theo tất cả các tài liệu liên quan đến GHW khi đi thuyết trình.\nHình thức nộp bài: Nộp file và biên bản làm việc nhóm qua mail cho GV\n- Quy định về giờ giấc, chuyên cần, kỷ luật trong khóa học: Lên lớp đúng giờ, dự tối thiểu 80% thời gian học trên lớp (chỉ được phép vắng mặt tối đa 20% số tiết học). Nếu vắng quá số tiết quy định sẽ bị cấm thi theo quy chế. Có đầy đủ điểm kiểm tra, điểm thi kết thúc học phần & nhiệt tình thảo luận, phát biểu xây dựng bài, nghiêm túc trong giờ học./."
+      },
+      "notes": {
+        "sourceCloLanguage": "VI",
+        "sourceContentLanguage": "VI",
+        "sourceSupplementalSections": {
+          "1": [
+            {
+              "title": "Thông tin nguyên bản nguồn",
+              "headers": [
+                "Trường nguồn",
+                "Giá trị"
+              ],
+              "rows": [
+                [
+                  "Thuộc khối kiến thức",
+                  "Cơ sở"
+                ],
+                [
+                  "Ngày nguồn",
+                  "07 tháng 02 năm 2020"
+                ]
+              ],
+              "pages": [
+                93,
+                103
+              ]
+            }
+          ],
+          "3": [
+            {
+              "title": "Tiêu chí đánh giá trong bảng chuẩn đầu ra nguồn",
+              "headers": [
+                "Mã nguồn",
+                "Tiêu chí đánh giá"
+              ],
+              "rows": [
+                [
+                  "LO.1.1",
+                  "Nắm rõ được đối tượng, mục đích học tập, nghiên cứu và một số yêu cầu cơ bản về phương pháp học tập, nghiên cứu Lịch sử Đảng Cộng sản Việt Nam"
+                ],
+                [
+                  "LO.2.1",
+                  "Nắm được bối cảnh lịch sử tác động đến sự ra đời của Đảng Cộng sản Việt Nam"
+                ],
+                [
+                  "LO.2.2",
+                  "Nắm được quá trình chuẩn bị các điều kiện để thành lập Đảng của Nguyễn Ái Quốc"
+                ],
+                [
+                  "LO.2.3",
+                  "Nắm được nội dung hội nghị thành lập Đảng và Cương lĩnh chính trị đầu tiên của Đảng"
+                ],
+                [
+                  "LO.2.4",
+                  "Hiểu được ý nghĩa lịch sử của việc thành lập Đảng Cộng sản Việt Nam"
+                ],
+                [
+                  "LO.2.5",
+                  "Nắm rõ các phong trào cách mạng 1930-1935 và các chủ trương khôi phục phong trào năm 1932-1935"
+                ],
+                [
+                  "LO.2.6",
+                  "Nắm rõ phong trào dân chủ năm 1936-1939"
+                ],
+                [
+                  "LO.2.7",
+                  "Nắm rõ phong trào giải phóng dân tộc 1939-1945"
+                ],
+                [
+                  "LO.2.8",
+                  "Hiểu rõ tính chất, ý nghĩa và kinh nghiệm của Cách mạng Tháng Tám năm 1945"
+                ],
+                [
+                  "LO.3.1",
+                  "Hiểu được chủ trương xây dựng và bảo vệ chính quyền cách mạng 1945-1946"
+                ],
+                [
+                  "LO.3.2",
+                  "Hiểu rõ Đường lối kháng chiến toàn quốc chống thực dân Pháp xâm lược và quá trình tổ chức thực hiện từ năm 1946-1950"
+                ],
+                [
+                  "LO.3.3",
+                  "Hiểu rõ chủ trương Đẩy mạnh cuộc kháng chiến chống thực dân Pháp xâm lược và quá trình tổ chức thực hiện từ năm 1946 đến năm 1950"
+                ],
+                [
+                  "LO.3.4",
+                  "Hiểu rõ được Ý nghĩa lịch sử và kinh nghiệm của Đảng trong lãnh đạo kháng chiến chống thực dân Pháp và can thiệp Mỹ"
+                ],
+                [
+                  "LO.3.5",
+                  "Nắm được quá trình lãnh đạo cách mạng hai miền giai đoạn 1954-1965 của Đảng"
+                ],
+                [
+                  "LO.3.6",
+                  "Nắm vững sự lãnh đạo cách mạng cả nước giai đoạn 1965-1975 của Đảng"
+                ],
+                [
+                  "LO.3.7",
+                  "Hiểu rõ Ý nghĩa và kinh nghiệm lãnh đạo của Đảng trong cuộc kháng chiến chống Mỹ, cứu nước 1954-1975"
+                ],
+                [
+                  "LO.4.1",
+                  "Hiểu rõ chủ trương xây dựng chủ nghĩa xã hội và bảo vệ Tổ quốc 1975-1981"
+                ],
+                [
+                  "LO.4.2",
+                  "Nắm rõ nội dung Đại hội đại biểu toàn quốc lần thứ V của Đảng và các bước đột phá tiếp tục đổi mới kinh tế 1982-1986"
+                ],
+                [
+                  "LO.4.3",
+                  "Nắm rõ quan điểm Đổi mới toàn diện, đưa đất nước ra khỏi khủng hoảng kinh tế - xã hội 1986-1996 của Đảng"
+                ],
+                [
+                  "LO.4.4",
+                  "Nắm rõ thành tựu, kinh nghiệm của công cuộc đổi mới"
+                ],
+                [
+                  "LO.4.5",
+                  "Hiểu rõ những thắng lợi vĩ đại của cách mạng Việt Nam dưới sự lãnh đạo của Đảng từ năm 1930 đến 2018"
+                ],
+                [
+                  "LO.4.6",
+                  "Hiểu rõ những bài học lớn về sự lãnh đạo của Đảng từ năm 1930 đến 2018"
+                ],
+                [
+                  "LO.5.1",
+                  "Rèn luyện năng lực tư duy độc lập trong nghiên cứu đường lối, chiến lược, sách lược cách mạng của Đảng."
+                ],
+                [
+                  "LO.5.2",
+                  "Có tư duy phê phán, kỹ năng phân tích, tổng hợp và đánh giá những vấn đề liên quan đến môn học. Từ đó, vận dụng kiến thức đã học để chủ động, tích cực nhận thức những vấn đề chính trị, kinh tế, văn hoá, xã hội theo đường lối, chính sách, pháp luật của Đảng và Nhà nước."
+                ],
+                [
+                  "LO.5.3",
+                  "Có kỹ năng viết, kỹ năng làm việc cá nhân, làm việc nhóm và trình bày kết quả nghiên cứu."
+                ],
+                [
+                  "LO.6.1",
+                  "Tin tưởng vào sự lãnh đạo của Đảng đối với cách mạng Việt Nam."
+                ],
+                [
+                  "LO.6.2",
+                  "Quyết tâm phấn đấu thực hiện đường lối cách mạng của Đảng."
+                ],
+                [
+                  "LO.6.3",
+                  "Có thái độ nghiêm túc trong học tập, nghiên cứu khoa học, trong nhận thức về cuộc sống, xã hội, tự rèn luyện bản thân trở thành người có phẩm chất, bản lĩnh chính trị vững vàng, có đạo đức, trình độ chuyên môn tốt; hình thành tình cảm, niềm tin vào con đường cách mạng mà dân tộc ta đã lựa chọn."
+                ]
+              ],
+              "pages": [
+                94,
+                95,
+                96,
+                97
+              ]
+            }
+          ],
+          "5": [
+            {
+              "title": "Chuẩn đầu ra CDIO trong nguồn — không suy diễn thành PLO",
+              "headers": [
+                "LO",
+                "Chuẩn CDIO",
+                "Mức độ giảng dạy (I/T/U)"
+              ],
+              "rows": [
+                [
+                  "LO.1",
+                  "1.1.3",
+                  "I3"
+                ],
+                [
+                  "LO.2",
+                  "1.1.3",
+                  "T4"
+                ],
+                [
+                  "LO.3",
+                  "1.1.3",
+                  "T4"
+                ],
+                [
+                  "LO.4",
+                  "1.1.3",
+                  "T4"
+                ],
+                [
+                  "LO.5",
+                  "2.1.1; 2.3.1; 2.4.4; 2.5; 3.1.5",
+                  "U4"
+                ],
+                [
+                  "LO.6",
+                  "3.1",
+                  "U3"
+                ]
+              ],
+              "pages": [
+                94,
+                95,
+                96,
+                97
+              ]
+            },
+            {
+              "title": "Mục tiêu môn học nguyên bản; các ô gộp được giữ theo nhóm nguồn",
+              "headers": [
+                "Nhóm nguồn",
+                "Mục tiêu môn học"
+              ],
+              "rows": [
+                [
+                  "LO.1",
+                  "2.1"
+                ],
+                [
+                  "LO.2",
+                  "2.1"
+                ],
+                [
+                  "LO.3",
+                  "2.1"
+                ],
+                [
+                  "LO.4",
+                  "2.1; 2.2"
+                ],
+                [
+                  "LO.5",
+                  "2.1; 2.2; 2.3"
+                ],
+                [
+                  "LO.6",
+                  "2.1; 2.2; 2.3"
+                ]
+              ],
+              "pages": [
+                94,
+                95,
+                96,
+                97
+              ]
+            }
+          ],
+          "10": [
+            {
+              "title": "Đánh giá môn học — DIC là điểm cộng, không phải tỷ trọng phần trăm",
+              "headers": [
+                "STT",
+                "Mã",
+                "Tên",
+                "Mô tả",
+                "Tỷ trọng nguồn",
+                "Hình thức",
+                "LO"
+              ],
+              "rows": [
+                [
+                  "1",
+                  "GHW",
+                  "Thuyết trình nhóm",
+                  "Thuyết trình nhóm về đề tài đã phân công",
+                  "20%",
+                  "Thuyết trình và bản báo cáo nhóm",
+                  "LO.3 LO.4 LO.5"
+                ],
+                [
+                  "2",
+                  "Quiz",
+                  "Bài thi giữa kỳ",
+                  "Thi theo đề thi chung",
+                  "30%",
+                  "Tự luận",
+                  "LO.1 LO.2;"
+                ],
+                [
+                  "3",
+                  "DIC",
+                  "Thảo luận tại lớp (Discussion in Class)",
+                  "Điểm thảo luận được tính theo phương pháp tương đối. SV có số lần thảo luận tại lớp nhiều nhất sẽ được điểm tối đa, điểm của các bạn khác được tính dựa theo bạn có số lần thảo luận cao nhất.",
+                  "Cộng tối đa 1 điểm vào bài thi cuối kỳ",
+                  "Phát biểu/đặt câu hỏi trên lớp hoặc phiếu trả lời trong các nghiên cứu tình huống tại lớp",
+                  ""
+                ],
+                [
+                  "4",
+                  "FEX",
+                  "Thi cuối kỳ",
+                  "Đề thi bao quát toàn bộ nội dung môn học",
+                  "50%",
+                  "Trắc nghiệm",
+                  "LO.2; LO.3; LO.4;"
+                ]
+              ],
+              "pages": [
+                101
+              ]
+            }
+          ],
+          "9": [
+            {
+              "title": "Kế hoạch giảng dạy theo buổi học — tiêu đề Buổi (3 tiết) nguyên bản, không đổi thành tuần/giờ",
+              "headers": [
+                "Buổi (3 tiết)",
+                "Nội dung giảng dạy",
+                "LO",
+                "Hoạt động dạy và học",
+                "Đánh giá"
+              ],
+              "rows": [
+                [
+                  "1",
+                  "Giới thiệu về môn học",
+                  "LO.1, LO.5;",
+                  "Dạy:\n- Giới thiệu đề cương môn học\n- Giới thiệu nội dung đề tài thuyết trình nhóm GHW)\nHọc ở lớp:\n- Chia nhóm (5 SV/nhóm)\n- Giới thiệu nhóm học tập\nHọc ngoài lớp:\n-Chọn đề tài thuyết trình của nhóm (GHW)",
+                  ""
+                ],
+                [
+                  "2",
+                  "Chương nhập môn\nĐỐI TƯỢNG, CHỨC NĂNG, NHIỆM VỤ, NỘI DUNG VÀ PHƯƠNG PHÁP NGHIÊN CỨU, HỌC TẬP LỊCH SỬ ĐẢNG CỘNG SẢN VIỆT NAM",
+                  "LO.1;",
+                  "Dạy:\nI. ĐỐI TƯỢNG NGHIÊN CỨU CỦA MÔN HỌC LỊCH SỬ ĐẢNG CỘNG SẢN VIỆT NAM\n1. Đối tượng nghiên cứu\n2. Phạm vi nghiên cứu\nII. CHỨC NĂNG, NHIỆM VỤ CỦA MÔN HỌC LỊCH SỬ ĐẢNG CỘNG SẢN VIỆT NAM\n1. Chức năng của khoa học Lịch sử Đảng\n2. Nhiệm vụ của môn học\nIII. PHƯƠNG PHÁP NGHIÊN CỨU, HỌC TẬP MÔN LỊCH SỬ ĐẢNG CỘNG SẢN VIỆT NAM\n1. Phương pháp luận\n2. Các phương pháp cụ thể\nHọc ở lớp: Thảo luận và phát biểu trên lớp\nHọc ngoài lớp:\n- Phác thảo nội dung thuyết trình nhóm GHW\n- Đọc trước tài liệu chương 1.",
+                  "Thi giữa kỳ (Quiz)"
+                ],
+                [
+                  "3",
+                  "Chương 1\nĐẢNG CỘNG SẢN VIỆT NAM RA ĐỜI VÀ LÃNH ĐẠO ĐẤU TRANH GIÀNH CHÍNH QUYỀN (1930-1945)",
+                  "LO.2",
+                  "Dạy:\nI. ĐẢNG CỘNG SẢN VIỆT NAM RA ĐỜI VÀ CƯƠNG LĨNH CHÍNH TRỊ ĐẦU TIÊN CỦA ĐẢNG (THÁNG 2-1930)\n1. Bối cảnh lịch sử\n2. Nguyễn Ái Quốc chuẩn bị các điều kiện để thành lập Đảng\n3. Thành lập Đảng Cộng sản Việt Nam và Cương lĩnh chính trị đầu tiên của Đảng\n4. Ý nghĩa lịch sử của việc thành lập Đảng Cộng sản Việt Nam\nII. ĐẢNG LÃNH ĐẠO ĐẤU TRANH GIÀNH CHÍNH QUYỀN (1930-1945)\n1. Phong trào cách mạng 1930-1935 và khôi phục phong trào 1932-1935\n2. Phong trào dân chủ 1936-1939\n3. Phong trào giải phóng dân tộc 1939-1945\n4. Tính chất, ý nghĩa và kinh nghiệm của Cách mạng Tháng Tám năm 1945\nHọc ở lớp: Thảo luận và phát biểu trên lớp\nHọc ngoài lớp:\nĐọc trước tài liệu chương 2",
+                  "Thi giữa kỳ (Quiz)\nThi cuối kỳ (FEX)"
+                ],
+                [
+                  "4",
+                  "Chương 2\nĐẢNG LÃNH ĐẠO HAI CUỘC KHÁNG CHIẾN, HOÀN THÀNH GIẢI PHÓNG DÂN TỘC, THỐNG NHẤT ĐẤT NƯỚC (1945-1975)",
+                  "LO.3 LO.5",
+                  "Dạy:\nI. ĐẢNG LÃNH ĐẠO XÂY DỰNG, BẢO VỆ CHÍNH QUYỀN CÁCH MẠNG VÀ KHÁNG CHIẾN CHỐNG THỰC DÂN PHÁP XÂM LƯỢC (1945-1954)\n1. Xây dựng và bảo vệ chính quyền cách mạng 1945-1946\n2. Đường lối kháng chiến toàn quốc chống thực dân Pháp xâm lược và quá trình tổ chức thực hiện từ năm 1946-1950\n3. Đẩy mạnh cuộc kháng chiến chống thực dân Pháp xâm lược và quá trình tổ chức thực hiện từ năm 1946 đến năm 1950\n4. Ý nghĩa lịch sử và kinh nghiệm của Đảng trong lãnh đạo kháng chiến chống thực dân Pháp và can thiệp Mỹ\nDạy: Chấm thuyết trình & phản biện\nHọc ở lớp: Các nhóm thuyết trình tại lớp\nII. LÃNH ĐẠO XÂY DỰNG CHỦ NGHĨA XÃ HỘI Ở MIỀN BẮC VÀ KHÁNG CHIẾN CHỐNG ĐẾ QUỐC MỸ XÂM LƯỢC, GIẢI PHÓNG MIỀN NAM, THỐNG NHẤT ĐẤT NƯỚC (1954-1975)\n1. Lãnh đạo cách mạng hai miền giai đoạn 1954-1965\n2. Lãnh đạo cách mạng cả nước giai đoạn 1965-1975\n3. Ý nghĩa và kinh nghiệm lãnh đạo của Đảng trong cuộc kháng chiến chống Mỹ, cứu nước 1954-1975\nHọc ngoài lớp: Đọc trước tài liệu chương 2",
+                  "Thuyết trình nhóm (GHW)\nThi cuối kỳ (FEX)"
+                ],
+                [
+                  "5",
+                  "Chương 3\nĐẢNG LÃNH ĐẠO CẢ NƯỚC QUÁ ĐỘ LÊN CHỦ NGHĨA XÃ HỘI VÀ TIẾN HÀNH CÔNG CUỘC ĐỔI MỚI (1975-2018)",
+                  "LO.4 LO.5",
+                  "Dạy:\nI. ĐẢNH LÃNH ĐẠO CẢ NƯỚC XÂY DỰNG CHỦ NGHĨA XÃ HỘI VÀ BẢO VỆ TỔ QUỐC (1975-1986)\n1. Xây dựng chủ nghĩa xã hội và bảo vệ Tổ quốc 1975-1981\n2. Đại hội đại biểu toàn quốc lần thứ V của Đảng và các bước đột phá tiếp tục đổi mới kinh tế 1982-1986\nDạy: Chấm thuyết trình & phản biện\nHọc ở lớp: Thảo luận tại lớp\nII. LÃNH ĐẠO CÔNG CUỘC ĐỔI MỚI, ĐẨY MẠNH CÔNG NGHIỆP HÓA, HIỆN ĐẠI HÓA VÀ HỘI NHẬP QUỐC TẾ (1986-2018)\n1. Đổi mới toàn diện, đưa đất nước ra khỏi khủng hoảng kinh tế - xã hội 1986-1996\n2. Tiếp tục công cuộc đổi mới, đẩy mạnh công nghiệp hóa, hiện đại hóa và hội nhập quốc tế 1996-2018\n3. Thành tựu, kinh nghiệm của công cuộc đổi mới\nTỔNG LUẬN\n1. Những thắng lợi vĩ đại của cách mạng Việt Nam\n2. Những bài học lớn về sự lãnh đạo của Đảng\nHọc ngoài lớp: Hoàn thiện bài thuyết trình",
+                  "Thảo luận nhóm (DIC)\nThi cuối kỳ (FEX)"
+                ]
+              ],
+              "pages": [
+                98,
+                99,
+                100,
+                101
+              ]
+            }
+          ],
+          "11": [
+            {
+              "title": "Tiêu chí đánh giá chuẩn đầu ra môn học",
+              "headers": [
+                "TT",
+                "Chuẩn đầu ra",
+                "Nội dung",
+                "Phương pháp",
+                "Tiêu chí đánh giá"
+              ],
+              "rows": [
+                [
+                  "LO.1",
+                  "- Nắm được đối tượng, mục đích học tập, nghiên cứu và một số yêu cầu cơ bản về phương pháp học tập, nghiên cứu",
+                  "Chương nhập môn",
+                  "Thi giữa kỳ (Quiz)",
+                  "Ngân hàng đề thi của GV"
+                ],
+                [
+                  "LO.2",
+                  "Hiểu rõ quá trình ra đời của Đảng Cộng sản Việt Nam (1920-1930), nội dung cơ bản, giá trị lịch sử của Cương lĩnh chính trị đầu tiên của Đảng và quá trình Đảng lãnh đạo cuộc đấu tranh giành độc lập, giành chính quyền (1930-1945)",
+                  "Chương 1",
+                  "Thi giữa kỳ (Quiz)",
+                  "Ngân hàng đề thi của GV"
+                ],
+                [
+                  "LO.3 LO.5",
+                  "Nắm rõ quá trình lãnh đạo của Đảng đối với hai cuộc kháng chiến chống thực dân Pháp và đế quốc Mỹ xâm lược, hoàn thành giải phóng dân tộc, thống nhất đất nước thời kỳ 1945-1975",
+                  "Chương 2",
+                  "Thuyết trình nhóm (GHW)\nThi cuối kỳ (FEX)",
+                  "Tiêu chí đánh giá thuyết trình nhóm\nNgân hàng đề thi của GV"
+                ],
+                [
+                  "LO.4 LO.5",
+                  "Hiểu được quá trình phát triển đường lối và sự lãnh đạo của Đảng đưa cả nước quá độ lên chủ nghĩa xã hội và tiến hành công cuộc đổi mới từ sau ngày thống nhất đất nước năm 1975 đến nay. Từ đó rút ra được những thắng lợi và những bài học kinh nghiệm trong quá trình lãnh đạo cách mạng của Đảng.",
+                  "Chương 3",
+                  "Thảo luận tại lớp (Discussion in Class)\nThi cuối kỳ (FEX)",
+                  "Ngân hàng đề thi của GV"
+                ]
+              ],
+              "pages": [
+                101,
+                102
+              ]
+            }
+          ]
+        },
+        "sourceWorkloadUnit": "tiết"
+      },
+      "unverifiedFields": [],
+      "missingFields": [
+        "courseDesignation",
+        "courseTypes",
+        "semester",
+        "language",
+        "relation",
+        "teachingMethods",
+        "workloadTotal",
+        "lectureCredits",
+        "laboratoryCredits",
+        "LLO",
+        "PLO mapping",
+        "rubric levels",
+        "passing requirement",
+        "DIC numeric percent not applicable"
+      ]
+    },
+    {
+      "courseCode": "PE019IU",
+      "startPage": 104,
+      "endPage": 117,
+      "reviewedPages": [
+        105,
+        106,
+        107,
+        108,
+        109,
+        110,
+        111,
+        112,
+        113,
+        114,
+        115,
+        116,
+        117
+      ],
+      "method": "Direct visual page review. GHW 150%, repeated LO.7 and LO.6 subcodes retained raw; no inferred corrected value/code.",
+      "fieldPages": {
+        "general": [
+          105
+        ],
+        "objectives": [
+          105
+        ],
+        "clos": [
+          106,
+          107,
+          108
+        ],
+        "topics": [
+          109,
+          110,
+          112,
+          113
+        ],
+        "assessments": [
+          114,
+          115
+        ],
+        "readings": [
+          106
+        ],
+        "examRequirements": [
+          117
+        ],
+        "weeklyActivities": [
+          108,
+          109,
+          110,
+          111,
+          112,
+          113,
+          114
+        ],
+        "outcomeEvaluation": [
+          115,
+          116
+        ]
+      },
+      "data": {
+        "sourceCourseCode": "PE019IU",
+        "sourceCourseName": "Ho Chi Minh’s Thoughts",
+        "personResponsible": "Khoa Chính trị - Hành chính, ĐHQG-HCM",
+        "creditPoints": "2",
+        "workloadContact": "20 (trên lớp) [lý thuyết]; 10 (trên lớp) [thực hành]",
+        "workloadPrivate": "90 (về nhà)",
+        "prerequisites": "1. Triết học Mác – Lênin, 2. Kinh tế chính trị Mác – Lênin, 3. Chủ nghĩa xã hội khoa học",
+        "dateRevised": "07 tháng 02 năm 2020",
+        "clos": [
+          {
+            "code": "LO.1",
+            "description": "KHÁI NIỆM, ĐỐI TƯỢNG, PHƯƠNG PHÁP NGHIÊN CỨU VÀ Ý NGHĨA HỌC TẬP MÔN TƯ TƯỞNG HỒ CHÍ MINH",
+            "descriptionVn": "KHÁI NIỆM, ĐỐI TƯỢNG, PHƯƠNG PHÁP NGHIÊN CỨU VÀ Ý NGHĨA HỌC TẬP MÔN TƯ TƯỞNG HỒ CHÍ MINH",
+            "competencyLevel": "KNOWLEDGE",
+            "orderIndex": 1
+          },
+          {
+            "code": "LO.2",
+            "description": "CƠ SỞ, QUÁ TRÌNH HÌNH THÀNH VÀ PHÁT TRIỂN TƯ TƯỞNG HỒ CHÍ MINH",
+            "descriptionVn": "CƠ SỞ, QUÁ TRÌNH HÌNH THÀNH VÀ PHÁT TRIỂN TƯ TƯỞNG HỒ CHÍ MINH",
+            "competencyLevel": "KNOWLEDGE",
+            "orderIndex": 2
+          },
+          {
+            "code": "LO.3",
+            "description": "TƯ TƯỞNG HỒ CHÍ MINH VỀ ĐỘC LẬP DÂN TỘC VÀ CHỦ NGHĨA XÃ HỘI",
+            "descriptionVn": "TƯ TƯỞNG HỒ CHÍ MINH VỀ ĐỘC LẬP DÂN TỘC VÀ CHỦ NGHĨA XÃ HỘI",
+            "competencyLevel": "KNOWLEDGE",
+            "orderIndex": 3
+          },
+          {
+            "code": "LO.4",
+            "description": "TƯ TƯỞNG HỒ CHÍ MINH VỀ ĐẢNG CỘNG SẢN VIỆT NAM VÀ NHÀ NƯỚC CỦA NHÂN DÂN, DO NHÂN DÂN, VÌ NHÂN DÂN",
+            "descriptionVn": "TƯ TƯỞNG HỒ CHÍ MINH VỀ ĐẢNG CỘNG SẢN VIỆT NAM VÀ NHÀ NƯỚC CỦA NHÂN DÂN, DO NHÂN DÂN, VÌ NHÂN DÂN",
+            "competencyLevel": "KNOWLEDGE",
+            "orderIndex": 4
+          },
+          {
+            "code": "LO.5",
+            "description": "TƯ TƯỞNG HỒ CHÍ MINH VỀ ĐẠI ĐOÀN KẾT TOÀN DÂN TỘC VÀ ĐOÀN KẾT QUỐC TẾ",
+            "descriptionVn": "TƯ TƯỞNG HỒ CHÍ MINH VỀ ĐẠI ĐOÀN KẾT TOÀN DÂN TỘC VÀ ĐOÀN KẾT QUỐC TẾ",
+            "competencyLevel": "KNOWLEDGE",
+            "orderIndex": 5
+          },
+          {
+            "code": "LO.6",
+            "description": "TƯ TƯỞNG HỒ CHÍ MINH VỀ VĂN HÓA, ĐẠO ĐỨC, CON NGƯỜI",
+            "descriptionVn": "TƯ TƯỞNG HỒ CHÍ MINH VỀ VĂN HÓA, ĐẠO ĐỨC, CON NGƯỜI",
+            "competencyLevel": "KNOWLEDGE",
+            "orderIndex": 6
+          },
+          {
+            "code": "LO.7",
+            "description": "THỂ HIỆN KHẢ NĂNG TƯ DUY, PHÂN TÍCH, ĐÁNH GIÁ, TRANH LUẬN, PHẢN BIỆN, LÀM VIỆC NHÓM",
+            "descriptionVn": "THỂ HIỆN KHẢ NĂNG TƯ DUY, PHÂN TÍCH, ĐÁNH GIÁ, TRANH LUẬN, PHẢN BIỆN, LÀM VIỆC NHÓM",
+            "competencyLevel": "SKILL",
+            "orderIndex": 7
+          }
+        ],
+        "topics": [
+          {
+            "name": "Giới thiệu về môn học",
+            "nameVn": "Giới thiệu về môn học",
+            "orderInWeek": 1
+          },
+          {
+            "name": "Chương 1\nKHÁI NIỆM, ĐỐI TƯỢNG, PHƯƠNG PHÁP NGHIÊN CỨU VÀ Ý NGHĨA HỌC TẬP MÔN TƯ TƯỞNG HỒ CHÍ MINH",
+            "nameVn": "Chương 1\nKHÁI NIỆM, ĐỐI TƯỢNG, PHƯƠNG PHÁP NGHIÊN CỨU VÀ Ý NGHĨA HỌC TẬP MÔN TƯ TƯỞNG HỒ CHÍ MINH",
+            "orderInWeek": 2
+          },
+          {
+            "name": "Chương 2\nCƠ SỞ, QUÁ TRÌNH HÌNH THÀNH VÀ PHÁT TRIỂN TƯ TƯỞNG HỒ CHÍ MINH",
+            "nameVn": "Chương 2\nCƠ SỞ, QUÁ TRÌNH HÌNH THÀNH VÀ PHÁT TRIỂN TƯ TƯỞNG HỒ CHÍ MINH",
+            "orderInWeek": 3
+          },
+          {
+            "name": "Chương 3\nTƯ TƯỞNG HỒ CHÍ MINH VỀ ĐỘC LẬP DÂN TỘC GẮN LIỀN VỚI CHỦ NGHĨA XÃ HỘI",
+            "nameVn": "Chương 3\nTƯ TƯỞNG HỒ CHÍ MINH VỀ ĐỘC LẬP DÂN TỘC GẮN LIỀN VỚI CHỦ NGHĨA XÃ HỘI",
+            "orderInWeek": 4
+          },
+          {
+            "name": "Chương 4\nTƯ TƯỞNG HỒ CHÍ MINH VỀ ĐẢNG CỘNG SẢN VIỆT NAM VÀ NHÀ NƯỚC CỦA NHÂN DÂN, DO NHÂN DÂN VÀ VÌ NHÂN DÂN",
+            "nameVn": "Chương 4\nTƯ TƯỞNG HỒ CHÍ MINH VỀ ĐẢNG CỘNG SẢN VIỆT NAM VÀ NHÀ NƯỚC CỦA NHÂN DÂN, DO NHÂN DÂN VÀ VÌ NHÂN DÂN",
+            "orderInWeek": 5
+          },
+          {
+            "name": "Chương 5\nTƯ TƯỞNG HỒ CHÍ MINH VỀ ĐẠI ĐOÀN KẾT DÂN TỘC VÀ ĐOÀN KẾT QUỐC TẾ",
+            "nameVn": "Chương 5\nTƯ TƯỞNG HỒ CHÍ MINH VỀ ĐẠI ĐOÀN KẾT DÂN TỘC VÀ ĐOÀN KẾT QUỐC TẾ",
+            "orderInWeek": 6
+          },
+          {
+            "name": "Chương 6\nTƯ TƯỞNG HỒ CHÍ MINH VỀ VĂN HÓA, ĐẠO ĐỨC, CON NGƯỜI",
+            "nameVn": "Chương 6\nTƯ TƯỞNG HỒ CHÍ MINH VỀ VĂN HÓA, ĐẠO ĐỨC, CON NGƯỜI",
+            "orderInWeek": 7
+          }
+        ],
+        "assessments": [
+          {
+            "name": "Thuyết trình nhóm",
+            "nameVn": "Thuyết trình nhóm",
+            "weightPercent": null,
+            "orderIndex": 1,
+            "assessmentType": "Thuyết trình nhóm"
+          },
+          {
+            "name": "Bài thi giữa kỳ",
+            "nameVn": "Bài thi giữa kỳ",
+            "weightPercent": 20.0,
+            "orderIndex": 2,
+            "assessmentType": "Bài thi giữa kỳ"
+          },
+          {
+            "name": "Thảo luận tại lớp (Discussion in Class)",
+            "nameVn": "Thảo luận tại lớp (Discussion in Class)",
+            "weightPercent": 15.0,
+            "orderIndex": 3,
+            "assessmentType": "Thảo luận tại lớp (Discussion in Class)"
+          },
+          {
+            "name": "Thi cuối kỳ",
+            "nameVn": "Thi cuối kỳ",
+            "weightPercent": 50.0,
+            "orderIndex": 4,
+            "assessmentType": "Thi cuối kỳ"
+          }
+        ],
+        "readings": [
+          {
+            "type": "RAW_SOURCE",
+            "title": "- Bộ Giáo dục và Đào tạo (2019), Giáo trình Tư tưởng Hồ Chí Minh, Nxb. Chính trị quốc gia, Hà Nội.\n- Khoa Chính trị - Hành chính, ĐHQG-HCM, Tài liệu hướng dẫn học tập Tư tưởng Hồ Chí Minh\n- Hồ Chí Minh (2011), Toàn tập, Nxb. Chính trị quốc gia Sự thật, Hà Nội.\n- Hồ Chí Minh (2016), Biên niên tiểu sử, Nxb. Chính trị quốc gia Sự thật, Hà Nội."
+          }
+        ],
+        "weeklyActivities": [],
+        "cloPloMappings": [],
+        "topicCloMappings": [],
+        "assessmentCloMappings": [],
+        "objectives": "2.1. Về kiến thức: Trang bị cho sinh viên những kiến thức cơ bản về khái niệm, nguồn gốc, quá trình hình thành và phát triển tư tưởng Hồ Chí Minh; những nội dung cơ bản của tư tưởng Hồ Chí Minh; sự vận dụng của Đảng Cộng sản Việt Nam trong cách mạng dân tộc dân chủ và cách mạng xã hội chủ nghĩa, trong công cuộc đổi mới đất nước hiện nay.\n2.2. Về kỹ năng: Giúp cho sinh viên khả năng tư duy, phân tích, đánh giá, vận dụng sáng tạo tư tưởng Hồ Chí Minh vào giải quyết các vấn đề trong thực tiễn đời sống, học tập và công tác.\n2.3. Về thái độ: Giúp sinh viên nâng cao về bản lĩnh chính trị, yêu nước, trung thành với mục tiêu, lý tưởng độc lập dân tộc gắn liền với chủ nghĩa xã hội; nhận thức được vai trò, giá trị của tư tưởng Hồ Chí Minh đối với Đảng và dân tộc Việt Nam; thấy được trách nhiệm của bản thân trong việc học tập, rèn luyện để góp phần vào xây dựng và bảo vệ Tổ quốc.",
+        "contentNote": "Môn học trang bị cho sinh viên những kiến thức cơ bản về: Đối tượng, phương pháp nghiên cứu và ý nghĩa học tập môn tư tưởng Hồ Chí Minh; về cơ sở, quá trình hình thành và phát triển tư tưởng Hồ Chí Minh; về độc lập dân tộc và chủ nghĩa xã hội; về Đảng Cộng sản và Nhà nước Việt Nam; về đại đoàn kết dân tộc và đoàn kết quốc tế; về văn hóa, đạo đức, con người.",
+        "examRequirements": "- Khi có các thắc mắc liên quan môn học, sinh viên có thể liên lạc với quản lý Bộ môn Hồ Chí Minh học & Lịch sử Đảng và Khoa Chính trị - Hành chính qua email: daotao.spas@vnuhcm.edu.vn\n- Quy định về Bài thuyết trình nhóm GHW: Thành lập nhóm: 5 sinh viên/nhóm.\n+ Hạn chót đăng ký đề tài nhóm Quản lý trên forum là Buổi 2.\n+ Tuần 4 thuyết trình theo thứ tự. Lưu ý các nhóm cần có mặt đủ và mang theo tất cả các tài liệu liên quan đến GHW khi đi thuyết trình.\n+ Hình thức nộp bài: Nộp file và biên bản làm việc nhóm qua mail cho GV\n- Quy định về đánh giá môn học: theo Quy định về việc giảng dạy và học tập các môn Lý luận chính trị của khoa Chính trị - Hành chính."
+      },
+      "notes": {
+        "sourceCloLanguage": "VI",
+        "sourceContentLanguage": "VI",
+        "sourceSupplementalSections": {
+          "1": [
+            {
+              "title": "Thông tin nguyên bản nguồn",
+              "headers": [
+                "Trường nguồn",
+                "Giá trị"
+              ],
+              "rows": [
+                [
+                  "Thuộc khối kiến thức",
+                  "Cơ sở"
+                ],
+                [
+                  "Ngày nguồn",
+                  "07 tháng 02 năm 2020"
+                ]
+              ],
+              "pages": [
+                105,
+                117
+              ]
+            }
+          ],
+          "3": [
+            {
+              "title": "Các chuẩn đầu ra nguồn — nguồn dùng LO.7 cho cả Kỹ năng và Thái độ; không tự đổi mã",
+              "headers": [
+                "Mã nguồn",
+                "Mô tả",
+                "Nhóm nguồn"
+              ],
+              "rows": [
+                [
+                  "LO.1",
+                  "KHÁI NIỆM, ĐỐI TƯỢNG, PHƯƠNG PHÁP NGHIÊN CỨU VÀ Ý NGHĨA HỌC TẬP MÔN TƯ TƯỞNG HỒ CHÍ MINH",
+                  "Kiến thức"
+                ],
+                [
+                  "LO.2",
+                  "CƠ SỞ, QUÁ TRÌNH HÌNH THÀNH VÀ PHÁT TRIỂN TƯ TƯỞNG HỒ CHÍ MINH",
+                  "Kiến thức"
+                ],
+                [
+                  "LO.3",
+                  "TƯ TƯỞNG HỒ CHÍ MINH VỀ ĐỘC LẬP DÂN TỘC VÀ CHỦ NGHĨA XÃ HỘI",
+                  "Kiến thức"
+                ],
+                [
+                  "LO.4",
+                  "TƯ TƯỞNG HỒ CHÍ MINH VỀ ĐẢNG CỘNG SẢN VIỆT NAM VÀ NHÀ NƯỚC CỦA NHÂN DÂN, DO NHÂN DÂN, VÌ NHÂN DÂN",
+                  "Kiến thức"
+                ],
+                [
+                  "LO.5",
+                  "TƯ TƯỞNG HỒ CHÍ MINH VỀ ĐẠI ĐOÀN KẾT TOÀN DÂN TỘC VÀ ĐOÀN KẾT QUỐC TẾ",
+                  "Kiến thức"
+                ],
+                [
+                  "LO.6",
+                  "TƯ TƯỞNG HỒ CHÍ MINH VỀ VĂN HÓA, ĐẠO ĐỨC, CON NGƯỜI",
+                  "Kiến thức"
+                ],
+                [
+                  "LO.7",
+                  "THỂ HIỆN KHẢ NĂNG TƯ DUY, PHÂN TÍCH, ĐÁNH GIÁ, TRANH LUẬN, PHẢN BIỆN, LÀM VIỆC NHÓM",
+                  "Kỹ năng"
+                ],
+                [
+                  "LO.7",
+                  "THỂ HIỆN Ý THỨC, NHẬN THỨC TRONG VÀ SAU KHI HỌC TẬP",
+                  "Thái độ"
+                ]
+              ],
+              "pages": [
+                106,
+                107,
+                108
+              ]
+            },
+            {
+              "title": "Tiêu chí nguồn — các mã LO.6.1–LO.6.3 lặp trong nhóm Thái độ được giữ nguyên",
+              "headers": [
+                "Mã nguồn",
+                "Tiêu chí đánh giá",
+                "Mức độ (I/T/U)"
+              ],
+              "rows": [
+                [
+                  "LO.1.1",
+                  "Nắm được khái niệm tư tưởng Hồ Chí Minh",
+                  "I3"
+                ],
+                [
+                  "LO.1.2",
+                  "Nắm rõ được đối tượng nghiên cứu.",
+                  "I3"
+                ],
+                [
+                  "LO.1.3",
+                  "Nắm được một số yêu cầu cơ bản về phương pháp học tập, nghiên cứu môn học tư tưởng Hồ Chí Minh.",
+                  "I3"
+                ],
+                [
+                  "LO.1.4",
+                  "Nắm được ý nghĩa học tập, nghiên cứu môn học tư tưởng đối với sinh viên.",
+                  "I3"
+                ],
+                [
+                  "LO.2.1",
+                  "Hiểu rõ được cơ sở thực tiễn, tiền đề lý luận và nhân tố chủ quan hình thành tư tưởng Hồ Chí Minh.",
+                  "I4"
+                ],
+                [
+                  "LO.2.2",
+                  "Hiểu rõ được quá trình hình thành và phát triển tư tưởng Hồ Chí Minh.",
+                  "I4"
+                ],
+                [
+                  "LO.2.3",
+                  "Nắm được giá trị tư tưởng Hồ Chí Minh đối với cách mạng Việt Nam và sự phát triển tiến bộ của nhân loại.",
+                  "I4"
+                ],
+                [
+                  "LO.3.1",
+                  "Nhận thức được bản chất khoa học, cách mạng và những sáng tạo tư tưởng Hồ Chí Minh về độc lập dân tộc và cách mạng giải phóng dân tộc.",
+                  "I3"
+                ],
+                [
+                  "LO.3.2",
+                  "Nắm được quan điểm của Hồ Chí Minh về tính tất yếu đi lên chủ nghĩa xã hội, xây dựng chủ nghĩa xã hội và thời kỳ quá độ lên chủ nghĩa xã hội ở Việt Nam.",
+                  "I3"
+                ],
+                [
+                  "LO.3.3",
+                  "Nắm được quan điểm Hồ Chí Minh về mối quan hệ giữa độc lập dân tộc và chủ nghĩa xã hội.",
+                  "T4"
+                ],
+                [
+                  "LO.3.4",
+                  "Vận dụng tư tưởng Hồ Chí Minh về độc lập dân tộc gắn liền với chủ nghĩa xã hội trong sự nghiệp cách mạng hiện nay.",
+                  "T4"
+                ],
+                [
+                  "LO.4.1",
+                  "Nắm được nội dung cơ bản tư tưởng Hồ Chí Minh về Đảng Cộng sản Việt Nam",
+                  "I4"
+                ],
+                [
+                  "LO.4.2",
+                  "Nắm được nội dung cơ bản tư tưởng Hồ Chí Minh về nhà nước của nhân dân, do nhân dân, vì nhân dân",
+                  "I4"
+                ],
+                [
+                  "LO.4.3",
+                  "Vận dụng tư tưởng Hồ Chí Minh vào công tác xây dựng Đảng và xây dựng Nhà nước.",
+                  "T4"
+                ],
+                [
+                  "LO.5.1",
+                  "Hiểu được những quan điểm cơ bản của tư tưởng Hồ Chí Minh về đại đoàn kết toàn dân tộc.",
+                  "I4"
+                ],
+                [
+                  "LO.5.2",
+                  "Hiểu được những quan điểm cơ bản của tư tưởng Hồ Chí Minh về đoàn kết quốc tế.",
+                  "I4"
+                ],
+                [
+                  "LO.5.3",
+                  "Vận dụng tư tưởng Hồ Chí Minh về đại đoàn kết dân tộc và đoàn kết quốc tế trong giai đoạn hiện nay",
+                  "T4"
+                ],
+                [
+                  "LO.6.1",
+                  "Nắm được kiến thức cơ bản tư tưởng Hồ Chí Minh về văn hóa.",
+                  "I4"
+                ],
+                [
+                  "LO.6.2",
+                  "Nắm được kiến thức cơ bản tư tưởng Hồ Chí Minh về đạo đức mới (đạo đức cách mạng).",
+                  "I4"
+                ],
+                [
+                  "LO.6.3",
+                  "Nắm được kiến thức cơ bản tư tưởng Hồ Chí Minh về văn hóa.",
+                  "I4"
+                ],
+                [
+                  "LO.6.4",
+                  "Vận dụng tư tưởng Hồ Chí Minh về văn hóa, đạo đức, con người trong việc xây dựng văn hóa, đạo đức, con người Việt Nam hiện nay.",
+                  "T4"
+                ],
+                [
+                  "LO.7.1",
+                  "Có kỹ năng tư duy, phân tích, đánh giá tư tưởng Hồ Chí Minh.",
+                  "U4"
+                ],
+                [
+                  "LO.7.2",
+                  "Có kỹ năng trình bày, thuyết minh, phản biện, tranh luận, hùng biện những tri thức lý luận đang học tập, nghiên cứu dựa trên thực tiễn.",
+                  "U4"
+                ],
+                [
+                  "LO.7.3",
+                  "Có kỹ năng vận dụng sáng tạo tư tưởng Hồ Chí Minh vào giải quyết các vấn đề trong thực tiễn đời sống, học tập và công tác.",
+                  "U4"
+                ],
+                [
+                  "LO.6.1",
+                  "Nhận thức được vai trò, giá trị của tư tưởng Hồ Chí Minh đối với Đảng và dân tộc Việt Nam.",
+                  "U3"
+                ],
+                [
+                  "LO.6.2",
+                  "Có bản lĩnh chính trị, yêu nước, trung thành với mục tiêu, lý tưởng độc lập dân tộc gắn liền với chủ nghĩa xã hội.",
+                  "U3"
+                ],
+                [
+                  "LO.6.3",
+                  "Thấy được trách nhiệm của bản thân trong việc học tập, nghiên cứu, vận dụng trong cuộc sống, góp phần vào sự nghiệp xây dựng và bảo vệ Tổ quốc.",
+                  "U3"
+                ]
+              ],
+              "pages": [
+                106,
+                107,
+                108
+              ]
+            }
+          ],
+          "5": [
+            {
+              "title": "Chuẩn CDIO nguyên bản — không suy diễn thành PLO",
+              "headers": [
+                "Nhóm nguồn",
+                "CDIO"
+              ],
+              "rows": [
+                [
+                  "Kiến thức",
+                  "1.1.3"
+                ],
+                [
+                  "Kỹ năng",
+                  "2.1.1; 2.3.1; 2.4.4; 2.5; 3.1.5"
+                ],
+                [
+                  "Thái độ",
+                  "3.1"
+                ]
+              ],
+              "pages": [
+                106,
+                107,
+                108
+              ]
+            },
+            {
+              "title": "Mục tiêu môn học nguyên bản; không suy diễn mã Thái độ thành CLO khác",
+              "headers": [
+                "Nhóm nguồn",
+                "Mục tiêu môn học"
+              ],
+              "rows": [
+                [
+                  "Kiến thức LO.1–LO.6",
+                  "2.1"
+                ],
+                [
+                  "Kỹ năng LO.7",
+                  "2.2"
+                ],
+                [
+                  "Thái độ LO.7",
+                  "2.3"
+                ]
+              ],
+              "pages": [
+                106,
+                107,
+                108
+              ]
+            }
+          ],
+          "10": [
+            {
+              "title": "Đánh giá môn học — Weight GHW nguyên bản 150%; tổng nguyên bản 100%; giá trị chuẩn hóa chưa xác minh",
+              "headers": [
+                "STT",
+                "Mã",
+                "Tên",
+                "Mô tả",
+                "Tỷ trọng nguyên bản",
+                "Hình thức",
+                "LO"
+              ],
+              "rows": [
+                [
+                  "1",
+                  "GHW",
+                  "Thuyết trình nhóm",
+                  "Thuyết trình nhóm về đề tài đã phân công",
+                  "150%",
+                  "Thuyết trình và bản báo cáo nhóm",
+                  "LO.2; LO.3; LO.4; LO.5; LO.6."
+                ],
+                [
+                  "2",
+                  "Quiz",
+                  "Bài thi giữa kỳ",
+                  "Giảng viên cho thi",
+                  "20%",
+                  "Trắc nghiệm (đề đóng) hoặc tự luận (đề mở)",
+                  "LO.2; LO.3."
+                ],
+                [
+                  "3",
+                  "DIC",
+                  "Thảo luận tại lớp (Discussion in Class)",
+                  "Điểm thảo luận được tính theo phương pháp tương đối. SV có số lần thảo luận tại lớp nhiều nhất sẽ được điểm tối đa, điểm của các bạn khác được tính dựa theo bạn có số lần thảo luận cao nhất.",
+                  "15%",
+                  "Phát biểu/đặt câu hỏi trên lớp hoặc phiếu trả lời trong các nghiên cứu tình huống tại lớp",
+                  "LO.3; LO.4; LO.5; LO.6."
+                ],
+                [
+                  "4",
+                  "FEX",
+                  "Thi cuối kỳ",
+                  "Thi đề chung\nĐề thi bao quát toàn bộ nội dung môn học",
+                  "50%",
+                  "Tự luận (đề mở)",
+                  "LO.2; LO.3; LO.4; LO.5; LO.6."
+                ],
+                [
+                  "",
+                  "",
+                  "",
+                  "Tổng cộng",
+                  "100%",
+                  "",
+                  ""
+                ]
+              ],
+              "pages": [
+                114,
+                115
+              ]
+            }
+          ],
+          "9": [
+            {
+              "title": "Kế hoạch giảng dạy theo buổi học nguyên bản — không suy diễn các ô LO/đánh giá để trống",
+              "headers": [
+                "Buổi (3 tiết)",
+                "Nội dung giảng dạy",
+                "LO",
+                "Hoạt động dạy và học",
+                "Đánh giá"
+              ],
+              "rows": [
+                [
+                  "1 (1 tiết)",
+                  "Giới thiệu về môn học",
+                  "LO.1, LO.5;",
+                  "Dạy:\n- Giới thiệu đề cương môn học\n- Giới thiệu nội dung đề tài thuyết trình nhóm GHW).\nHọc ở lớp:\n- Chia nhóm (5 SV/nhóm)\n- Giới thiệu nhóm học tập\nHọc ngoài lớp:\n-Chọn đề tài thuyết trình của nhóm (GHW).\n- Đọc trước tài liệu chương 1.",
+                  ""
+                ],
+                [
+                  "2",
+                  "Chương 1\nKHÁI NIỆM, ĐỐI TƯỢNG, PHƯƠNG PHÁP NGHIÊN CỨU VÀ Ý NGHĨA HỌC TẬP MÔN TƯ TƯỞNG HỒ CHÍ MINH",
+                  "Lo.1;",
+                  "Dạy:\nI. KHÁI NIỆM TƯ TƯỞNG HỒ CHÍ MINH\nII. ĐỐI TƯỢNG NGHIÊN CỨU MÔN HỌC TƯ TƯỞNG HỒ CHÍ MINH\nIII. PHƯƠNG PHÁP NGHIÊN CỨU\n3. Phương pháp luận của việc nghiên cứu tư tưởng Hồ Chí Minh\n4. Một số phương pháp cụ thể\nIV. Ý NGHĨA CỦA VIỆC HỌC TẬP MÔN HỌC TƯ TƯỞNG HỒ CHÍ MINH\n1. Góp phần nâng cao năng lực tư duy lý luận\n2. Giáo dục và thực hành đạo đức cách mạng, củng cố niềm tin khoa học gắn liền với trau dồi tình cảm cách mạng, bồi dưỡng lòng yêu nước\n3. Xây dựng, rèn luyện phương pháp và phong cách công tác.\nHọc ở lớp: Trao đổi, phát biểu trên lớp\nHọc ngoài lớp:\n- Phác thảo nội dung thuyết trình nhóm GHW\n- Đọc trước tài liệu chương 2.",
+                  ""
+                ],
+                [
+                  "3",
+                  "Chương 2\nCƠ SỞ, QUÁ TRÌNH HÌNH THÀNH VÀ PHÁT TRIỂN TƯ TƯỞNG HỒ CHÍ MINH",
+                  "LO.2",
+                  "Dạy:\nI. CƠ SỞ HÌNH THÀNH TƯ TƯỞNG HỒ CHÍ MINH\n1. Cơ sở thực tiễn\n2. Cơ sở lý luận\n3. Nhân tố chủ quan\nII. QUÁ TRÌNH HÌNH THÀNH VÀ PHÁT TRIỂN TƯ TƯỞNG HỒ CHÍ MINH\n1. Thời kỳ trước ngày 5 – 6-1911: Hình thành tư tưởng yêu nước và có chí hướng tìm con đường mới\n2. Thời kỳ từ năm 1911 đến cuối năm 1920: Dần dần hình thành tư tưởng cứu nước, giải phóng dân tộc Việt Nam theo con đường cách mạng vô sản\n3. Thời kỳ từ cuối năm 1920 đến đầu năm 1930: Hình thành những nội dung cơ bản tư tưởng về cách mạng Việt Nam\n4. Thời kỳ đầu năm 1930 đến đầu năm 1941: Vượt qua thử thách, giữ vững đường lối, phương pháp cách mạng Việt Nam đúng đắn, sáng tạo\n5. Thời kỳ từ đầu năm 1941 đến tháng 9 – 1969: Tư tưởng Hồ Chí Minh tiếp tục phát triển, hoàn thiện, soi đường cho sự nghiệp cách mạng của Đảng và nhân dân ta\nIII. GIÁ TRỊ TƯ TƯỞNG HỒ CHÍ MINH\n1. Đối với cách mạng Việt Nam\n2. Đối với sự phát triển tiến bộ của nhân loại\nHọc ở lớp: Thảo luận và phát biểu trên lớp\nHọc ngoài lớp:\nĐọc trước tài liệu chương 3",
+                  "Thi giữa kỳ (Quiz)\nThi cuối kỳ (FEX)"
+                ],
+                [
+                  "4",
+                  "Chương 3\nTƯ TƯỞNG HỒ CHÍ MINH VỀ ĐỘC LẬP DÂN TỘC GẮN LIỀN VỚI CHỦ NGHĨA XÃ HỘI",
+                  "LO.3 LO.5",
+                  "Dạy:\nI. TƯ TƯỞNG HỒ CHÍ MINH VỀ ĐỘC LẬP DÂN TỘC\n1. Vấn đề độc lập dân tộc\n2. về cách mạng giải phóng dân tộc\nDạy: Chấm thuyết trình & phản biện\nHọc ở lớp: Các nhóm thuyết trình tại lớp\nII. TƯ TƯỞNG HỒ CHÍ MINH VỀ CHỦ NGHĨA XÃ HỘI VÀ XÂY DỰNG CHỦ NGHĨA XÃ HỘI Ở VIỆT NAM\n1. Tư tưởng Hồ Chí Kinh về chủ nghĩa xã hội\n2. Tư tưởng Hồ Chí Minh về xây dựng chủ nghĩa xã hội ở Việt Nam\nIII. TƯ TƯỞNG HỒ CHÍ MINH VỀ MỐI QUAN HỆ GIỮA ĐỘC LẬP DÂN TỘC VÀ CHỦ NGHĨA XÃ HỘI\n1. Độc lập dân tộc là cơ sở, tiền đề để tiến lên chủ nghĩa xã hội\n2. Chủ nghĩa xã hội là điều kiện để đảm bảo nền độc lập dân tộc vững chắc\nIV. VẬN DỤNG TƯ TƯỞNG HỒ CHÍ MINH VỀ ĐỘC LẬP DÂN TỘC GẮN LIỀN VỚI CHỦ NGHĨA XÃ HỘI TRONG SỰ NGHIỆP CÁCH MẠNG VIỆT NAM GIAI ĐOẠN HIỆN NAY\n1. Kiên định mục tiêu và con đường cách mạng mà Hồ Chí Minh đã xác định\n2. Phát huy sức mạnh dân chủ xã hội chủ nghĩa\n3. Củng cố, kiện toàn, phát huy sức mạnh và hiệu quả hoạt động của toàn hệ thống chính trị\n4. Đấu tranh chống những biểu hiện suy thoái về tư tưởng chính trị, đạo đức, lối sống và ”tự diễn biến”, “tự chuyển hóa” trong nội bộ\nHọc ngoài lớp: Đọc trước tài liệu chương 4",
+                  "Thuyết trình nhóm (GHW)\nThi cuối kỳ (FEX)"
+                ],
+                [
+                  "5",
+                  "Chương 4\nTƯ TƯỞNG HỒ CHÍ MINH VỀ ĐẢNG CỘNG SẢN VIỆT NAM VÀ NHÀ NƯỚC CỦA NHÂN DÂN, DO NHÂN DÂN VÀ VÌ NHÂN DÂN",
+                  "Lo.4 LO.5",
+                  "Dạy:\nI. TƯ TƯỞNG HỒ CHÍ MINH VỀ ĐẢNG CỘNG SẢN VIỆT NAM\n1. Tính tất yếu và vai trò lãnh đạo của Đảng Cộng sản Việt Nam\n2. Đảng phải trong sạch, vững mạnh\nDạy: Chấm thuyết trình & phản biện\nHọc ở lớp: Thảo luận tại lớp\nII. TƯ TƯỞNG HỒ CHÍ MINH VỀ NHÀ NƯỚC CỦA NHÂN DÂN, DO NHÂN DÂN, VÌ NHÂN DÂN\n1. Nhà nuoqsc dân chủ\n2. Nhà nước pháp quyền\n3. Nhà nước trong sạch, vững mạnh\nIII. VẬN DỤNG TƯ TƯỞNG HỒ CHÍ MINH VÀO CÔNG TÁC XÂY DỰNG ĐẢNG VÀ XÂY DỰNG NHÀ NƯỚC\n1. Xây dựng Đảng thật sự trong sạch, vững mạnh\n2. Xây dựng Nhà nước\nHọc ngoài lớp: Hoàn thiện bài thuyết trình",
+                  "Thảo luận nhóm (DIC)\nThi cuối kỳ (FEX)"
+                ],
+                [
+                  "6",
+                  "Chương 5\nTƯ TƯỞNG HỒ CHÍ MINH VỀ ĐẠI ĐOÀN KẾT DÂN TỘC VÀ ĐOÀN KẾT QUỐC TẾ",
+                  "",
+                  "Dạy:\nI. TƯ TƯỞNG HỒ CHÍ MINH VỀ ĐẠI ĐOÀN KẾT DÂN TỘC\n1. Vai trò của đại đoàn kết dân tộc\n2. Lực lượng của khối đại đoàn kết dân tộc\n3. Điều kiện để xây dựng khối đại đoàn kết toàn dân tộc\n4. Hình thức, nguyên tắc tổ chức của khối đại đoàn kết dân tộc – Mặt trận dân tộc thống nhất\n5. Phương thức xây dựng khối đại đoàn kết dân tộc\nDạy: Chấm thuyết trình & phản biện\nHọc ở lớp: Thảo luận tại lớp\nII. TƯ TƯỞNG HỒ CHÍ MINH VỀ ĐOÀN KẾT QUỐC TẾ\n1. Sự cần thiết phải đoàn kết quốc tế\n2. Lực lượng đoàn kết quốc tế và hình thức tổ chức\n3. Nguyên tắc đoàn kết quốc tế\nIII. VẬN DỤNG TƯ TƯỞNG HỒ CHÍ MINH VỀ ĐẠI ĐOÀN KẾT DÂN TỘC VÀ ĐOÀN KẾT QUỐC TẾ TRONG GIAI ĐOẠN HIỆN NAY\n1. Quán triệt tư tưởng Hồ Chí Minh về đại đoàn kết dân tộc và đoàn kết quốc tế trong hoạch định chủ trương, đường lối của Đảng\n2. xây dựng khối đại đoàn kết toàn dân tộc trên nền tảng liên minh công – nông – trí thức dưới sự lãnh đạo của Đảng\n3. Đại đoàn kết dân tộc phải kết hợp với đoàn kết quốc tế",
+                  ""
+                ],
+                [
+                  "7",
+                  "Chương 6\nTƯ TƯỞNG HỒ CHÍ MINH VỀ VĂN HÓA, ĐẠO ĐỨC, CON NGƯỜI",
+                  "",
+                  "Dạy:\nI. TƯ TƯỞNG HỒ CHÍ MINH VỀ VĂN HÓA\n1. Một số nhận thức chung về văn hóa và quan hệ giữa văn hóa với các lĩnh vực khác\n2. Quan điểm của Hồ Chí Minh về vai trò của văn hóa\n3. Quan điểm của Hồ Chí Minh về xây dựng nền văn hóa mới\nDạy: Chấm thuyết trình & phản biện\nHọc ở lớp: Thảo luận tại lớp\nII. TƯ TƯỞNG HỒ CHÍ MINH VỀ ĐẠO ĐỨC\n1. Quan điểm về vai trò và sức mạnh của đạo đức cách mạng\n2. Quan điểm về những chuẩn mực đạo đức cách mạng\n3. Quan điểm về những nguyên tắc xây dựng đạo đức cách mạng\nIII. TƯ TƯỞNG HỒ CHÍ MINH VỀ CON NGƯỜI\n1. Quan niệm Hồ Chí Minh về con người\n2. Quan niệm của Hồ Chí Minh về vai trò của con người\n3. Quan niệm Hồ Chí Minh về xây dựng con người\nIV. XÂY DỰNG VĂN HÓA, ĐẠO ĐỨC, CON NGƯỜI VIỆT NAM HIỆN NAY THEO TƯ TƯỞNG HỒ CHÍ MINH\n1. Xây dựng và phát triển văn hóa, con người\n2. Về xây dựng đạo đức cách mạng",
+                  ""
+                ]
+              ],
+              "pages": [
+                108,
+                109,
+                110,
+                111,
+                112,
+                113,
+                114
+              ]
+            }
+          ],
+          "11": [
+            {
+              "title": "Tiêu chí đánh giá chuẩn đầu ra môn học nguyên bản",
+              "headers": [
+                "TT",
+                "Chuẩn đầu ra",
+                "Nội dung",
+                "Phương pháp",
+                "Tiêu chí đánh giá"
+              ],
+              "rows": [
+                [
+                  "LO.1",
+                  "- Hiểu được khái niệm tư tưởng Hồ Chí Minh.\n- Nắm được đối tượng; phương pháp nghiên cứu tư tưởng Hồ Chí Minh và ý nghĩa học tập môn tư tưởng Hồ Chí Minh.",
+                  "Chương 1",
+                  "Hỏi - Đáp",
+                  "Cộng điểm"
+                ],
+                [
+                  "LO.2",
+                  "- Hiểu rõ cơ sở, quá trình hình thành và phát triển tư tưởng Hồ Chí Minh.\n- Nắm được giá trị tư tưởng Hồ Chí Minh đối với cách mạng Việt Nam và thế giới.",
+                  "Chương 2",
+                  "Thi giữa kỳ (Quiz)",
+                  "Đề thi của GV"
+                ],
+                [
+                  "LO.3",
+                  "- Nắm rõ nội dung tư tưởng Hồ Chí Minh về độc lập dân tộc và chủ nghĩa xã hội; mối quan hệ giữa độc lập dân tộc và chủ nghĩa xã hội.\n- Hiểu được sự vận dụng tư tưởng Hồ về độc lập dân tộc và chủ nghĩa xã hội của Đảng Cộng sản Việt Nam và Nhà nước ta.",
+                  "Chương 3",
+                  "Thuyết trình nhóm (GHW)\nThi giữa kỳ (Quiz)\nThi cuối kỳ (FEX)",
+                  "Tiêu chí đánh giá thuyết trình nhóm\nĐề thi của GV\nNgân hàng đề thi của khoa Chính trị - Hành chính"
+                ],
+                [
+                  "LO.4",
+                  "- Nắm rõ nội dung tư tưởng Hồ Chí Minh về Đảng Cộng sản Việt nam và Nhà nước của dân, do dân, vì dân.\n- Hiểu được sự vận dụng của Đảng và Nhà nước ta vào công tác xây dựng Đảng và xây dựng Nhà nước.",
+                  "Chương 4",
+                  "Thuyết trình nhóm (GHW)\nThi cuối kỳ (FEX)",
+                  "Tiêu chí đánh giá thuyết trình nhóm\nNgân hàng đề thi của khoa Chính trị - Hành chính"
+                ],
+                [
+                  "LO.5",
+                  "- Nắm được nội dung tư tưởng Hồ Chí Minh về đại đoàn kết dân tộc và đoàn kết quốc tế.\n- Hiểu được sự vận dụng của Đảng và Nhà nước ta trong việc hoạch định chủ trương, đường lối, chính sách về đại đoàn kết dân tộc và đối ngoại.",
+                  "Chương 5",
+                  "Thuyết trình nhóm (GHW)\nThi cuối kỳ (FEX)",
+                  "Tiêu chí đánh giá thuyết trình nhóm\nNgân hàng đề thi của khoa Chính trị - Hành chính"
+                ],
+                [
+                  "LO.6",
+                  "- Nắm được nội dung tư tưởng Hồ Chí Minh về văn hóa, đạo đức, con người.\n- Vận dụng tư tưởng Hồ Chí Minh về văn hóa, đạo đức và con người trong việc rèn luyện, tu dưỡng bản thân.",
+                  "Chương 6",
+                  "Thuyết trình nhóm (GHW)\nThi cuối kỳ (FEX)",
+                  "Tiêu chí đánh giá thuyết trình nhóm\nNgân hàng đề thi của khoa Chính trị - Hành chính"
+                ]
+              ],
+              "pages": [
+                115,
+                116
+              ]
+            }
+          ]
+        },
+        "sourceWorkloadUnit": "tiết"
+      },
+      "unverifiedFields": [
+        "assessment GHW normalized weight: source reads 150% while source total reads 100%",
+        "canonical identity for source Attitude LO.7: duplicate Skills LO.7, retained raw without inferred new ID"
+      ],
+      "missingFields": [
+        "courseDesignation",
+        "courseTypes",
+        "semester",
+        "language",
+        "relation",
+        "teachingMethods",
+        "workloadTotal",
+        "lectureCredits",
+        "laboratoryCredits",
+        "LLO",
+        "PLO mapping",
+        "rubric levels",
+        "passing requirement"
+      ]
+    },
+    {
+      "courseCode": "MA001IU",
+      "startPage": 162,
+      "endPage": 167,
+      "reviewedPages": [
+        162,
+        163,
+        164,
+        165,
+        166,
+        167
+      ],
+      "method": "Direct visual review of every page and ruled cell; raw anomalous characters and pass targets preserved without numeric reinterpretation.",
+      "fieldPages": {
+        "general": [
+          162
+        ],
+        "objectives": [
+          163
+        ],
+        "clos": [
+          163
+        ],
+        "topics": [
+          164
+        ],
+        "cloPloMappings": [
+          165
+        ],
+        "weeklyActivities": [
+          165,
+          166
+        ],
+        "assessments": [
+          166
+        ],
+        "readings": [
+          164
+        ],
+        "examRequirements": [
+          164
+        ]
+      },
+      "data": {
+        "sourceCourseCode": "MA001IU",
+        "sourceCourseName": "Calculus 1",
+        "courseDesignation": "This course equips students with basic concepts of calculus: limits, continuity, differentiation, and integration. Applications of these concepts are extensively discussed.",
+        "semester": "1, 2",
+        "language": "English",
+        "relation": "Compulsory",
+        "teachingMethods": "Lectures, assignments",
+        "workloadTotal": "(Estimated) Total workload: 120",
+        "workloadContact": "60 (lectures)",
+        "workloadPrivate": "60",
+        "creditPoints": "4",
+        "prerequisites": "None",
+        "dateRevised": "May 2025",
+        "clos": [
+          {
+            "code": "CLO1",
+            "description": "Have basic knowledge of limits and derivatives (Program outcomes: a)",
+            "competencyLevel": "KNOWLEDGE",
+            "orderIndex": 1
+          },
+          {
+            "code": "CLO2",
+            "description": "Have basic knowledge of definite/indefinite integrals (Program outcomes: a)",
+            "competencyLevel": "KNOWLEDGE",
+            "orderIndex": 2
+          },
+          {
+            "code": "CLO3",
+            "description": "Can compute often used limits, can define and compute derivatives (Program outcomes: a, j)",
+            "competencyLevel": "SKILL",
+            "orderIndex": 3
+          },
+          {
+            "code": "CLO4",
+            "description": "Can compute standard types of integrals. Use integrals in practical situations (Program outcomes: a, j)",
+            "competencyLevel": "SKILL",
+            "orderIndex": 4
+          },
+          {
+            "code": "CLO5",
+            "description": "Confident when dealing with derivatives and integrals. Comfortable with using derivatives and integrals in practical situations. (Program outcome: j, k)",
+            "competencyLevel": "ATTITUDE",
+            "orderIndex": 5
+          }
+        ],
+        "topics": [
+          {
+            "name": "Review: Set theory and mapping.\nFunctions and Graphs, Inverse Functions, Exponential and Logarithmic Functions",
+            "contentWeight": "1",
+            "contentLevel": "I, T",
+            "orderInWeek": 1
+          },
+          {
+            "name": "Parametric Curves, Limit. One-sided Limits, Laws of Limit",
+            "contentWeight": null,
+            "contentLevel": "I, T",
+            "orderInWeek": 2,
+            "notes": "{\"sourceWeightRaw\": \"s 1\", \"sourceWeightState\": \"SOURCE_UNVERIFIED\", \"sourcePage\": 164}"
+          },
+          {
+            "name": "Evaluating Limits. The Squeeze Theorem. Continuity. The Intermediate Value Theorem",
+            "contentWeight": "1",
+            "contentLevel": "T, U",
+            "orderInWeek": 3
+          },
+          {
+            "name": "Tangent Lines and Velocity Problems. Rates of Change, Derivative.",
+            "contentWeight": "1",
+            "contentLevel": "T, U",
+            "orderInWeek": 4
+          },
+          {
+            "name": "Higher-Order Derivatives. Rules of Differentiation. Rates of Change in the Natural and Social Sciences",
+            "contentWeight": "1",
+            "contentLevel": "T, U",
+            "orderInWeek": 5
+          },
+          {
+            "name": "Implicit Differentiation, Differentiation of Inverse Functions,",
+            "contentWeight": "1",
+            "contentLevel": "T, U",
+            "orderInWeek": 6
+          },
+          {
+            "name": "Logarithmic Differentiation, Linear Approximations. Differentials.",
+            "contentWeight": "1",
+            "contentLevel": "T, U",
+            "orderInWeek": 7
+          },
+          {
+            "name": "Related Rates, Maxima and Minima. Critical Point, The Mean Value Theorem.",
+            "contentWeight": "1",
+            "contentLevel": "T, U",
+            "orderInWeek": 8
+          },
+          {
+            "name": "The First and Second Derivative Test, Concavity. Shapes of Curves, Curve Sketching",
+            "contentWeight": "1",
+            "contentLevel": "T, U",
+            "orderInWeek": 9
+          },
+          {
+            "name": "Indeterminate Forms and l’Hôpital’s Rules, Maxima and Minima Problems, Newton’s Method",
+            "contentWeight": "1",
+            "contentLevel": "T, U",
+            "orderInWeek": 10
+          },
+          {
+            "name": "Anti-derivatives and Indefinite Integrals, The Definite Integral",
+            "contentWeight": "1",
+            "contentLevel": "I, T",
+            "orderInWeek": 11
+          },
+          {
+            "name": "Properties of the Definite Integral.\nThe Fundamental Theorem of Calculus, Integration by Substitution",
+            "contentWeight": "1",
+            "contentLevel": "I, T, U",
+            "orderInWeek": 12
+          },
+          {
+            "name": "Integration by Parts, Partial Fractions, Numerical Integration,",
+            "contentWeight": "1",
+            "contentLevel": "T, U",
+            "orderInWeek": 13
+          },
+          {
+            "name": "Improper Integrals, Areas between Curves\nAreas Enclosed by Parametric Curves",
+            "contentWeight": "1",
+            "contentLevel": "T, U",
+            "orderInWeek": 14
+          },
+          {
+            "name": "Volumes, Arc Length, Applications to Engineering, Economics and Science",
+            "contentWeight": "1",
+            "contentLevel": "T, U",
+            "orderInWeek": 15
+          }
+        ],
+        "assessments": [
+          {
+            "name": "In-class exercises/quizzes",
+            "assessmentType": "In-class exercises/quizzes",
+            "weightPercent": 10,
+            "orderIndex": 1
+          },
+          {
+            "name": "Homework exercises",
+            "assessmentType": "Homework exercises",
+            "weightPercent": 10,
+            "orderIndex": 2
+          },
+          {
+            "name": "Midterm exam",
+            "assessmentType": "Midterm exam",
+            "weightPercent": 30,
+            "orderIndex": 3
+          },
+          {
+            "name": "Final exam",
+            "assessmentType": "Final exam",
+            "weightPercent": 50,
+            "orderIndex": 4
+          }
+        ],
+        "readings": [
+          {
+            "type": "RAW_SOURCE",
+            "title": "J. Stewart, Calculus, Thomson Learning, 7th edition, 2012."
+          }
+        ],
+        "weeklyActivities": [],
+        "cloPloMappings": [
+          {
+            "cloCode": "CLO1",
+            "ploCode": "PLO1",
+            "value": "4"
+          },
+          {
+            "cloCode": "CLO1",
+            "ploCode": "PLO2",
+            "value": "4"
+          },
+          {
+            "cloCode": "CLO2",
+            "ploCode": "PLO1",
+            "value": "4"
+          },
+          {
+            "cloCode": "CLO2",
+            "ploCode": "PLO2",
+            "value": "3"
+          },
+          {
+            "cloCode": "CLO3",
+            "ploCode": "PLO3",
+            "value": "4"
+          },
+          {
+            "cloCode": "CLO3",
+            "ploCode": "PLO4",
+            "value": "3"
+          },
+          {
+            "cloCode": "CLO4",
+            "ploCode": "PLO3",
+            "value": "3"
+          },
+          {
+            "cloCode": "CLO4",
+            "ploCode": "PLO4",
+            "value": "3"
+          },
+          {
+            "cloCode": "CLO5",
+            "ploCode": "PLO7",
+            "value": "3"
+          }
+        ],
+        "topicCloMappings": [],
+        "assessmentCloMappings": [],
+        "objectives": "1. To provide students with the main ideas and techniques of calculus. These include limits, continuity, differentiation, and integration.\n2. To introduce practical applications of these ideas and techniques, through practical examples taken from many areas of engineering, business, and life sciences.\n3. To develop skills in mathematical modelling and problem solving, ability to think logically, and adapt these skills creatively to new situations.",
+        "contentNote": "The description of the contents should clearly indicate the weighting of the content and the level.\nWeight: lecture session (4 hours)\nTeaching levels: I (Introduce); T (Teach); U (Utilize)",
+        "examForms": "Written examination",
+        "examRequirements": "Attendance: A minimum attendance of 80 percent is compulsory for the class sessions. Students will be assessed on the basis of their class participation. Questions and comments are strongly encouraged.\nAssignments/Examination: Students must have more than 50/100 points overall to pass this course.",
+        "assessmentPassNote": "%Pass: Target that % of students having scores greater than 50 out of 100."
+      },
+      "notes": {
+        "sourceSupplementalSections": {
+          "1": [
+            {
+              "title": "Source revision and workload footnote",
+              "headers": [
+                "Source field",
+                "Value"
+              ],
+              "rows": [
+                [
+                  "Date revised",
+                  "May 2025"
+                ],
+                [
+                  "Place/signature date",
+                  "Ho Chi Minh City, 03/06/2025"
+                ],
+                [
+                  "Workload footnote 4",
+                  "When calculating contact time, each contact hour is counted as a full hour because the organisation of the schedule, moving from room to room, and individual questions to lecturers after the class, all mean that about 60 minutes should be counted."
+                ]
+              ],
+              "pages": [
+                162,
+                166,
+                167
+              ]
+            }
+          ],
+          "4": [
+            {
+              "title": "Unverified normalized Weight — source characters retained",
+              "headers": [
+                "Content row",
+                "Raw Weight",
+                "Normalized Weight",
+                "State"
+              ],
+              "rows": [
+                [
+                  "2",
+                  "s 1",
+                  "",
+                  "SOURCE_UNVERIFIED"
+                ]
+              ],
+              "pages": [
+                164
+              ]
+            }
+          ],
+          "9": [
+            {
+              "title": "Source weekly plan — anomalous CLO characters retained without inventing a mapping",
+              "headers": [
+                "Week / source label",
+                "Topics",
+                "CLO raw",
+                "Assessment",
+                "Teaching and Learning activities"
+              ],
+              "rows": [
+                [
+                  "1",
+                  "Review: Set theory and mapping.\nFunctions and Graphs, Inverse Fun Exponential and Logarithmic Function",
+                  "1, 3 c",
+                  "",
+                  "Lecture"
+                ],
+                [
+                  "2",
+                  "Parametric Curves, Limit. One-sided Laws of Limits.",
+                  "1,3",
+                  "Quiz",
+                  "Lectures and Quiz"
+                ],
+                [
+                  "3",
+                  "Evaluating Limits. The Squeeze Theorem. Continuity. The Intermediate Value Theorem",
+                  "3, 5",
+                  "Quiz",
+                  "Lectures and Quiz"
+                ],
+                [
+                  "4",
+                  "The Tangent and Velocity Problems. Rates of Change, The Derivative.",
+                  "3, 5",
+                  "HW1",
+                  "Lectures and HW"
+                ],
+                [
+                  "5",
+                  "Higher-Order Derivatives, Rules of Differentiation. Rates of Change in the Natural and Social Sciences",
+                  "3, 5",
+                  "Quiz",
+                  "Lectures and Quiz"
+                ],
+                [
+                  "6",
+                  "Implicit Differentiation, Differentiation of Inverse Functions,",
+                  "3, 5",
+                  "HW2",
+                  "Lectures and HW"
+                ],
+                [
+                  "7",
+                  "Logarithmic Differentiation, Linear Approximations. Differentials.",
+                  "3, 5",
+                  "Quiz",
+                  "Lectures and Quiz"
+                ],
+                [
+                  "8",
+                  "Related Rates, Maxima and Minima. Critical Point, The Mean Value Theorem.",
+                  "3, 5",
+                  "HW3",
+                  "Lectures and HW"
+                ],
+                [
+                  "Midterm Exam",
+                  "",
+                  "",
+                  "",
+                  ""
+                ],
+                [
+                  "9",
+                  "The First and Second Derivative Test, Concavity. Shapes of Curves, Curve Sketching",
+                  "2, 4",
+                  "Quiz",
+                  "Lectures and Quiz"
+                ],
+                [
+                  "10",
+                  "Indeterminate Forms and l’Hôpital’s Rules, Maxima and Minima Problems, Newton’s Method",
+                  "2, 4",
+                  "Quiz",
+                  "Lectures and Quiz"
+                ],
+                [
+                  "11",
+                  "Anti-derivatives and Indefinite Integrals, The Definite Integral",
+                  "4, 5",
+                  "HW4",
+                  "Lectures and HW"
+                ],
+                [
+                  "12",
+                  "Properties of the Definite Integral.\nThe Fundamental Theorem of Calculus, Integration by Substitution",
+                  "2, 4",
+                  "Quiz",
+                  "Lectures and Quiz"
+                ],
+                [
+                  "13",
+                  "Integration by Parts, Partial Fractions, Numerical Integration,",
+                  "4, 5",
+                  "Quiz",
+                  "Lectures and Quiz"
+                ],
+                [
+                  "14",
+                  "Improper Integrals, Areas between Curves\nAreas Enclosed by Parametric Curves",
+                  "2, 4, 5",
+                  "HW5",
+                  "Lectures and HW"
+                ],
+                [
+                  "15",
+                  "Volumes, Arc Length, Applications to Engineering, Economics and Science",
+                  "1, 2, 3, 4,",
+                  "5 Exercises",
+                  ""
+                ],
+                [
+                  "Final Exam",
+                  "",
+                  "1, 2, 3, 4,",
+                  "5",
+                  ""
+                ]
+              ],
+              "pages": [
+                165,
+                166
+              ]
+            }
+          ],
+          "10": [
+            {
+              "title": "Source assessment matrix — %Pass is a student pass target, not CLO contribution",
+              "headers": [
+                "Assessment Type",
+                "CLO1",
+                "CLO2",
+                "CLO3",
+                "CLO4",
+                "CLO5"
+              ],
+              "rows": [
+                [
+                  "In-class exercises/quizzes (10%)",
+                  "Qz1->Qz4\n80% Pass",
+                  "Qz5->Qz8\n80%Pass",
+                  "Qz1->Qz4\n80% Pass",
+                  "Qz5->Qz8\n80% Pass",
+                  "Qz2, 4, 6, 8\n70% Pass"
+                ],
+                [
+                  "Homework exercises (10%)",
+                  "HW1->H3\n70% Pass",
+                  "HW4, HW5\n70%",
+                  "HW1->HW3\n70%Pass",
+                  "HW4, HW5\n70%",
+                  "HW1->HW5\n60% Pass"
+                ],
+                [
+                  "Midterm exam (30%)",
+                  "Q1, Q2\n80% Pass",
+                  "",
+                  "Q3, Q4\n70% Pass",
+                  "",
+                  "Q5\n50%"
+                ],
+                [
+                  "Final exam (50%)",
+                  "",
+                  "Q1, Q2\n80%Pass",
+                  "",
+                  "Q3, Q4\n70%Pass",
+                  "Q5\n50%"
+                ]
+              ],
+              "pages": [
+                166
+              ]
+            }
+          ]
+        }
+      },
+      "unverifiedFields": [
+        "Content row 2 normalized Weight (source s 1)",
+        "Weekly row 1 normalized CLO list (source 1, 3 c)"
+      ],
+      "missingFields": [
+        "personResponsible (blank source cell)",
+        "courseTypes",
+        "lectureCredits",
+        "laboratoryCredits",
+        "LLO",
+        "rubric levels",
+        "Reading List usage type"
+      ]
+    }
+  ]
+}
