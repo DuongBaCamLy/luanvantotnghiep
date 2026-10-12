@@ -85,7 +85,16 @@ public record SyllabusPdfDocument(
             String teachingMethod,
             String learningActivity,
             String notes,
-            List<String> cloCodes) {
+            List<String> cloCodes,
+            String assessments,
+            String resources) {
+        public TopicRow(Integer id, Integer weekNumber, Integer orderInWeek, String name,
+                        String nameVn, Integer teachingHours, Integer labHours, Integer selfStudyHours,
+                        String topicType, String teachingMethod, String learningActivity, String notes,
+                        List<String> cloCodes) {
+            this(id, weekNumber, orderInWeek, name, nameVn, teachingHours, labHours,
+                    selfStudyHours, topicType, teachingMethod, learningActivity, notes, cloCodes, null, null);
+        }
     }
 
     public record AssessmentRow(

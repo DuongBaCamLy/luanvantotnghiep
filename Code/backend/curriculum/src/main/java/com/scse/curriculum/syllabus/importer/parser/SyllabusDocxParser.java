@@ -338,7 +338,10 @@ public class SyllabusDocxParser implements SyllabusFileParser {
                 "noi dung hoc phan"
         );
         if(table==null) table=tableAfterHeading(body,"planned learning activities","ke hoach giang day");
-        if (table == null) return;
+        if (table == null) {
+            parseTabularTopics(body, data);
+            return;
+        }
         List<TopicImportData> topics = new ArrayList<>();
         List<SyllabusImportData.TopicCloMappingItem> mappings = new ArrayList<>();
         for (int rowIndex = 1; rowIndex < table.getNumberOfRows(); rowIndex++) {
@@ -391,6 +394,43 @@ public class SyllabusDocxParser implements SyllabusFileParser {
                     .resources(row.getTableCells().size() > 5 ? clean(cell(row, 5)) : null).build());
         }
         data.setWeeklyActivities(weekly);
+    }
+
+    /** Repository import template: title row, named headers, then native topic rows. */
+    private void parseTabularTopics(List<IBodyElement> body, SyllabusImportData data) {
+        for (IBodyElement element : body) {
+            if (!(element instanceof XWPFTable table)) continue;
+            for (int h = 0; h < Math.min(2, table.getNumberOfRows()); h++) {
+                XWPFTableRow header = table.getRow(h);
+                if (!normalized(cell(header, 0)).equals("week number")) continue;
+                Map<String, Integer> columns = new java.util.LinkedHashMap<>();
+                for (int c = 0; c < header.getTableCells().size(); c++) columns.put(normalized(cell(header,c)), c);
+                if (!columns.containsKey("name") || !columns.containsKey("order in week")) continue;
+                List<TopicImportData> topics = new ArrayList<>();
+                for (int r = h + 1; r < table.getNumberOfRows(); r++) {
+                    XWPFTableRow row = table.getRow(r);
+                    Integer week = integer(clean(cell(row, 0)));
+                    if (week == null) continue;
+                    topics.add(TopicImportData.builder().weekNumber(week)
+                            .orderInWeek(integer(namedCell(row, columns, "order in week")))
+                            .name(namedCell(row, columns, "name")).nameVn(namedCell(row, columns, "name vn"))
+                            .teachingHours(integer(namedCell(row, columns, "teaching hours")))
+                            .labHours(integer(namedCell(row, columns, "lab hours")))
+                            .selfStudyHours(integer(namedCell(row, columns, "self study hours")))
+                            .topicType(namedCell(row, columns, "topic type"))
+                            .teachingMethod(namedCell(row, columns, "teaching method"))
+                            .learningActivity(namedCell(row, columns, "learning activity"))
+                            .resources(namedCell(row, columns, "resources"))
+                            .notes(namedCell(row, columns, "notes")).build());
+                }
+                data.setTopics(topics);
+                return;
+            }
+        }
+    }
+
+    private String namedCell(XWPFTableRow row, Map<String,Integer> columns, String name) {
+        return columns.containsKey(name) ? clean(cell(row, columns.get(name))) : null;
     }
 
     private void parseAssessments(List<IBodyElement> body, SyllabusImportData data) {

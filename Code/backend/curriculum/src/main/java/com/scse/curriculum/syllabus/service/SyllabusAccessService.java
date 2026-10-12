@@ -9,6 +9,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.scse.curriculum.approval.entity.ApprovalRequest;
+import com.scse.curriculum.approval.entity.ApprovalStatus;
+import com.scse.curriculum.approval.repository.ApprovalRequestRepository;
 import com.scse.curriculum.approval.entity.ApprovalStep;
 import com.scse.curriculum.auth.security.CurrentUserService;
 import com.scse.curriculum.classsection.entity.ClassSection;
@@ -36,6 +38,7 @@ public class SyllabusAccessService {
     private final ClassSectionRepository classSectionRepository;
     private final UserAccountRepository userAccountRepository;
     private final CourseProgramRepository courseProgramRepository;
+    private final ApprovalRequestRepository approvalRequestRepository;
 
     public record CreationAuthorization(
         UserAccount creator,
@@ -77,6 +80,40 @@ public class SyllabusAccessService {
     // Draft / submitted / review / rejected syllabuses
     // remain visible only to the assigned instructor.
     return hasFacultyAssignment(user, syllabus);
+}
+        // A Dean may view a Draft created by the same Dean account.
+        if (user.getRole() == UserRole.DEAN
+                && syllabus.getStatus() == SyllabusStatus.DRAFT
+                && syllabus.getCreatedBy() != null
+                && user.getId() != null
+                && Objects.equals(
+                        user.getId(),
+                        syllabus.getCreatedBy().getId())) {
+            return true;
+        }
+
+        // Reviewers may view a syllabus only at their pending step.
+        if (isDeanLevel(user.getRole())) {
+
+    if (syllabus.getId() == null
+            || syllabus.getStatus() == SyllabusStatus.DRAFT) {
+        return false;
+    }
+
+    if (syllabus.getStatus() == SyllabusStatus.APPROVED) {
+        return true;
+    }
+
+    return approvalRequestRepository
+            .findBySyllabusId(syllabus.getId())
+            .stream()
+            .anyMatch(approval ->
+                    (approval.getStep() == ApprovalStep.STEP3_DEAN
+                    || approval.getStep() == ApprovalStep.STEP2_DEAN_SECRETARY)
+                    && approval.getStatus() == ApprovalStatus.PENDING
+                    && Objects.equals(
+                            approval.getSyllabusVersionNumber(),
+                            syllabus.getVersionNumber()));
 }
         if (user.getRole() == UserRole.DEPT_HEAD
         || isDeanLevel(user.getRole())) {
@@ -122,10 +159,24 @@ public class SyllabusAccessService {
 
     public void assertCanModify(Syllabus syllabus) {
         UserAccount user = currentUser();
-        if (user.getRole() == UserRole.DEPT_HEAD || user.getRole() == UserRole.DEAN) {
+
+        if (user.getRole() == UserRole.DEPT_HEAD) {
             throw new ForbiddenOperationException(
                     "Reviewers may view, approve, or reject a syllabus but cannot edit its content.");
         }
+
+        if (user.getRole() == UserRole.DEAN) {
+            if (syllabus == null
+                    || syllabus.getStatus() != SyllabusStatus.DRAFT
+                    || syllabus.getCreatedBy() == null
+                    || user.getId() == null
+                    || !Objects.equals(user.getId(), syllabus.getCreatedBy().getId())) {
+                throw new ForbiddenOperationException(
+                        "The Dean may only modify a Draft syllabus created by the same Dean account.");
+            }
+            return;
+        }
+
         if (user.getRole() == UserRole.INSTRUCTOR
                 && !hasFacultyAssignment(user, syllabus)) {
             throw new ForbiddenOperationException(
@@ -427,32 +478,62 @@ public class SyllabusAccessService {
     public void assertCanReview(ApprovalRequest approval) {
         UserAccount user = currentUser();
         rejectInstructorReviewerAction();
-        if (approval == null || approval.getSyllabus() == null) {
-            throw new ForbiddenOperationException("The approval request is invalid.");
-        }
-        if (approval.getStep() == ApprovalStep.STEP1_DEPT_HEAD
-                && user.getRole() != UserRole.DEPT_HEAD) {
+
+        if (approval == null
+                || approval.getSyllabus() == null
+                || approval.getStep() == null) {
+
             throw new ForbiddenOperationException(
-                    "Only the Head of Department may perform Department syllabus approval.");
+                    "The approval request is invalid.");
         }
-        if (approval.getStep() == ApprovalStep.STEP3_DEAN
-        && !isDeanLevel(user.getRole())) {
+
+        ApprovalStep step = approval.getStep();
+        UserRole role = user.getRole();
+
+        /*
+         * Legacy workflow step.
+         * Existing historical records are preserved, but this step
+         * must no longer be actionable in the current workflow.
+         */
+        if (step == ApprovalStep.STEP2_PROG_COORDINATOR) {
             throw new ForbiddenOperationException(
-                    "Only the Dean may perform final syllabus approval.");
+                    "The legacy Program Coordinator approval step "
+                            + "is no longer actionable.");
         }
-        if (user.getRole() == UserRole.DEPT_HEAD) {
-            if (approval.getStep() != ApprovalStep.STEP1_DEPT_HEAD) {
+
+        /*
+         * STEP 1:
+         * Only Head of Department may review.
+         * Existing Major/data-scope validation is preserved.
+         */
+        if (step == ApprovalStep.STEP1_DEPT_HEAD) {
+
+            if (role != UserRole.DEPT_HEAD) {
                 throw new ForbiddenOperationException(
-                        "Heads of Department cannot perform final Dean approval.");
+                        "Only the Head of Department may perform "
+                                + "Department syllabus approval.");
             }
+
             assertCanView(approval.getSyllabus());
-        } else if (isDeanLevel(user.getRole())
-        && approval.getStep() != ApprovalStep.STEP3_DEAN) {
-            throw new ForbiddenOperationException(
-                    "The selected request is not awaiting Dean review.");
+            return;
         }
+
+        // Both Dean and Dean Secretary have final approval authority.
+if (step == ApprovalStep.STEP3_DEAN
+        || step == ApprovalStep.STEP2_DEAN_SECRETARY) {
+
+    if (!isDeanLevel(role)) {
+        throw new ForbiddenOperationException(
+                "Only the Dean or Dean Secretary "
+                + "may perform final syllabus approval.");
     }
 
+    return;
+}
+
+        throw new ForbiddenOperationException(
+                "The approval step is not actionable.");
+    }
     public void assertCanAccessApproval(ApprovalRequest approval) {
         UserAccount user = currentUser();
         if (user.getRole() == UserRole.INSTRUCTOR || user.getRole() == UserRole.DEPT_HEAD) {
@@ -466,22 +547,53 @@ public class SyllabusAccessService {
     public void assertCanOpenPendingStep(ApprovalStep step) {
         UserAccount user = currentUser();
         rejectInstructorReviewerAction();
-        if (step == ApprovalStep.STEP3_DEAN
-        && !isDeanLevel(user.getRole())) {
+
+        if (step == null) {
             throw new ForbiddenOperationException(
-                    "Only the Dean may open the final approval queue.");
+                    "The approval step is invalid.");
         }
-        if (user.getRole() == UserRole.DEPT_HEAD && step != ApprovalStep.STEP1_DEPT_HEAD) {
-            throw new ForbiddenOperationException(
-                    "Heads of Department may open only the Department review queue.");
+
+        UserRole role = user.getRole();
+
+        /*
+         * Preserve the existing Admin inspection capability.
+         * Admin may inspect queues, but review authorization is
+         * still enforced separately.
+         */
+        if (role == UserRole.ADMIN) {
+            return;
         }
-       if (isDeanLevel(user.getRole())
-        && step != ApprovalStep.STEP3_DEAN) {
-            throw new ForbiddenOperationException(
-                    "The Dean may open only the Dean review queue.");
+
+        /*
+         * Head of Department may open only STEP 1.
+         */
+        if (role == UserRole.DEPT_HEAD) {
+
+            if (step != ApprovalStep.STEP1_DEPT_HEAD) {
+                throw new ForbiddenOperationException(
+                        "Heads of Department may open only "
+                                + "the Department review queue.");
+            }
+
+            return;
         }
+
+        // Dean and Dean Secretary share the same final approval queue.
+if (isDeanLevel(role)) {
+
+    if (step != ApprovalStep.STEP3_DEAN) {
+        throw new ForbiddenOperationException(
+                "Final reviewers may open only "
+                + "the shared final review queue.");
     }
 
+    return;
+}
+        
+        throw new ForbiddenOperationException(
+                "You are not authorized to open "
+                        + "an approval queue.");
+    }
     private void rejectInstructorReviewerAction() {
         if (currentUser().getRole() == UserRole.INSTRUCTOR) {
             throw new ForbiddenOperationException(

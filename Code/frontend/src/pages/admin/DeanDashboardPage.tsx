@@ -6,7 +6,6 @@ import {
   BookOpen,
   ChevronRight,
   ClipboardCheck,
-  FileWarning,
   RefreshCw,
   ShieldCheck,
 } from "lucide-react"
@@ -309,17 +308,7 @@ export default function DeanDashboardPage() {
       {/* =====================================================
           DEAN KPIs
          ===================================================== */}
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <MetricCard
-          label="Courses"
-          value={summary.expectedCourses}
-          description={`${summary.expectedCredits} curriculum credits`}
-          icon={
-            <BookOpen className="size-5" />
-          }
-          iconClass="bg-slate-100 text-slate-700"
-        />
-
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-2">
         <MetricCard
           label="Approved"
           value={summary.approvedSyllabuses}
@@ -342,15 +331,6 @@ export default function DeanDashboardPage() {
           iconClass="bg-blue-50 text-blue-700"
         />
 
-        <MetricCard
-          label="Missing Syllabi"
-          value={summary.missingSyllabuses}
-          description="Courses without syllabus"
-          icon={
-            <FileWarning className="size-5" />
-          }
-          iconClass="bg-amber-50 text-amber-700"
-        />
       </section>
 
       {/* =====================================================

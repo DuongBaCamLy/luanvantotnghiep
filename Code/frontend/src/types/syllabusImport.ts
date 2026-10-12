@@ -485,6 +485,7 @@ export interface BulkConfirmSyllabusImportRequest {
     cohortId:number;
     assignmentId?:number;
     sourceSnapshotId?:number;
+    sourceDocumentId?:number;
     data:SyllabusImportData;
     importMode:"CREATE" | "UPDATE";
     originalFileName?:string;

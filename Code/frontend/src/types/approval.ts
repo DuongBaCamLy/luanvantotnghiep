@@ -1,6 +1,7 @@
 export type ApprovalStep =
   | "STEP1_DEPT_HEAD"
   | "STEP2_PROG_COORDINATOR"
+  | "STEP2_DEAN_SECRETARY"
   | "STEP3_DEAN"
 
 export type ApprovalStatus =

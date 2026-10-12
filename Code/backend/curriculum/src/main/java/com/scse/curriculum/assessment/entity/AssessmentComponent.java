@@ -63,9 +63,10 @@ public class AssessmentComponent {
     @PrePersist
     private void initializeRequiredValues() {
         if (assessmentType == null || assessmentType.isBlank()) assessmentType = "Assessment";
-        if (weightPercent == null) weightPercent = 0.0f;
-        if (minScore == null) minScore = 0.0f;
-        if (maxScore == null) maxScore = 100.0f;
+        // Existing database columns are NOT NULL. Source unknowns are recorded in syllabus notes.
+            if (weightPercent == null) weightPercent = 0.0f;
+            if (minScore == null) minScore = 0.0f;
+            if (maxScore == null) maxScore = 100.0f;
         if (orderIndex == null) orderIndex = 1;
     }
 }

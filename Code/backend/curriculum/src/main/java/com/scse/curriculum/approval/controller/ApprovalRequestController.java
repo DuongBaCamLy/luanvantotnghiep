@@ -27,7 +27,8 @@ public class ApprovalRequestController {
     private final ApprovalRequestService service;
 
     @PutMapping("/{id}/review")
-@PreAuthorize("hasAnyRole('DEAN', 'DEPT_HEAD')")
+    @PreAuthorize(
+            "hasAnyRole('DEAN', 'DEAN_SECRETARY', 'DEPT_HEAD')")
     public ApprovalResponse review(
             @PathVariable Integer id,
             @Valid @RequestBody ReviewApprovalRequest request) {
@@ -36,7 +37,8 @@ public class ApprovalRequestController {
     }
 
     @GetMapping("/pending/{step}")
-@PreAuthorize("hasAnyRole('ADMIN', 'DEAN', 'DEPT_HEAD')")
+    @PreAuthorize(
+            "hasAnyRole('ADMIN', 'DEAN', 'DEAN_SECRETARY', 'DEPT_HEAD')")
     public List<ApprovalResponse> getPendingByStep(
             @PathVariable ApprovalStep step) {
 
@@ -52,7 +54,8 @@ public class ApprovalRequestController {
 
     @GetMapping("/{id}")
     @PreAuthorize(
-            "hasAnyRole('ADMIN', 'DEAN', 'DEPT_HEAD', 'INSTRUCTOR')")
+            "hasAnyRole('ADMIN', 'DEAN', 'DEAN_SECRETARY', "
+                    + "'DEPT_HEAD', 'INSTRUCTOR')")
     public ApprovalResponse getById(
             @PathVariable Integer id) {
 
@@ -61,7 +64,8 @@ public class ApprovalRequestController {
 
     @GetMapping("/syllabus/{syllabusId}")
     @PreAuthorize(
-            "hasAnyRole('ADMIN', 'DEAN', 'DEPT_HEAD', 'INSTRUCTOR')")
+            "hasAnyRole('ADMIN', 'DEAN', 'DEAN_SECRETARY', "
+                    + "'DEPT_HEAD', 'INSTRUCTOR')")
     public List<ApprovalResponse> getBySyllabus(
             @PathVariable Integer syllabusId) {
 
@@ -70,11 +74,13 @@ public class ApprovalRequestController {
 
     /**
      * FR-05.8:
-     * Trưởng bộ môn và Trưởng khoa xem toàn bộ lịch sử
+     * Người dùng có quyền phù hợp có thể xem lịch sử
      * review/comment của một syllabus.
      */
     @GetMapping("/syllabus/{syllabusId}/history")
-    @PreAuthorize("hasAnyRole('ADMIN', 'DEAN', 'DEPT_HEAD', 'INSTRUCTOR')")
+    @PreAuthorize(
+            "hasAnyRole('ADMIN', 'DEAN', 'DEAN_SECRETARY', "
+                    + "'DEPT_HEAD', 'INSTRUCTOR')")
     public List<ApprovalHistoryResponse> getApprovalHistory(
             @PathVariable Integer syllabusId) {
 

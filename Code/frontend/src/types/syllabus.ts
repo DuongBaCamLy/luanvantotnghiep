@@ -138,6 +138,7 @@ export interface Syllabus {
 
   changeSummary: string | null
   notes: string | null
+  rubrics?: string | null
 
   clos?: CloDTO[]
   topics?: TopicDTO[]
@@ -178,6 +179,7 @@ major?: string | null
 
   changeSummary?: string
   notes?: string
+  rubrics?: string | null
 
   sourceType?: "MANUAL" | "IMPORT_PDF" | "IMPORT_DOCX" | "IMPORT_XLSX" | "CLONE"
   originalFileName?: string

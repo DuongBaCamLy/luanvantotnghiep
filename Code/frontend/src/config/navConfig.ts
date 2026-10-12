@@ -8,7 +8,6 @@ import {
   History,
   LayoutDashboard,
   Layers,
-  Settings,
   Target,
   UserCog,
   type LucideIcon,
@@ -186,7 +185,7 @@ const buildNav = (
           ? [
               {
                 label:
-                  "Managed Major Courses",
+                  "Assign Teaching Course",
                 path:
                   `${root}/class-sections`,
                 icon:
@@ -352,16 +351,6 @@ const buildNav = (
                   "VIEW_AUDIT" as const,
               },
 
-              {
-                label:
-                  "System Settings",
-                path:
-                  `${root}/settings`,
-                icon:
-                  Settings,
-                permission:
-                  app,
-              },
             ]
           : []),
       ],

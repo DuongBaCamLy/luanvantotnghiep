@@ -18,7 +18,7 @@ public class ClassSectionController {
     private final ClassSectionService service;
 
     @GetMapping
-@PreAuthorize("hasRole('ADMIN')")
+@PreAuthorize("hasAnyRole('ADMIN', 'DEPT_HEAD')")
     public List<ClassSectionResponse> getAll() {
         return service.getAll();
     }
@@ -30,31 +30,31 @@ public class ClassSectionController {
     }
 
     @GetMapping("/{id}")
-@PreAuthorize("hasRole('ADMIN')")
+@PreAuthorize("hasAnyRole('ADMIN', 'DEPT_HEAD')")
     public ClassSectionResponse getById(@PathVariable Integer id) {
         return service.getById(id);
     }
 
     @GetMapping("/course/{courseId}")
-@PreAuthorize("hasRole('ADMIN')")
+@PreAuthorize("hasAnyRole('ADMIN', 'DEPT_HEAD')")
     public List<ClassSectionResponse> getByCourseId(@PathVariable Integer courseId) {
         return service.getByCourseId(courseId);
     }
 
     @GetMapping("/search")
-@PreAuthorize("hasRole('ADMIN')")
+@PreAuthorize("hasAnyRole('ADMIN', 'DEPT_HEAD')")
     public List<ClassSectionResponse> search(@RequestParam String q) {
         return service.search(q);
     }
 
     @PostMapping
-@PreAuthorize("hasRole('ADMIN')")
+@PreAuthorize("hasAnyRole('ADMIN', 'DEPT_HEAD')")
     public ClassSectionResponse create(@Valid @RequestBody CreateClassSectionRequest request) {
         return service.create(request);
     }
 
 @PutMapping("/{id}")
-@PreAuthorize("hasRole('ADMIN')")
+@PreAuthorize("hasAnyRole('ADMIN', 'DEPT_HEAD')")
     public ClassSectionResponse update(
             @PathVariable Integer id,
             @Valid @RequestBody CreateClassSectionRequest request) {
@@ -62,7 +62,7 @@ public class ClassSectionController {
     }
 
    @DeleteMapping("/{id}")
-@PreAuthorize("hasRole('ADMIN')")
+@PreAuthorize("hasAnyRole('ADMIN', 'DEPT_HEAD')")
     public String delete(@PathVariable Integer id) {
         service.delete(id);
         return "Class section deleted successfully.";

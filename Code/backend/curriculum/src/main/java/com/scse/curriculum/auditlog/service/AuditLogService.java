@@ -11,6 +11,9 @@ import java.util.List;
  */
 public interface AuditLogService {
 
+    com.scse.curriculum.auditlog.dto.AuditLogPageResponse getPage(String keyword,
+            com.scse.curriculum.auditlog.entity.AuditAction action, int page, int size);
+
     List<AuditLogResponse> getAll();
 
     List<AuditLogResponse> getRecent(int limit);

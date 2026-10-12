@@ -363,11 +363,10 @@ export default function Header() {
                             key={
                               notification.id
                             }
-                            className={`group cursor-pointer gap-0 border-b border-slate-100 p-0 last:border-b-0 focus:bg-transparent ${
-                              !notification.isRead
-                                ? "bg-[#f7fbfb]"
-                                : "bg-white"
-                            }`}
+                            className={`group cursor-pointer gap-0 border-b border-slate-100 p-0 last:border-b-0 focus:bg-transparent ${!notification.isRead
+                              ? "bg-[#f7fbfb]"
+                              : "bg-white"
+                              }`}
                             onSelect={(
                               event,
                             ) => {
@@ -385,11 +384,10 @@ export default function Header() {
                               <div className="min-w-0 flex-1">
                                 <div className="flex items-start justify-between gap-2">
                                   <p
-                                    className={`line-clamp-2 text-[12px] leading-[18px] ${
-                                      !notification.isRead
-                                        ? "font-bold text-[#17343d]"
-                                        : "font-semibold text-slate-700"
-                                    }`}
+                                    className={`line-clamp-2 text-[12px] leading-[18px] ${!notification.isRead
+                                      ? "font-bold text-[#17343d]"
+                                      : "font-semibold text-slate-700"
+                                      }`}
                                   >
                                     {notification.title}
                                   </p>
@@ -427,16 +425,16 @@ export default function Header() {
 
                 {sortedNotifications.length
                   > MAX_VISIBLE_NOTIFICATIONS && (
-                  <>
-                    <DropdownMenuSeparator />
+                    <>
+                      <DropdownMenuSeparator />
 
-                    <div className="px-4 py-2.5 text-center text-[10px] text-slate-500">
-                      Showing the latest{" "}
-                      {MAX_VISIBLE_NOTIFICATIONS} of{" "}
-                      {sortedNotifications.length} notifications.
-                    </div>
-                  </>
-                )}
+                      <div className="px-4 py-2.5 text-center text-[10px] text-slate-500">
+                        Showing the latest{" "}
+                        {MAX_VISIBLE_NOTIFICATIONS} of{" "}
+                        {sortedNotifications.length} notifications.
+                      </div>
+                    </>
+                  )}
               </>
             )}
           </DropdownMenuContent>
@@ -622,21 +620,26 @@ function getWorkflowNotificationRoute(
 
   if (
     normalizedType
-      === "SYLLABUS_DEADLINE_REMINDER"
+    === "SYLLABUS_DEADLINE_REMINDER"
     || normalizedType
-      === "SYLLABUS_DEADLINE_DUE_TODAY"
+    === "SYLLABUS_DEADLINE_DUE_TODAY"
   ) {
     return (
-  normalizedRole === "DEAN"
-  || normalizedRole === "DEAN_SECRETARY"
-)
-  ? "/dean/approvals"
-  : null
+      normalizedRole === "DEAN"
+      || normalizedRole === "DEAN_SECRETARY"
+    )
+      ? "/dean/approvals"
+      : null
   }
 
+  if (normalizedType === "SYLLABUS_CREATION_ASSIGNED") {
+    return normalizedRole === "INSTRUCTOR"
+      ? "/instructor/class-sections"
+      : null
+  }
   if (
     normalizedType
-      === "SYLLABUS_SUBMITTED"
+    === "SYLLABUS_SUBMITTED"
   ) {
     return normalizedRole
       === "DEPT_HEAD"
@@ -646,19 +649,21 @@ function getWorkflowNotificationRoute(
 
   if (
     normalizedType
-      === "SYLLABUS_WAITING_FOR_DEAN"
+    === "SYLLABUS_WAITING_FOR_FINAL_REVIEW"
+    || normalizedType === "SYLLABUS_WAITING_FOR_DEAN_SECRETARY"
+    || normalizedType === "SYLLABUS_WAITING_FOR_DEAN"
   ) {
-    return normalizedRole
-      === "DEAN"
+    return (normalizedRole === "DEAN"
+      || normalizedRole === "DEAN_SECRETARY")
       ? "/dean/approvals"
       : null
   }
 
   if (
     normalizedType
-      === "SYLLABUS_DEAN_REVISION_REQUESTED"
+    === "SYLLABUS_DEAN_REVISION_REQUESTED"
     || normalizedType
-      === "SYLLABUS_APPROVED_FOR_DEPT_HEAD"
+    === "SYLLABUS_APPROVED_FOR_DEPT_HEAD"
   ) {
     return normalizedRole
       === "DEPT_HEAD"
@@ -675,11 +680,11 @@ function getWorkflowNotificationRoute(
     )
   ) {
     if (
-  normalizedRole === "DEAN"
-  || normalizedRole === "DEAN_SECRETARY"
-) {
-  return "/dean/syllabus"
-}
+      normalizedRole === "DEAN"
+      || normalizedRole === "DEAN_SECRETARY"
+    ) {
+      return "/dean/syllabus"
+    }
 
     if (
       normalizedRole
@@ -698,13 +703,15 @@ function getWorkflowNotificationRoute(
 
   if (
     normalizedType
-      === "SYLLABUS_SUBMISSION_CONFIRMED"
+    === "SYLLABUS_SUBMISSION_CONFIRMED"
     || normalizedType
-      === "SYLLABUS_REVISION_REQUESTED"
+    === "SYLLABUS_REVISION_REQUESTED"
     || normalizedType
-      === "SYLLABUS_DEPT_HEAD_APPROVED"
+    === "SYLLABUS_DEPT_HEAD_APPROVED"
     || normalizedType
-      === "SYLLABUS_APPROVED"
+    === "SYLLABUS_FORWARDED_TO_DEAN"
+    || normalizedType
+    === "SYLLABUS_APPROVED"
   ) {
     if (
       normalizedRole === "ADMIN"
@@ -713,11 +720,11 @@ function getWorkflowNotificationRoute(
     }
 
     if (
-  normalizedRole === "DEAN"
-  || normalizedRole === "DEAN_SECRETARY"
-) {
-  return "/dean/syllabus"
-}
+      normalizedRole === "DEAN"
+      || normalizedRole === "DEAN_SECRETARY"
+    ) {
+      return "/dean/syllabus"
+    }
 
     if (
       normalizedRole === "DEPT_HEAD"

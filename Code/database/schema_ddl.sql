@@ -552,41 +552,66 @@ CREATE TABLE student (
 
 
 CREATE TABLE class_section (
-  id             INT          NOT NULL AUTO_INCREMENT COMMENT 'Mã lớp học phần',
-  course_id      INT          NOT NULL                COMMENT 'Học phần',
-  syllabus_id INT NULL COMMENT 'Đề cương sử dụng học kỳ này; có thể NULL trước khi Faculty tạo Draft',
-  instructor_id  INT          NOT NULL                COMMENT 'Giảng viên phụ trách',
-  semester       INT          NOT NULL                COMMENT 'Học kỳ: 1, 2, 3 (hè)',
-  academic_year  VARCHAR(20)  NOT NULL                COMMENT 'Năm học: VD 2023-2024',
-  group_number   INT          NOT NULL DEFAULT 1      COMMENT 'Số nhóm/lớp (nhóm lý thuyết)',
-  lab_group      INT                                  COMMENT 'Số nhóm thực hành (NULL nếu không có lab)',
-  max_students   INT          NOT NULL DEFAULT 50     COMMENT 'Sĩ số tối đa',
-  room           VARCHAR(50)                          COMMENT 'Phòng học',
-  schedule       VARCHAR(255)                         COMMENT 'Lịch học (mô tả)',
-  section_type   ENUM(
-                   'THEORY',    -- Lý thuyết
-                   'LAB',       -- Thực hành
-                   'COMBINED'   -- Kết hợp
-                 ) NOT NULL DEFAULT 'THEORY'          COMMENT 'Loại lớp',
-  is_active      BOOLEAN      NOT NULL DEFAULT TRUE,
+  id                 INT          NOT NULL AUTO_INCREMENT COMMENT 'Mã lớp học phần',
+  course_id          INT          NOT NULL                COMMENT 'Học phần',
+  program_id         INT          NOT NULL                COMMENT 'Chương trình đào tạo của phân công',
+  cohort_id          INT          NOT NULL                COMMENT 'Khóa tuyển sinh của phân công',
+  syllabus_id        INT          NULL                    COMMENT 'Đề cương sử dụng học kỳ này; có thể NULL trước khi Faculty tạo Draft',
+  instructor_user_id INT          NOT NULL                COMMENT 'Tài khoản giảng viên phụ trách',
+  semester           INT          NOT NULL                COMMENT 'Học kỳ: 1, 2, 3 (hè)',
+  academic_year      VARCHAR(20)  NOT NULL                COMMENT 'Năm học: VD 2023-2024',
+  group_number       INT          NOT NULL DEFAULT 1      COMMENT 'Số nhóm/lớp (nhóm lý thuyết)',
+  lab_group          INT                                  COMMENT 'Số nhóm thực hành (NULL nếu không có lab)',
+  max_students       INT          NOT NULL DEFAULT 50     COMMENT 'Sĩ số tối đa',
+  room               VARCHAR(50)                          COMMENT 'Phòng học',
+  schedule           VARCHAR(255)                         COMMENT 'Lịch học (mô tả)',
+  section_type       ENUM(
+                       'THEORY',
+                       'LAB',
+                       'COMBINED'
+                     ) NOT NULL DEFAULT 'THEORY'          COMMENT 'Loại lớp',
+  is_active          BOOLEAN      NOT NULL DEFAULT TRUE,
 
   PRIMARY KEY (id),
-  UNIQUE KEY uq_class_section_context (course_id, program_id, cohort_id, instructor_id, semester, academic_year, group_number),
+
+  UNIQUE KEY uq_class_section_context (
+    course_id,
+    program_id,
+    cohort_id,
+    instructor_user_id,
+    semester,
+    academic_year,
+    group_number
+  ),
+
   KEY idx_cs_course (course_id),
   KEY idx_cs_program (program_id),
   KEY idx_cs_cohort (cohort_id),
   KEY idx_cs_syllabus (syllabus_id),
-  KEY idx_cs_instructor (instructor_id),
+  KEY idx_cs_instructor_user (instructor_user_id),
   KEY idx_cs_year_sem (academic_year, semester),
-  CONSTRAINT fk_cs_course FOREIGN KEY (course_id) REFERENCES course(id),
-  CONSTRAINT fk_cs_program FOREIGN KEY (program_id) REFERENCES program(id),
-  CONSTRAINT fk_cs_cohort FOREIGN KEY (cohort_id) REFERENCES cohort(id),
-  CONSTRAINT fk_cs_syllabus FOREIGN KEY (syllabus_id) REFERENCES syllabus(id),
-  CONSTRAINT fk_cs_instructor FOREIGN KEY (instructor_id) REFERENCES instructor(id)
+
+  CONSTRAINT fk_cs_course
+    FOREIGN KEY (course_id)
+    REFERENCES course(id),
+
+  CONSTRAINT fk_cs_program
+    FOREIGN KEY (program_id)
+    REFERENCES program(id),
+
+  CONSTRAINT fk_cs_cohort
+    FOREIGN KEY (cohort_id)
+    REFERENCES cohort(id),
+
+  CONSTRAINT fk_cs_syllabus
+    FOREIGN KEY (syllabus_id)
+    REFERENCES syllabus(id),
+
+  CONSTRAINT fk_cs_instructor_user
+    FOREIGN KEY (instructor_user_id)
+    REFERENCES user_account(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-  COMMENT = 'Lớp học phần mở theo từng học kỳ — gắn với phiên bản đề cương đang dùng';
-
-
+  COMMENT = 'Lớp học phần mở theo từng học kỳ — gắn với chương trình, khóa, đề cương và tài khoản giảng viên phụ trách';
 CREATE TABLE enrollment (
   id               INT  NOT NULL AUTO_INCREMENT COMMENT 'Mã đăng ký học',
   student_id       INT  NOT NULL                COMMENT 'Sinh viên',

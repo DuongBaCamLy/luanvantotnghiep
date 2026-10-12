@@ -115,7 +115,11 @@ const getInstructorDisplayName = (
   return (
     fullName
     || username
-    || `Instructor #${section.instructorUserId}`
+    || (
+      section.instructorUserId == null
+        ? "Unassigned instructor"
+        : `Instructor #${section.instructorUserId}`
+    )
   )
 }
 export default function ClassSectionManagementPage() {
@@ -282,10 +286,10 @@ section.instructorUsername,
     const missing = sections.filter((section) => section.syllabusId === null).length
     const linked = sections.length - missing
     const distinctInstructors = new Set(
-  sections.map(
-    (section) => section.instructorUserId,
-  ),
-).size
+      sections
+        .map((section) => section.instructorUserId)
+        .filter((id): id is number => id !== null),
+    ).size
 
     return {
       total: sections.length,
@@ -343,6 +347,14 @@ section.instructorUsername,
       setNotice({
         type: "error",
         message: "This legacy assignment has no Program/Cohort context. Edit it and select the curriculum before changing its status.",
+      })
+      return
+    }
+
+    if (section.instructorUserId == null) {
+      setNotice({
+        type: "error",
+        message: "This legacy assignment has no Instructor account. Edit it and select an Instructor before changing its status.",
       })
       return
     }

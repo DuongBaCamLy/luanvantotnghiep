@@ -137,7 +137,7 @@ public class SyllabusController {
 
     @GetMapping("/create-context")
     @PreAuthorize(
-            "hasAnyRole('INSTRUCTOR','ADMIN')"
+            "hasAnyRole('INSTRUCTOR','ADMIN','DEAN')"
     )
     public SyllabusCreateContextResponse createContext(
 
@@ -175,7 +175,7 @@ public class SyllabusController {
 
     @PostMapping
     @PreAuthorize(
-            "hasAnyRole('INSTRUCTOR','ADMIN')"
+            "hasAnyRole('INSTRUCTOR','ADMIN','DEAN')"
     )
     public SyllabusResponse create(
 
@@ -271,7 +271,7 @@ public class SyllabusController {
 
     @PutMapping("/{id}")
     @PreAuthorize(
-            "hasAnyRole('INSTRUCTOR','ADMIN')"
+            "hasAnyRole('INSTRUCTOR','ADMIN','DEAN')"
     )
     public SyllabusResponse update(
 
@@ -332,7 +332,7 @@ public class SyllabusController {
 
     @GetMapping("/{id}/submission-validation")
     @PreAuthorize(
-            "hasAnyRole('INSTRUCTOR','ADMIN')"
+            "hasAnyRole('INSTRUCTOR','ADMIN','DEAN')"
     )
     public SubmissionValidationResponse validateForSubmit(
 
@@ -351,7 +351,7 @@ public class SyllabusController {
 
     @PostMapping("/{id}/submit")
     @PreAuthorize(
-            "hasAnyRole('INSTRUCTOR','ADMIN')"
+            "hasAnyRole('INSTRUCTOR','ADMIN','DEAN')"
     )
     public SyllabusResponse submit(
 

@@ -110,6 +110,38 @@ org.junit.jupiter.api.Assumptions.assumeTrue(
                             ? 0
                             : section.issues().size();
 
+            // CS2021 CLO source audit - read only
+            String auditCode = courseCode == null
+                    ? ""
+                    : courseCode.trim().toUpperCase(java.util.Locale.ROOT);
+
+            if (auditCode.matches("^(IT|PH|CH|EN|MA|PE)\\d+$")) {
+                auditCode += "IU";
+            }
+
+            java.util.Set<String> auditCodes = java.util.Set.of(
+                    "CH012IU", "EN007IU", "EN008IU", "EN011IU",
+                    "EN012IU", "IT159IU", "IT160IU", "MA001IU",
+                    "MA003IU", "MA023IU", "MA026IU", "PE008IU",
+                    "PH013IU", "PH014IU", "PH015IU", "PH016IU"
+            );
+
+            if (data != null && data.getClos() != null
+                    && auditCodes.contains(auditCode)) {
+
+                for (var clo : data.getClos()) {
+                    System.out.printf(
+                            "CLO_SOURCE | course=%s | clo=%s | competency=%s | description=%s%n",
+                            auditCode,
+                            clo.getCode(),
+                            clo.getCompetencyLevel(),
+                            clo.getDescription() == null
+                                    ? ""
+                                    : clo.getDescription().replaceAll("\\s+", " ").trim()
+                    );
+                }
+            }
+
             System.out.printf(
                     "%02d | pages=%d-%d | code=%s | name=%s | issues=%d%n",
                     index,

@@ -22,6 +22,27 @@ import org.springframework.data.domain.Pageable;
  */
 public interface AuditLogRepository extends Repository<AuditLog, Long> {
 
+    @org.springframework.data.jpa.repository.EntityGraph(attributePaths = "changedBy")
+    @org.springframework.data.jpa.repository.Query(value = """
+            select log from AuditLog log left join log.changedBy actor
+            where (:action is null or log.action = :action)
+            and (lower(log.tableName) like :pattern escape '!'
+                 or lower(actor.username) like :pattern escape '!'
+                 or lower(cast(log.action as string)) like :pattern escape '!'
+                 or cast(log.recordId as string) like :pattern escape '!')
+            """, countQuery = """
+            select count(log) from AuditLog log left join log.changedBy actor
+            where (:action is null or log.action = :action)
+            and (lower(log.tableName) like :pattern escape '!'
+                 or lower(actor.username) like :pattern escape '!'
+                 or lower(cast(log.action as string)) like :pattern escape '!'
+                 or cast(log.recordId as string) like :pattern escape '!')
+            """)
+    org.springframework.data.domain.Page<AuditLog> searchPage(
+            @org.springframework.data.repository.query.Param("pattern") String pattern,
+            @org.springframework.data.repository.query.Param("action") com.scse.curriculum.auditlog.entity.AuditAction action,
+            Pageable pageable);
+
     Optional<AuditLog> findById(Long id);
 
     List<AuditLog> findAll();

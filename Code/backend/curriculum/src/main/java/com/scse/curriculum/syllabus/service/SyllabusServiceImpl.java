@@ -974,7 +974,10 @@ String targetTemplateProfile = targetTemplateProfileResolver.resolve(
                                 .submittedAt(syllabus.getSubmittedAt())
                                 .approvedAt(syllabus.getApprovedAt())
                                 .changeSummary(syllabus.getChangeSummary())
-                                .notes(syllabus.getNotes())
+                                .notes(com.scse.curriculum.syllabus.template.Ds2027ReadingNotes.forDisplay(
+                                        com.scse.curriculum.syllabus.template.Ds2027RubricNotes.forDisplay(
+                                                syllabus.getNotes(), syllabus.getCourse().getCourseCode(), targetTemplateProfile),
+                                        syllabus.getCourse().getCourseCode(), targetTemplateProfile))
                                 .clos(syllabus.getClos() != null
                                                 ? syllabus.getClos()
                                                                 .stream()
@@ -1025,9 +1028,9 @@ String targetTemplateProfile = targetTemplateProfileResolver.resolve(
                                                                                 assessment.getName(),
                                                                                 assessment.getNameVn(),
                                                                                 assessment.getAssessmentType(),
-                                                                                assessment.getWeightPercent(),
-                                                                                assessment.getMinScore(),
-                                                                                assessment.getMaxScore(),
+                                                                                com.scse.curriculum.syllabus.template.SourceAssessmentValues.visible(syllabus.getNotes(),assessment.getOrderIndex(),assessment.getName(),"weightPercent",assessment.getWeightPercent()),
+                                                                                com.scse.curriculum.syllabus.template.SourceAssessmentValues.visible(syllabus.getNotes(),assessment.getOrderIndex(),assessment.getName(),"minScore",assessment.getMinScore()),
+                                                                                com.scse.curriculum.syllabus.template.SourceAssessmentValues.visible(syllabus.getNotes(),assessment.getOrderIndex(),assessment.getName(),"maxScore",assessment.getMaxScore()),
                                                                                 assessment.getOrderIndex()))
                                                                 .collect(Collectors.toList())
                                                 : new ArrayList<>())
@@ -1297,8 +1300,14 @@ String targetTemplateProfile = targetTemplateProfileResolver.resolve(
                         Syllabus syllabus,
                         List<CreateSyllabusRequest.AssessmentDTO> requested) {
 
+                boolean preserveSourceNulls = syllabus.getId() != null
+                                && courseProgramRepository.findBySyllabus_Id(syllabus.getId()).stream()
+                                                .anyMatch(mapping -> "NEW_2027".equals(
+                                                                targetTemplateProfileResolver.resolve(mapping.getCohort())));
+
                 List<AssessmentComponent> existing = new ArrayList<>(syllabus.getAssessments());
                 List<AssessmentComponent> retained = new ArrayList<>();
+                if(preserveSourceNulls)syllabus.setNotes(com.scse.curriculum.syllabus.template.SourceAssessmentValues.annotate(syllabus.getNotes(),requested));
 
                 for (CreateSyllabusRequest.AssessmentDTO dto : requested) {
                         AssessmentComponent assessment = findAssessmentForUpdate(existing, retained, dto);
@@ -1310,9 +1319,9 @@ String targetTemplateProfile = targetTemplateProfileResolver.resolve(
                         assessment.setName(dto.getName());
                         assessment.setNameVn(dto.getNameVn());
                         assessment.setAssessmentType(dto.getAssessmentType());
-                        assessment.setWeightPercent(dto.getWeightPercent() == null ? 0f : dto.getWeightPercent());
-                        assessment.setMinScore(dto.getMinScore() == null ? 0f : dto.getMinScore());
-                        assessment.setMaxScore(dto.getMaxScore() == null ? 100f : dto.getMaxScore());
+                        assessment.setWeightPercent(Objects.requireNonNullElse(dto.getWeightPercent(), Float.valueOf(0f)));
+                        assessment.setMinScore(Objects.requireNonNullElse(dto.getMinScore(), Float.valueOf(0f)));
+                        assessment.setMaxScore(Objects.requireNonNullElse(dto.getMaxScore(), Float.valueOf(100f)));
                         assessment.setOrderIndex(dto.getOrderIndex() == null ? 1 : dto.getOrderIndex());
                         retained.add(assessment);
                 }

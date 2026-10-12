@@ -15,7 +15,7 @@ import {
 import { courseApi } from "@/api/courseApi"
 import { cohortApi } from "@/api/cohortApi"
 import { courseProgramApi } from "@/api/courseProgramApi"
-import { getUsers } from "@/api/userApi"
+import { getAssignableInstructors } from "@/api/userApi"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -190,8 +190,8 @@ const [instructorUserId, setInstructorUserId] = useState("")
 const {
   data: users = [],
 } = useQuery({
-  queryKey: ["users"],
-  queryFn: getUsers,
+  queryKey: ["assignable-instructors"],
+  queryFn: getAssignableInstructors,
   enabled: open,
 })
 
@@ -199,14 +199,6 @@ const activeInstructorUsers =
   useMemo(
     () =>
       users
-        .filter(
-          (user) =>
-            user.role === "INSTRUCTOR"
-            && (
-              user.isActive
-              || user.id === initialData?.instructorUserId
-            ),
-        )
         .slice()
         .sort((left, right) => {
           const leftName =
@@ -245,8 +237,10 @@ const activeInstructorUsers =
         String(initialData.courseId),
       )
       setInstructorUserId(
-  String(initialData.instructorUserId),
-)
+        initialData.instructorUserId == null
+          ? ""
+          : String(initialData.instructorUserId),
+      )
       setSemester(
         String(initialData.semester),
       )

@@ -41,6 +41,120 @@ import java.util.regex.Pattern;
 @Slf4j
 public class SyllabusPdfParser implements SyllabusFileParser {
 
+        /** Cohort-specific entry point; existing 2021/2026 callers retain their parser. */
+        public ParsedPdfBatch parse2027PdfBatchWithMetadata(InputStream input) throws IOException {
+                return parse2027PdfBatchWithMetadata(input, 1, Integer.MAX_VALUE);
+        }
+
+        public ParsedPdfBatch parse2027PdfBatchWithMetadata(InputStream input, int firstPage, int lastPage) throws IOException {
+                byte[] bytes = input.readAllBytes();
+                String sourceSha256;
+                try { sourceSha256=java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256").digest(bytes)); }
+                catch(java.security.NoSuchAlgorithmException impossible) { throw new IllegalStateException(impossible); }
+                ParsedPdfBatch batch = parsePdfBatchWithMetadata(new java.io.ByteArrayInputStream(bytes), sourceSha256, firstPage, lastPage);
+                try (PDDocument document = Loader.loadPDF(bytes)) {
+                        for (ParsedSyllabusSection section : batch.sections()) {
+                                SyllabusImportData target = section.data();
+                                if (Cohort2027VerifiedSourceRecovery.applyReviewed(sourceSha256, section.startPage(), section.endPage(), target)) {
+                                        // Replace the empty scanned extraction with the exact page-reviewed source.
+                                        // No legacy/OCR errors describe this independently reviewed dataset.
+                                        section.issues().clear();
+                                        Cohort2027ImportValidation.validate(target);
+                                        var notes = Cohort2027VerifiedSourceRecovery.reviewedNotes(target);
+                                        for (Object field : (java.util.List<?>) notes.getOrDefault("sourceUnverifiedFields", List.of()))
+                                                section.issues().add(SyllabusImportIssue.builder().severity("WARNING").section("Source")
+                                                        .field("reviewedField").message("SOURCE_UNVERIFIED: " + field + "; raw evidence is retained, no normalized value is inferred.").build());
+                                        continue;
+                                }
+                                if (target.getClos().isEmpty() && target.getTopics().isEmpty() && target.getAssessments().isEmpty()) {
+                                        String executable = System.getenv("TESSERACT_COMMAND");
+                                        if (executable == null || executable.isBlank()) {
+                                                var windows = java.nio.file.Path.of("C:/Program Files/Tesseract-OCR/tesseract.exe");
+                                                executable = java.nio.file.Files.isRegularFile(windows) ? windows.toString() : "tesseract";
+                                        }
+                                        try {
+                                                List<SyllabusImportIssue> recoveredIssues = new ArrayList<>();
+                                                SyllabusImportData recovered = parseText(cleanSourceText(ocrFallback.extract(document,
+                                                        section.startPage(), section.endPage(), executable)), recoveredIssues);
+                                                String code = target.getSourceCourseCode(), name = target.getSourceCourseName();
+                                                for (Field field : SyllabusImportData.class.getDeclaredFields()) {
+                                                        if (Modifier.isStatic(field.getModifiers())) continue;
+                                                        field.setAccessible(true); Object value = field.get(recovered);
+                                                        if (value != null && !(value instanceof String s && s.isBlank())
+                                                                && !(value instanceof java.util.Collection<?> c && c.isEmpty())) field.set(target, value);
+                                                }
+                                                target.setSourceCourseCode(code); target.setSourceCourseName(name);
+                                                section.issues().addAll(recoveredIssues);
+                                                section.issues().add(SyllabusImportIssue.builder().severity("ERROR").section("Source")
+                                                        .field("ocr").message("SOURCE_NOT_VERIFIED: OCR values require source-page verification before automatic import; extraction alone does not establish academic accuracy.").build());
+                                        } catch (IOException | IllegalAccessException error) {
+                                                section.issues().add(SyllabusImportIssue.builder().severity("ERROR").section("Source")
+                                                        .field("ocr").message("SOURCE_NOT_VERIFIED: Scanned source could not be recovered; confirmation is blocked: " + error.getMessage()).build());
+                                        }
+                                }
+                                var recoveryIssues = Cohort2027PdfTableRecovery.recover(document, section.startPage(), section.endPage(), section.data(),
+                                        Cohort2027DsSourceRecovery.supports(sourceSha256));
+                                if(Cohort2027DsSourceRecovery.supports(sourceSha256))
+                                        Cohort2027DsSourceRecovery.warnOnUnverifiedWeeklyReferences(target,section.issues());
+                                Cohort2027VerifiedSourceRecovery.applySourceTables(sourceSha256,section.startPage(),section.endPage(),target);
+                                if(Cohort2027DsSourceRecovery.supports(sourceSha256))
+                                        section.issues().add(SyllabusImportIssue.builder().severity("WARNING").section("Rubric")
+                                                .field("sourceRubric").message("Normalized rubric achievement levels are not inferred from legacy presets. Original rubric text and the PDF source snapshot are retained for review.").build());
+                                if(Cohort2027DsSourceRecovery.supports(sourceSha256))
+                                        section.issues().add(SyllabusImportIssue.builder().severity("WARNING").section("Rubric")
+                                                .field("sourceRubric").message("Normalized rubric achievement levels are not inferred from legacy presets. Original rubric text and the PDF source snapshot are retained for review.").build());
+                                if(!target.getSourceProvenance().getOrDefault("readingList",Map.of()).containsKey("sourceCellRead")
+                                        && target.getReadings().stream().noneMatch(reading -> "RAW_SOURCE".equals(reading.getType()))) {
+                                        var sourceText=new PDFTextStripper();sourceText.setSortByPosition(true);
+                                        sourceText.setStartPage(section.startPage());sourceText.setEndPage(section.endPage());
+                                        preserveRawReadingList2027(cleanSourceText(sourceText.getText(document)),target);
+                                }
+
+                                boolean verifiedImageRows = Cohort2027VerifiedSourceRecovery.apply(sourceSha256, section.startPage(), section.endPage(), target);
+                                for (String incomplete : recoveryIssues) {
+                                        if(verifiedImageRows && !incomplete.startsWith("Weekly")) continue;
+                                        section.issues().add(SyllabusImportIssue.builder().severity(incomplete.startsWith("Weekly") ? "WARNING" : "ERROR").section(incomplete.startsWith("Weekly") ? "Planned Activities" : "Content")
+                                                .field("sourceRows").message(incomplete).build());
+                                }
+                                for (TopicImportData topic : target.getTopics()) {
+                                        if (topic.getWeekNumber() == null) {
+                                                section.issues().add(SyllabusImportIssue.builder().severity("WARNING").section("Content")
+                                                        .field("weekNumber").message("Content is retained separately in source notes; no teaching week or hours will be inferred: " + topic.getName()).build());
+                                        }
+                                        if (topic.getName() != null && topic.getName().length() > 255
+                                                && !target.getSourceProvenance().getOrDefault("content", Map.of()).containsKey("sourceRows")) {
+                                                section.issues().add(SyllabusImportIssue.builder().severity("ERROR").section("Content")
+                                                        .field("name").message("Source topic exceeds storage limit; must be resolved without truncating academic content.").build());
+                                        }
+                                }
+                                try { Cohort2027ImportValidation.validate(target); }
+                                catch (IllegalArgumentException error) {
+                                        section.issues().add(SyllabusImportIssue.builder().severity("ERROR").section("Source")
+                                                .field("identity").message(error.getMessage()).build());
+                                }
+                                var blocking = section.issues().stream().filter(issue -> "ERROR".equalsIgnoreCase(issue.getSeverity())).toList();
+                                if (!blocking.isEmpty()) {
+                                        if (target.getSourceProvenance() == null) target.setSourceProvenance(new LinkedHashMap<>());
+                                        target.getSourceProvenance().computeIfAbsent("importSafety", ignored -> new LinkedHashMap<>()).put("sourceValidation",
+                                                SyllabusImportData.SourceFieldProvenance.builder().state(SyllabusImportData.SourceFieldState.UNRESOLVED)
+                                                        .sourceLabel(blocking.get(0).getMessage()).build());
+                                }
+                        }
+                }
+                return batch;
+        }
+
+        private void preserveRawReadingList2027(String text, SyllabusImportData data) {
+                LabelMatch heading=firstFlexibleLabel(text,0,"Reading list","Bibliography","Tài liệu phục vụ học tập");
+                if(heading==null)return;
+                LabelMatch end=firstFlexibleLabel(text,heading.end(),"Learning Outcomes Matrix","CLO-PLO Mapping Matrix",
+                        "Planned learning activities","Teaching and learning activities","Assessment plan","Date revised","Chuẩn đầu ra môn học");
+                String raw=text.substring(heading.end(),end==null?text.length():end.start()).trim();
+                if(!raw.isBlank())data.setReadings(new ArrayList<>(List.of(SyllabusImportData.ReadingItem.builder().title(raw).type("RAW_SOURCE").build())));
+        }
+
+
+
         private final SyllabusSectionBoundaryDetector boundaryDetector = new SyllabusSectionBoundaryDetector();
 private final PdfOcrFallback ocrFallback =
         new PdfOcrFallback();
@@ -100,6 +214,22 @@ private final PdfOcrFallback ocrFallback =
          */
         public ParsedPdfBatch parsePdfBatchWithMetadata(
                         InputStream inputStream) throws IOException {
+                return parsePdfBatchWithMetadata(inputStream, null);
+        }
+
+        public ParsedPdfBatch parsePdfBatchWithMetadata(InputStream inputStream, int firstPage, int lastPage) throws IOException {
+                return parsePdfBatchWithMetadata(inputStream, null, firstPage, lastPage);
+        }
+
+        private ParsedPdfBatch parsePdfBatchWithMetadata(
+                        InputStream inputStream, String reviewedSourceSha256) throws IOException {
+                return parsePdfBatchWithMetadata(inputStream, reviewedSourceSha256, 1, Integer.MAX_VALUE);
+        }
+
+        private ParsedPdfBatch parsePdfBatchWithMetadata(
+                        InputStream inputStream, String reviewedSourceSha256, int firstPage, int lastPage) throws IOException {
+
+                if (firstPage < 1 || lastPage < firstPage) throw new IllegalArgumentException("Invalid syllabus source page scope");
 
                 try (PDDocument document = Loader.loadPDF(inputStream.readAllBytes())) {
 
@@ -141,10 +271,12 @@ private final PdfOcrFallback ocrFallback =
                         for (int index = 0; index < starts.size(); index++) {
 
                                 int startPage = starts.get(index);
+                                if (startPage < firstPage || startPage > lastPage) continue;
 
                                 int endPage = index + 1 < starts.size()
                                                 ? starts.get(index + 1) - 1
                                                 : pageCount;
+                                endPage = Math.min(endPage, lastPage);
 
                                 stripper.setStartPage(startPage);
                                 stripper.setEndPage(endPage);
@@ -155,14 +287,21 @@ private final PdfOcrFallback ocrFallback =
                                  * KEEP the current field extraction behavior.
                                  * No CLO/topic/assessment/general-info parsing code is replaced.
                                  */
-                                String sectionText =
-        cleanSourceText(
-                stripper.getText(document));
+                                // NEW_2027 already read these exact pages for boundary detection.
+                                // Legacy callers retain their existing section extraction path.
+                                String sectionText = cleanSourceText(reviewedSourceSha256 == null
+                                        ? stripper.getText(document)
+                                        : String.join("", pageTexts.subList(startPage - 1, endPage)));
 
 SyllabusImportData data =
         parseText(
                 sectionText,
                 issues);
+
+// A reviewed source replaces the legacy intermediate result later in NEW_2027.
+// Match the original PDF hash, course and complete page range before avoiding OCR.
+boolean reviewedSource = reviewedSourceSha256 != null
+        && Cohort2027VerifiedSourceRecovery.applyReviewed(reviewedSourceSha256, startPage, endPage, data);
 
 /*
  * Automatic OCR fallback for scanned/image-only syllabus.
@@ -172,7 +311,7 @@ SyllabusImportData data =
  * - OCR runs only when structured extraction is effectively empty;
  * - use OCR only when it recovers more structured evidence.
  */
-if (needsOcrFallback(
+if (!reviewedSource && needsOcrFallback(
         sectionText,
         data)) {
 
@@ -252,7 +391,7 @@ if (data.getSourceCourseName() != null
                                  * evidence is unavailable, the existing text parser remains
                                  * the compatibility fallback.
                                  */
-                                if (applyPositionalWeeklyPlan(
+                                if (!reviewedSource && applyPositionalWeeklyPlan(
                                                 document,
                                                 startPage,
                                                 endPage,
@@ -2113,9 +2252,6 @@ if (data.getSourceCourseName() != null
                          * Competency heading after PDF extraction.
                          * These rows are CLO references, not CLO definitions.
                          */
-                        "Knowledge CLO",
-                        "Skill CLO",
-                        "Attitude CLO",
 
                         "Content The description of the contents",
                         "The description of the contents should clearly indicate",
@@ -2153,7 +2289,24 @@ if (data.getSourceCourseName() != null
                                                 + "(?=\\s+CLO\\s*\\d+\\b\\s*[.:]?\\s+|$)",
                                 Pattern.CASE_INSENSITIVE).matcher(section);
 
-                while (matcher.find()) {
+                String currentCompetency = null;
+
+    if (start >= 0) {
+        String beforeFirstClo = flat.substring(
+                Math.max(0, start - 120),
+                start
+        );
+
+        if (beforeFirstClo.matches("(?is).*\\bKnowledge\\s*")) {
+            currentCompetency = "KNOWLEDGE";
+        } else if (beforeFirstClo.matches("(?is).*\\bSkill\\s*")) {
+            currentCompetency = "SKILL";
+        } else if (beforeFirstClo.matches("(?is).*\\bAttitude\\s*")) {
+            currentCompetency = "ATTITUDE";
+        }
+    }
+
+    while (matcher.find()) {
 
                         int number = Integer.parseInt(
                                         matcher.group(1));
@@ -2164,7 +2317,28 @@ if (data.getSourceCourseName() != null
                                                         "(?i)\\bthe\\s+outcomes\\s+interfaces\\b",
                                                         "the interfaces");
 
-                        String code = "CLO" + number;
+                        Matcher nextGroupMatcher = Pattern.compile(
+                "(?i)\\s+(Knowledge|Skill|Attitude)\\s*$"
+        ).matcher(description);
+
+        String nextGroup = null;
+
+        if (nextGroupMatcher.find()) {
+            nextGroup = nextGroupMatcher.group(1)
+                    .toUpperCase(java.util.Locale.ROOT);
+
+            description = description.substring(
+                    0,
+                    nextGroupMatcher.start()
+            ).trim();
+        }
+
+        description = description.replaceFirst(
+                "(?i)(\\(Program\\s+outcomes?\\s*:[^)]*\\))\\s+\\d{1,2}$",
+                "$1"
+        );
+
+        String code = "CLO" + number;
 
                         CloImportData parsed = CloImportData.builder()
                                         .code(code)
@@ -2172,7 +2346,13 @@ if (data.getSourceCourseName() != null
                                         .orderIndex(number)
                                         .build();
 
-                        CloImportData existing = closByCode.get(code);
+                        parsed.setCompetencyLevel(currentCompetency);
+
+        if (nextGroup != null) {
+            currentCompetency = nextGroup;
+        }
+
+        CloImportData existing = closByCode.get(code);
 
                         if (existing == null
                                         || nullToEmpty(
@@ -2218,7 +2398,7 @@ if (data.getSourceCourseName() != null
                                                                         ""));
 
                         clo.setCompetencyLevel(
-                                        competency.get(number));
+                                        competency.getOrDefault(number, clo.getCompetencyLevel()));
                 }
 
                 /*

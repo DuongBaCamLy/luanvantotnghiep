@@ -238,7 +238,15 @@ private final TargetTemplateProfileResolver targetTemplateProfileResolver;
                     .filter(candidate -> candidate.supports(filename,file.getContentType(),content))
                     .findFirst().orElseThrow(() -> new IllegalArgumentException(
                             "Only genuine PDF or DOCX program documents are supported."));
-            var parsed=parser.parse(content);
+            var sharedScope = parser instanceof com.scse.curriculum.syllabus.importer.parser.PdfProgramDocumentParser
+                    && com.scse.curriculum.syllabus.importer.parser.SharedSpecializationPdfScope.supports(program.getCode())
+                    ? com.scse.curriculum.syllabus.importer.parser.SharedSpecializationPdfScope.extract(content, program.getCode()) : null;
+            var parsed = sharedScope != null
+                    ? ((com.scse.curriculum.syllabus.importer.parser.PdfProgramDocumentParser) parser).parseScoped(content,
+                            "NEW_2027".equals(targetTemplateProfileResolver.resolve(cohort)), sharedScope.firstPage(), sharedScope.lastPage())
+                    : "NEW_2027".equals(targetTemplateProfileResolver.resolve(cohort))
+                    && parser instanceof com.scse.curriculum.syllabus.importer.parser.PdfProgramDocumentParser pdf
+                    ? pdf.parseFor2027(content) : parser.parse(content);
             String sourceType=parser.getClass().getSimpleName().startsWith("Docx") ? "DOCX" : "PDF";
 
             /*
@@ -254,7 +262,7 @@ private final TargetTemplateProfileResolver targetTemplateProfileResolver;
             List<ProgramDocumentParser.ParsedItem> parsedItems = parsed.items();
             if ("PDF".equals(sourceType)) {
                 Set<String> curriculumScope =
-                        ProgramCurriculumScopeExtractor.extractNormalizedCourseCodes(content);
+                        sharedScope == null ? ProgramCurriculumScopeExtractor.extractNormalizedCourseCodes(content) : sharedScope.courseCodes();
 
                 if (curriculumScope.size() >= 10) {
                     Set<String> rawDetectedCodes = parsedItems.stream()
@@ -307,7 +315,8 @@ private final TargetTemplateProfileResolver targetTemplateProfileResolver;
                      * - unknown/ambiguous catalog codes are left untouched and still
                      *   fail explicitly during confirm.
                      */
-                    reconcileExistingCatalogMappingsForOfficialScope(
+                    if (!"NEW_2027".equals(targetTemplateProfileResolver.resolve(cohort))
+                            && (sharedScope == null || currentUserService.getCurrentUser().getRole() == UserRole.ADMIN)) reconcileExistingCatalogMappingsForOfficialScope(
                             scopedItems,
                             programId,
                             cohortId);
@@ -335,9 +344,33 @@ List<SyllabusImportData.TemplateSection> targetTemplateSections =
                         section.data();
 
                 if (itemData != null) {
+                    var recoveredContent = itemData.getSourceProvenance() == null ? null
+                            : itemData.getSourceProvenance().getOrDefault("content", Map.of()).get("sourceRows");
+                    var recoveredWeekly = itemData.getSourceProvenance() == null ? null
+                            : itemData.getSourceProvenance().getOrDefault("plannedActivities", Map.of()).get("sourceRows");
+                    var importSafety = itemData.getSourceProvenance() == null ? null
+                            : itemData.getSourceProvenance().getOrDefault("importSafety", Map.of()).get("sourceValidation");
+                    var reviewedSource = itemData.getSourceProvenance() == null ? null
+                            : itemData.getSourceProvenance().getOrDefault("reviewedSource", Map.of()).get("document");
+                    var sourceAssessmentTable = itemData.getSourceProvenance() == null ? null
+                            : itemData.getSourceProvenance().getOrDefault("assessmentPlan", Map.of()).get("sourceTable");
+                    var sourceVectorTables = itemData.getSourceProvenance() == null ? null
+                            : itemData.getSourceProvenance().getOrDefault("sourceVectorTables", Map.of()).get("document");
                     itemData.setSourceProvenance(
                             SyllabusSourceProvenanceResolver.resolve(
                                     itemData));
+                    if (recoveredContent != null) itemData.getSourceProvenance().computeIfAbsent("content", ignored -> new LinkedHashMap<>())
+                            .put("sourceRows", recoveredContent);
+                    if (recoveredWeekly != null) itemData.getSourceProvenance().computeIfAbsent("plannedActivities", ignored -> new LinkedHashMap<>())
+                            .put("sourceRows", recoveredWeekly);
+                    if (importSafety != null) itemData.getSourceProvenance().computeIfAbsent("importSafety", ignored -> new LinkedHashMap<>())
+                            .put("sourceValidation", importSafety);
+                    if (reviewedSource != null) itemData.getSourceProvenance().computeIfAbsent("reviewedSource", ignored -> new LinkedHashMap<>())
+                            .put("document", reviewedSource);
+                    if (sourceAssessmentTable != null) itemData.getSourceProvenance().computeIfAbsent("assessmentPlan", ignored -> new LinkedHashMap<>())
+                            .put("sourceTable", sourceAssessmentTable);
+                    if (sourceVectorTables != null) itemData.getSourceProvenance().computeIfAbsent("sourceVectorTables", ignored -> new LinkedHashMap<>())
+                            .put("document", sourceVectorTables);
                 }
 
                 List<SyllabusImportIssue> issues = section.issues();
@@ -355,7 +388,7 @@ List<SyllabusImportData.TemplateSection> targetTemplateSections =
                         .issues(issues)
                         .build();
                 SyllabusSourceSnapshot snapshot=null;
-                if("DOCX".equals(sourceType)) snapshot=sourceSnapshotRepository.save(
+                if("DOCX".equals(sourceType) || ("NEW_2027".equals(targetTemplateProfile) && "PDF".equals(sourceType))) snapshot=sourceSnapshotRepository.save(
                         SyllabusSourceSnapshot.builder().sourceDocument(source)
                                 .courseCode(section.data().getSourceCourseCode())
                                 .startBoundary(section.startBoundary()).endBoundary(section.endBoundary())
@@ -577,6 +610,24 @@ List<SyllabusImportData.TemplateSection> targetTemplateSections =
                         request.getProgramId(),
                         request.getCohortId());
 
+        boolean sourceFaithful2027 = "NEW_2027".equals(targetTemplateProfileResolver.resolve(
+                cohortRepository.findById(request.getCohortId()).orElseThrow()));
+        if (sourceFaithful2027) {
+            var selectedCohort = cohortRepository.findById(request.getCohortId()).orElseThrow();
+            if (selectedCohort.getProgram() == null || !Objects.equals(selectedCohort.getProgram().getId(), request.getProgramId()))
+                throw new IllegalArgumentException("NEW_2027 program and cohort do not match.");
+            if (!rawNormalizedCourseCodeCandidates(request.getData().getSourceCourseCode()).contains(normalizeCourseCode(effectiveCourse.getCourseCode())))
+                throw new IllegalArgumentException("NEW_2027 source course code does not explicitly match the selected course; equivalent codes are not inferred.");
+            if (!Objects.equals(requestedCourse.getId(), effectiveCourse.getId()))
+                throw new IllegalArgumentException("NEW_2027 course ID does not match the source course in the selected curriculum.");
+            courseRepository.lockIdentity(effectiveCourse.getId()).orElseThrow(() -> new IllegalArgumentException("Course not found"));
+            CourseProgram selected = courseProgramRepository.findByCourse_IdAndProgram_IdAndCohort_Id(
+                    effectiveCourse.getId(), request.getProgramId(), request.getCohortId())
+                    .orElseThrow(() -> new IllegalArgumentException("NEW_2027 requires an existing exact curriculum assignment; no course is added during import."));
+            if (selected.getSyllabus() != null && !"UPDATE".equalsIgnoreCase(request.getImportMode()))
+                throw new IllegalStateException("NEW_2027 syllabus already exists; duplicate import is blocked and existing content is retained.");
+        }
+
         assertImportedCourseMatches(
                 request.getData(),
                 effectiveCourse,
@@ -644,6 +695,8 @@ List<SyllabusImportData.TemplateSection> targetTemplateSections =
                 throw new IllegalStateException(
                         "UPDATE import repair is allowed only for an empty syllabus draft.");
             }
+            if (sourceFaithful2027 && syllabus.getNotes() != null && !syllabus.getNotes().isBlank())
+                throw new IllegalStateException("NEW_2027 update cannot overwrite existing source notes or user content; use a verified correction instead.");
 
         } else {
 
@@ -683,7 +736,15 @@ List<SyllabusImportData.TemplateSection> targetTemplateSections =
         updateGeneralInformation(
                 syllabus,
                 data);
-        syllabus.setNotes(buildStandardFormNotes(data));
+        if (sourceFaithful2027) {
+            com.scse.curriculum.syllabus.importer.parser.Cohort2027ImportValidation.validate(data);
+        }
+        String importedNotes = buildStandardFormNotes(data, sourceFaithful2027);
+        if (sourceFaithful2027 && (importedNotes == null
+                || importedNotes.getBytes(java.nio.charset.StandardCharsets.UTF_8).length > 65535)) {
+            throw new IllegalArgumentException("NEW_2027 source notes exceed safe storage or could not be serialized; import aborted without truncating content.");
+        }
+        syllabus.setNotes(importedNotes);
 
         /*
          * Update snapshot information
@@ -747,8 +808,8 @@ CourseProgram semesterContext =
                 ? scoped
                 : requestedSelection;
 
-Integer curriculumSemester =
-        resolveCurriculumSemester(
+Integer curriculumSemester = sourceFaithful2027 && semesterContext != null
+        ? semesterContext.getSemesterSuggest() : resolveCurriculumSemester(
                 semesterContext,
                 request.getProgramId(),
                 request.getCohortId(),
@@ -828,15 +889,14 @@ syllabusRepository.saveAndFlush(syllabus);
 
         importTopics(
                 syllabus,
-                data);
+                data, sourceFaithful2027);
 
         importAssessments(
                 syllabus,
-                data);
+                data, sourceFaithful2027);
 
-        importReadings(
-                syllabus,
-                data);
+        // NEW_2027 keeps the source reading list in notes without inventing book usage links.
+        if (!sourceFaithful2027) importReadings(syllabus, data);
 
         saveImportHistory(
         syllabus,
@@ -856,13 +916,15 @@ if (!authorization.assignments().isEmpty()) {
 persistImportedCloPloMappings(
         syllabus,
         request.getProgramId(),
-        safe(data.getCloPloMappings()));
-persistImportedTopicCloMappings(syllabus, data);
+        safe(data.getCloPloMappings()).stream()
+                .filter(mapping -> !sourceFaithful2027 || text(mapping.getValue()).matches("(?i)x{1,3}"))
+                .toList());
+persistImportedTopicCloMappings(syllabus, data, sourceFaithful2027);
 persistImportedAssessmentCloMappings(syllabus, data);
 
 
 return mapToResponse(
-        syllabus);
+        syllabus, sourceFaithful2027);
 
     }
 
@@ -917,6 +979,11 @@ return mapToResponse(
         }
 
         if (matches.isEmpty()) {
+            CourseProgram appendixMapping = reconcileVerifiedDs2021CloudAppendix(request);
+            if (appendixMapping != null) matches = List.of(appendixMapping);
+        }
+
+        if (matches.isEmpty()) {
             boolean existsInCatalog = courseRepository.findAll().stream()
                     .anyMatch(course -> courseCodesEquivalent(
                             course.getCourseCode(),
@@ -966,6 +1033,68 @@ return mapToResponse(
             sourceSnapshotRepository.save(snapshot);
         }
         return response;
+    }
+
+    /**
+     * The supplied DS2021 PDF has an IT164IU appendix (physical pages 354-364)
+     * distinct from IT147IU in its course list. Import all 45 appendices using
+     * their own identities, as requested, without aliasing the two courses.
+     * This insert runs only during confirmation, in the syllabus transaction.
+     */
+    private CourseProgram reconcileVerifiedDs2021CloudAppendix(BulkConfirmSyllabusImportRequest request) {
+        var cohort = cohortRepository.findById(request.getCohortId()).orElseThrow();
+        if (!"DS2021".equalsIgnoreCase(cohort.getName())
+                || request.getSourceDocumentId() == null
+                || !"IT164".equals(normalizeCourseCode(request.getData().getSourceCourseCode()))
+                || !"Cloud Computing".equalsIgnoreCase(request.getData().getSourceCourseName())
+                || !"CREATE".equalsIgnoreCase(request.getImportMode())) return null;
+        if (targetTemplateProfileResolver.isNew2027(cohort)) return null;
+
+        String expectedHash = "8c71516bd33227bc95a10844dda52efdf0c48e20cde127a74596d696a405a15e";
+        SourceDocument source = sourceDocumentRepository.findById(request.getSourceDocumentId())
+                .orElseThrow(() -> new IllegalArgumentException("DS2021 preview source was not found; extract the PDF again."));
+        if (source.getProgram() == null || source.getCohort() == null
+                || !Objects.equals(source.getProgram().getId(), request.getProgramId())
+                || !Objects.equals(source.getCohort().getId(), request.getCohortId())
+                || !"application/pdf".equalsIgnoreCase(source.getContentType())
+                || !expectedHash.equals(source.getSha256())
+                || source.getContent() == null || !expectedHash.equals(sha256(source.getContent()))) {
+            throw new IllegalArgumentException("DS2021 Cloud Computing requires the verified original programme PDF in this Program/Cohort.");
+        }
+
+        List<Course> candidates = courseRepository.findAll().stream()
+                .filter(course -> "IT164".equals(normalizeCourseCode(course.getCourseCode())))
+                .toList();
+        if (candidates.size() != 1 || candidates.get(0).getId() == null
+                || !"Cloud Computing".equalsIgnoreCase(candidates.get(0).getName())) {
+            throw new IllegalArgumentException("DS2021 Cloud Computing course identity is missing or ambiguous in the catalog.");
+        }
+        Course course = candidates.get(0);
+        var authorization = syllabusAccessService.authorizeImport(request.getAssignmentId(), course,
+                request.getProgramId(), request.getCohortId());
+        if (authorization.creator().getRole() != UserRole.ADMIN) {
+            throw new com.scse.curriculum.common.exception.ForbiddenOperationException(
+                    "Only an administrator can add the verified DS2021 appendix mapping.");
+        }
+
+        // Serialize concurrent imports before checking/inserting the exact mapping.
+        courseRepository.lockIdentity(course.getId()).orElseThrow(() -> new IllegalArgumentException("Course not found"));
+        CourseProgram existing = courseProgramRepository.findByCourse_IdAndProgram_IdAndCohort_Id(
+                course.getId(), request.getProgramId(), request.getCohortId()).orElse(null);
+        if (existing != null) {
+            if (existing.getSyllabus() != null) throw new IllegalStateException(
+                    "DS2021 Cloud Computing already has a syllabus; reload the course list before importing again.");
+            return existing;
+        }
+
+        // Elective, semester 7: verified on the IT164IU appendix's first page.
+        // Use source placement, never metadata supplied by the browser.
+        return courseProgramRepository.save(CourseProgram.builder()
+                .course(course).program(cohort.getProgram()).cohort(cohort)
+                .courseType(courseTypeRepository.findByCode("ELECTIVE")
+                        .orElseThrow(() -> new IllegalStateException("Elective course type is unavailable.")))
+                .termCode(CurriculumTerm.HK7).semesterSuggest(7).yearSuggest(4).required(false)
+                .build());
     }
 
     private void assertImportedCourseMatches(
@@ -1837,11 +1966,13 @@ private static void synchronizeCurriculumSemester(
      */
     private void importTopics(
             Syllabus syllabus,
-            SyllabusImportData data) {
+            SyllabusImportData data, boolean sourceFaithful2027) {
 
         int index = 0;
 
         for (TopicImportData item : data.getTopics()) {
+
+            if (sourceFaithful2027 && !com.scse.curriculum.syllabus.importer.parser.Cohort2027ImportValidation.canPersistCanonicalTopic(item)) continue;
 
             Topic topic = Topic.builder()
 
@@ -1870,7 +2001,9 @@ private static void synchronizeCurriculumSemester(
 
                     .selfStudyHours(item.getSelfStudyHours() == null ? 0 : item.getSelfStudyHours())
 
-                    .topicType(com.scse.curriculum.topic.entity.TopicType.LECTURE)
+                    .topicType(sourceFaithful2027
+                            ? com.scse.curriculum.topic.entity.TopicType.valueOf(item.getTopicType().trim().toUpperCase(Locale.ROOT))
+                            : com.scse.curriculum.topic.entity.TopicType.LECTURE)
 
                     .teachingMethod(
                             item.getTeachingMethod())
@@ -1901,7 +2034,7 @@ private static void synchronizeCurriculumSemester(
      */
     private void importAssessments(
             Syllabus syllabus,
-            SyllabusImportData data) {
+            SyllabusImportData data, boolean sourceFaithful2027) {
 
         int index = 0;
 
@@ -1918,7 +2051,8 @@ private static void synchronizeCurriculumSemester(
                     .nameVn(
                             item.getNameVn())
 
-                    .assessmentType(item.getAssessmentType())
+                    .assessmentType(sourceFaithful2027 && (item.getAssessmentType() == null || item.getAssessmentType().isBlank())
+                            ? item.getName() : item.getAssessmentType())
 
                     .weightPercent(
                             item.getWeightPercent() == null ? 0.0f : item.getWeightPercent())
@@ -2067,7 +2201,7 @@ private static void synchronizeCurriculumSemester(
         }
     }
 
-    private void persistImportedTopicCloMappings(Syllabus syllabus, SyllabusImportData data) {
+    private void persistImportedTopicCloMappings(Syllabus syllabus, SyllabusImportData data, boolean sourceFaithful2027) {
         List<Topic> topics = syllabus.getTopics();
         Map<String, Clo> clos = syllabus.getClos().stream().collect(Collectors.toMap(
                 clo -> canonicalClo(clo.getCode()), clo -> clo, (first, ignored) -> first));
@@ -2076,10 +2210,30 @@ private static void synchronizeCurriculumSemester(
         for (TopicCloMappingItem mapping : safe(data.getTopicCloMappings())) {
             Integer sourceIndex = mapping.getTopicIndex();
             if (sourceIndex == null || sourceIndex < 1) continue;
-            Topic topic = topics.stream()
+            Topic topic;
+            TeachingLevel verifiedLevel = null;
+            if (sourceFaithful2027) {
+                List<TopicImportData> sourceTopics = safe(data.getTopics());
+                if (sourceIndex > sourceTopics.size()) continue;
+                TopicImportData source = sourceTopics.get(sourceIndex - 1);
+                if (!com.scse.curriculum.syllabus.importer.parser.Cohort2027ImportValidation.canPersistCanonicalTopic(source)) continue;
+                List<Topic> matches = topics.stream().filter(candidate ->
+                        Objects.equals(candidate.getName(), source.getName())
+                        && Objects.equals(candidate.getWeekNumber(), source.getWeekNumber())
+                        && Objects.equals(candidate.getTeachingHours(), source.getTeachingHours())
+                        && Objects.equals(candidate.getLabHours(), source.getLabHours())
+                        && Objects.equals(candidate.getSelfStudyHours(), source.getSelfStudyHours())).toList();
+                if (matches.size() != 1) continue;
+                topic = matches.get(0);
+                String level = text(source.getTeachingLevel() != null ? source.getTeachingLevel() : source.getContentLevel()).toUpperCase(Locale.ROOT);
+                if (!level.matches("[ITU](?:\\s*[,/]\\s*[ITU])*")) continue;
+                verifiedLevel = level.contains("U") ? TeachingLevel.A : level.contains("T") ? TeachingLevel.D : TeachingLevel.I;
+            } else {
+                topic = topics.stream()
                     .filter(candidate -> Objects.equals(candidate.getWeekNumber(), sourceIndex))
                     .findFirst()
                     .orElse(sourceIndex <= topics.size() ? topics.get(sourceIndex - 1) : null);
+            }
             if (topic == null) continue;
             Clo clo = clos.get(canonicalClo(mapping.getCloCode()));
             if (topic.getId() == null || clo == null || clo.getId() == null) continue;
@@ -2089,7 +2243,7 @@ private static void synchronizeCurriculumSemester(
                     .id(new TopicCloId(topic.getId(), clo.getId()))
                     .topic(topic)
                     .clo(clo)
-                    .teachingLevel(resolveImportedTeachingLevel(topic, data))
+                    .teachingLevel(sourceFaithful2027 ? verifiedLevel : resolveImportedTeachingLevel(topic, data))
                     .build());
         }
         topicCloRepository.saveAll(rows);
@@ -2194,9 +2348,12 @@ private static void synchronizeCurriculumSemester(
      * =====================================================
      */
     private SyllabusResponse mapToResponse(
-            Syllabus syllabus) {
+            Syllabus syllabus, boolean sourceFaithful2027) {
 
         return SyllabusResponse.builder()
+
+                .notes(sourceFaithful2027 ? syllabus.getNotes() : null)
+                .targetTemplateProfile(sourceFaithful2027 ? "NEW_2027" : null)
 
                 .id(
                         syllabus.getId())
@@ -2496,9 +2653,42 @@ private String serializeImportedRubrics(
      * standard syllabus form. These values do not have dedicated relational
      * columns yet; without this snapshot they disappear after bulk confirm.
      */
-    private String buildStandardFormNotes(SyllabusImportData data) {
+    private String buildStandardFormNotes(SyllabusImportData data, boolean sourceFaithful2027) {
         Map<String, Object> notes = new LinkedHashMap<>();
         notes.put("schemaVersion", 1);
+        if (sourceFaithful2027) {
+            notes.put("sourceFaithful2027", true);
+            notes.put("sourceAssessmentMissingFields",safe(data.getAssessments()).stream().map(a ->
+                    com.scse.curriculum.syllabus.template.SourceAssessmentValues.missing(a.getOrderIndex(),a.getName(),a.getWeightPercent(),a.getMinScore(),a.getMaxScore())).toList());
+            notes.putAll(com.scse.curriculum.syllabus.importer.parser.Cohort2027VerifiedSourceRecovery.reviewedNotes(data));
+            var supplemental=new LinkedHashMap<String,Object>(com.scse.curriculum.syllabus.importer.parser.Cohort2027VerifiedSourceRecovery.vectorNotes(data));
+            if(!supplemental.isEmpty())notes.put("sourceSupplementalSections",supplemental);
+            var vectorDocument=data.getSourceProvenance().getOrDefault("sourceVectorTables",Map.of()).get("document");
+            if(vectorDocument!=null) {
+                var parts=vectorDocument.getSourceLabel().split(":");
+                notes.put("sourceImportEvidence",Map.of("sourceSha256",parts[0],"courseCode",data.getSourceCourseCode(),
+                        "startPage",Integer.parseInt(parts[1]),"endPage",Integer.parseInt(parts[2]),
+                        "method","Original PDF source cells; independent field and boundary comparison"));
+            }
+            notes.put("sourceProvenance", data.getSourceProvenance());
+            var sourceAssessmentTable = data.getSourceProvenance().getOrDefault("assessmentPlan", Map.of()).get("sourceTable");
+            if (sourceAssessmentTable != null) {
+                try {
+                    Map<String,Object> table=objectMapper.readValue(sourceAssessmentTable.getSourceLabel(), new com.fasterxml.jackson.core.type.TypeReference<Map<String,Object>>(){});
+                    supplemental.put("10",List.of(table));
+                    notes.put("sourceSupplementalSections",supplemental);
+                } catch (java.io.IOException error) { throw new IllegalArgumentException("Cannot preserve the source assessment table",error); }
+            }
+            notes.put("sourceWeeklyReviewRequired", data.getSourceProvenance() != null
+                    && data.getSourceProvenance().getOrDefault("plannedActivities", Map.of()).containsKey("sourceRows")
+                    && data.getSourceProvenance().get("plannedActivities").get("sourceRows").getState() == SyllabusImportData.SourceFieldState.UNRESOLVED);
+            notes.put("sourceSemester", text(data.getSemester()));
+            notes.put("readingUsagePolicy", "SOURCE_UNSPECIFIED");
+            notes.put("sourceReadingList", safe(data.getReadings()).stream()
+                    .filter(reading -> "RAW_SOURCE".equals(reading.getType()))
+                    .map(SyllabusImportData.ReadingItem::getTitle).collect(Collectors.joining("\n")));
+            notes.put("sourceAlignmentPreserved", !safe(data.getCloPloMappings()).isEmpty());
+        }
         notes.put("internalNotes", "");
         notes.put("personResponsible", text(data.getPersonResponsible()));
         notes.put("dateRevised", data.getDateRevised() == null ? "" : data.getDateRevised().toString());
@@ -2521,7 +2711,7 @@ private String serializeImportedRubrics(
             String plo = text(mapping.getPloCode());
             if (!clo.isBlank() && !plo.isBlank()) {
                 cloPloMatrix.computeIfAbsent(clo, ignored -> new LinkedHashMap<>())
-                        .put(plo, text(mapping.getValue()).toLowerCase());
+                        .put(plo, sourceFaithful2027 ? text(mapping.getValue()) : text(mapping.getValue()).toLowerCase());
             }
         });
         notes.put("cloPloMatrix", cloPloMatrix);
@@ -2529,16 +2719,47 @@ private String serializeImportedRubrics(
         Map<String, Map<String, String>> topicDetails = new LinkedHashMap<>();
         List<TopicImportData> topics = safe(data.getTopics());
         List<WeeklyActivityItem> weekly = safe(data.getWeeklyActivities());
+        if (sourceFaithful2027) {
+            List<Map<String, Object>> sourceRows = new ArrayList<>();
+            for (int index = 0; index < topics.size(); index++) {
+                TopicImportData topic = topics.get(index);
+                final int sourceIndex = index + 1;
+                Map<String, Object> row = new LinkedHashMap<>();
+                row.put("name", text(topic.getName()));
+                row.put("nameVn", text(topic.getNameVn()));
+                row.put("weight", text(topic.getContentWeight()));
+                row.put("level", text(topic.getTeachingLevel() != null ? topic.getTeachingLevel() : topic.getContentLevel()));
+                row.put("weekNumber", topic.getWeekNumber());
+                row.put("teachingHours", topic.getTeachingHours());
+                row.put("labHours", topic.getLabHours());
+                row.put("selfStudyHours", topic.getSelfStudyHours());
+                row.put("topicType", topic.getTopicType());
+                if (topic.getNotes() != null) {
+                    try {
+                        JsonNode metadata = objectMapper.readTree(topic.getNotes());
+                        for (String key : List.of("sourceWeightRaw", "sourceWeightState", "sourcePage"))
+                            if (metadata.has(key)) row.put(key, objectMapper.convertValue(metadata.get(key), Object.class));
+                    } catch (JsonProcessingException ignored) { /* Preserve other topic notes in the canonical field. */ }
+                }
+                row.put("relatedCloCodes", safe(data.getTopicCloMappings()).stream()
+                        .filter(mapping -> Objects.equals(mapping.getTopicIndex(), sourceIndex))
+                        .map(mapping -> canonicalClo(mapping.getCloCode()))
+                        .filter(code -> !code.isBlank()).distinct().toList());
+                sourceRows.add(row);
+            }
+            notes.put("sourceContentRows", sourceRows);
+        }
         for (int index = 0; index < topics.size(); index++) {
             TopicImportData topic = topics.get(index);
             int topicNumber = index + 1;
             WeeklyActivityItem activity = weekly.stream()
-                    .filter(item -> Objects.equals(item.getWeek(), topic.getWeekNumber()))
+                    .filter(item -> (!sourceFaithful2027 || topic.getWeekNumber() != null)
+                            && Objects.equals(item.getWeek(), topic.getWeekNumber()))
                     .findFirst().orElse(null);
             Map<String, String> detail = new LinkedHashMap<>();
             detail.put("clo", safe(data.getTopicCloMappings()).stream()
                     .filter(mapping -> Objects.equals(mapping.getTopicIndex(), topicNumber)
-                            || Objects.equals(mapping.getTopicIndex(), topic.getWeekNumber()))
+                            || (!sourceFaithful2027 && Objects.equals(mapping.getTopicIndex(), topic.getWeekNumber())))
                     .map(mapping -> canonicalClo(mapping.getCloCode()))
                     .filter(value -> !value.isBlank()).distinct().collect(Collectors.joining(", ")));
             if (detail.get("clo").isBlank() && activity != null) detail.put("clo", canonicalCloList(activity.getClo()));
@@ -2548,7 +2769,7 @@ private String serializeImportedRubrics(
             detail.put("level", text(topic.getTeachingLevel() != null
                     ? topic.getTeachingLevel() : topic.getContentLevel()));
             detail.put("weight", text(topic.getContentWeight() != null
-                    ? topic.getContentWeight() : topic.getTeachingHours()));
+                    ? topic.getContentWeight() : sourceFaithful2027 ? null : topic.getTeachingHours()));
             topicDetails.put(String.valueOf(index), detail);
         }
         notes.put("topicDetails", topicDetails);
@@ -2557,10 +2778,10 @@ private String serializeImportedRubrics(
         for (int index = 0; index < weekly.size(); index++) {
             WeeklyActivityItem activity = weekly.get(index);
             Map<String, Object> row = new LinkedHashMap<>();
-            row.put("week", activity.getWeek() == null ? index + 1 : activity.getWeek());
+            row.put("week", sourceFaithful2027 ? activity.getWeek() : activity.getWeek() == null ? index + 1 : activity.getWeek());
             row.put("topic", text(activity.getTopic()));
             row.put("clo", canonicalCloList(activity.getClo()));
-            row.put("assessments", resolveAssessmentNames(data, activity.getAssessments()));
+            row.put("assessments", sourceFaithful2027 ? text(activity.getAssessments()) : resolveAssessmentNames(data, activity.getAssessments()));
             row.put("learningActivities", text(activity.getLearningActivities()));
             row.put("resources", text(activity.getResources()));
             plannedActivities.add(row);
@@ -2583,20 +2804,23 @@ private String serializeImportedRubrics(
         }
         notes.put("assessmentCloMatrix", assessmentMatrix);
 
-        notes.put("readings", safe(data.getReadings()).stream().map(reading -> {
+        notes.put("readings", safe(data.getReadings()).stream()
+                .filter(reading -> !sourceFaithful2027 || !"RAW_SOURCE".equals(reading.getType())).map(reading -> {
             Map<String, Object> row = new LinkedHashMap<>();
             row.put("title", text(reading.getTitle()));
             row.put("author", text(reading.getAuthor()));
             row.put("publisher", text(reading.getPublisher()));
             row.put("year", reading.getYear() == null ? "" : String.valueOf(reading.getYear()));
-            row.put("usageType", "REQUIRED");
+            row.put("usageType", sourceFaithful2027 ? "" : "REQUIRED");
             return row;
         }).toList());
         notes.put("assessmentPassNote", text(data.getAssessmentPassNote()));
         notes.put("contentNote", text(data.getContentNote()));
 
         try {
-            return objectMapper.writeValueAsString(notes);
+            String serialized = objectMapper.writeValueAsString(notes);
+            return sourceFaithful2027 ? com.scse.curriculum.syllabus.template.Ds2027ReadingNotes.forDisplay(
+                    serialized, data.getSourceCourseCode(), "NEW_2027") : serialized;
         } catch (JsonProcessingException exception) {
             throw new IllegalStateException("Cannot preserve imported syllabus form data", exception);
         }

@@ -35,8 +35,10 @@ import { dashboardApi } from "@/api/dashboardApi"
 import { courseProgramApi } from "@/api/courseProgramApi"
 import { programApi } from "@/api/programApi"
 import { syllabusPdfApi, syllabusWordApi } from "@/api/syllabusPdfApi"
+import { toast } from "sonner"
 import { syllabusApi } from "@/api/syllabusApi"
 import { syllabusImportApi } from "@/api/syllabusImportApi"
+import SyllabusReviewDetailsDialog from "@/components/approval/SyllabusReviewDetailsDialog"
 import AddSyllabusDialog from "@/components/syllabus/AddSyllabusDialog"
 import CloneSyllabusDialog from "@/components/syllabus/CloneSyllabusDialog"
 import { Button } from "@/components/ui/button"
@@ -62,6 +64,8 @@ import { useSubmitSyllabus } from "@/hooks/useSubmitSyllabus"
 import { useSyllabuses } from "@/hooks/useSyllabuses"
 import { getSyllabusBasePath } from "@/lib/programContext"
 import { saveSyllabusImportDraft } from "@/lib/syllabusImportDraft"
+import { canConfirmDs2021CloudAppendix, resolveDs2021ChemistryMapping, resolveEngineeringChemistryMapping } from "@/lib/ds2021ImportMapping"
+import { engineeringCohortProgramIds } from "@/lib/sharedEngineeringCohorts"
 import { validateNew2027TargetTemplateResponse } from "@/lib/syllabusComparisonTemplate"
 import {
   SYLLABUS_CANONICAL_STATUSES,
@@ -742,6 +746,10 @@ export default function SyllabusListPage() {
 
   const [deleteOneRunning, setDeleteOneRunning] = useState(false)
   const [deleteOneError, setDeleteOneError] = useState("")
+  const [reviewDetails, setReviewDetails] = useState<Syllabus | null>(null)
+  const [submitTarget, setSubmitTarget] = useState<Syllabus | null>(null)
+  const [submitFeedback, setSubmitFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null)
+  const [submissionError, setSubmissionError] = useState("")
   const [submissionValidation, setSubmissionValidation] = useState<SubmissionValidationResponse | null>(null)
 
   const [
@@ -957,10 +965,65 @@ export default function SyllabusListPage() {
                 ),
             )
 
-        const mapping =
-          mappings[0]
+        const isCs2021ChemistryAlias =
+  normalizeImportCourseCode(sourceCode) === "CHE011" &&
+  /^chemistry for engineers?$/i.test(
+    String(item.preview.data.sourceCourseName ?? "")
+      .replace(/\s+/g, " ")
+      .trim()
+  ) &&
+  cohorts.some(
+    (cohort) =>
+      Number(cohort.id) === selectedCohortId &&
+      String(cohort.name ?? "").trim().toUpperCase() === "CS2021"
+  )
 
-        if (!mapping) {
+const aliasMappings =
+  mappings.length === 0 && isCs2021ChemistryAlias
+    ? currentCoursePrograms.filter(
+        (candidate) =>
+          Number(candidate.programId) === selectedProgramId &&
+          Number(candidate.cohortId) === selectedCohortId &&
+          normalizeImportCourseCode(candidate.courseCode) === "CH011" &&
+          /^chemistry for engineers?$/i.test(
+            String(candidate.courseName ?? "")
+              .replace(/\s+/g, " ")
+              .trim()
+          )
+      )
+    : []
+
+if (aliasMappings.length > 1) {
+  throw new Error(
+    "Import stopped: ambiguous CH011IU CourseProgram mappings in CS2021."
+  )
+}
+
+const mapping = mappings[0] ?? aliasMappings[0] ?? resolveDs2021ChemistryMapping(currentCoursePrograms, {
+  programId: selectedProgramId,
+  cohortId: selectedCohortId,
+  cohortName: cohorts.find((cohort) => Number(cohort.id) === selectedCohortId)?.name,
+  sourceCode,
+  sourceName: item.preview.data.sourceCourseName,
+}) ?? resolveEngineeringChemistryMapping(currentCoursePrograms, {
+  programId: selectedProgramId,
+  cohortId: selectedCohortId,
+  cohortName: cohorts.find((cohort) => Number(cohort.id) === selectedCohortId)?.name,
+  sourceCode,
+  sourceName: item.preview.data.sourceCourseName,
+  targetTemplateProfile: response.targetTemplateProfile,
+})
+
+        const resolveCloudOnServer = !isNew2027Target && !mapping && canConfirmDs2021CloudAppendix({
+          cohortName: cohorts.find((cohort) => Number(cohort.id) === selectedCohortId)?.name,
+          sourceType: response.sourceType,
+          sourceDocumentId: response.sourceDocumentId,
+          sourceCode,
+          sourceName: item.preview.data.sourceCourseName,
+          isInstructor,
+        })
+
+        if (!mapping && !resolveCloudOnServer) {
           throw new Error(
             `Import stopped: no CourseProgram mapping found for ${sourceCode} in the selected Program/Cohort.`,
           )
@@ -968,12 +1031,12 @@ export default function SyllabusListPage() {
 
         const existingSyllabusId =
           Number(
-            mapping.syllabusId ?? 0,
+            mapping?.syllabusId ?? 0,
           )
 
         const existingStatus =
           String(
-            mapping.syllabusStatus ?? "",
+            mapping?.syllabusStatus ?? "",
           )
             .trim()
             .toUpperCase()
@@ -1018,7 +1081,7 @@ export default function SyllabusListPage() {
                   (assignment) =>
                     assignment.courseId
                     === Number(
-                      mapping.courseId,
+                      mapping?.courseId,
                     ),
                 )
             : undefined
@@ -1030,6 +1093,8 @@ export default function SyllabusListPage() {
 
             sourceSnapshotId:
               item.sourceSnapshotId,
+
+            sourceDocumentId: resolveCloudOnServer ? response.sourceDocumentId : undefined,
 
             programId:
               selectedProgramId,
@@ -1409,6 +1474,7 @@ export default function SyllabusListPage() {
     || "Selected program"
   const cohortOptions =
     useMemo(() => {
+      const engineeringPrograms = engineeringCohortProgramIds(programs, selectedMajorCode)
       return cohorts
         .filter(
           (cohort) =>
@@ -1417,8 +1483,9 @@ export default function SyllabusListPage() {
               || cohort.id === selectedCohortId
             )
             && (
-              selectedProgramId === undefined
-              || cohort.programId === selectedProgramId
+              engineeringPrograms
+                ? engineeringPrograms.has(cohort.programId)
+                : selectedProgramId === undefined || cohort.programId === selectedProgramId
             ),
         )
         .slice()
@@ -1431,6 +1498,8 @@ export default function SyllabusListPage() {
       cohorts,
       selectedCohortId,
       selectedProgramId,
+      selectedMajorCode,
+      programs,
     ])
 
   const majorOptions =
@@ -2280,40 +2349,32 @@ export default function SyllabusListPage() {
       setDeleteOneRunning(false)
     }
   }
-  const handleSubmit = (
-    item: Syllabus,
-  ) => {
-    if (!canSubmit(item)) {
-      return
-    }
+  const handleSubmit = (item: Syllabus) => {
+    if (!canSubmit(item)) return
+    setSubmissionError("")
+    setSubmitFeedback(null)
+    setSubmitTarget(item)
+  }
 
-    const confirmed =
-      window.confirm(
-        `Submit syllabus ${item.courseCode} for Head of Department review?`,
-      )
-
-    if (!confirmed) {
-      return
-    }
-
-    submitMutation.mutate(
-      item.id,
-      {
-        onSuccess: () =>
-          alert(
-            "Syllabus submitted successfully. It is awaiting Head of Department review.",
-          ),
-
-        onError: (error: unknown) => {
-          const response = (isAxiosError<{ message?: string; error?: string; issues?: SubmissionValidationIssue[] }>(error) ? error.response?.data : undefined) as SubmissionValidationResponse | undefined
-          if ((isAxiosError(error) ? error.response?.status : undefined) === 422 && Array.isArray(response?.issues)) {
-            setSubmissionValidation(response)
-            return
-          }
-          alert(response?.message || "Unable to submit the syllabus.")
-        },
+  const confirmSubmission = () => {
+    if (!submitTarget || !canSubmit(submitTarget) || submitMutation.isPending) return
+    submitMutation.mutate(submitTarget.id, {
+      onSuccess: () => {
+        setSubmitTarget(null)
+        setSubmitFeedback({ type: "success", message: "Syllabus submitted successfully. It is awaiting Head of Department review." })
       },
-    )
+      onError: (error: unknown) => {
+        const response = (isAxiosError<SubmissionValidationResponse>(error) ? error.response?.data : undefined)
+        if ((isAxiosError(error) ? error.response?.status : undefined) === 422 && Array.isArray(response?.issues)) {
+          setSubmitTarget(null)
+          setSubmissionValidation(response)
+          return
+        }
+        const message = response?.message || "Unable to submit the syllabus. Please try again."
+        setSubmissionError(message)
+        setSubmitFeedback({ type: "error", message })
+      },
+    })
   }
 
   const handleClone = (
@@ -2433,13 +2494,14 @@ export default function SyllabusListPage() {
         } else {
           await syllabusPdfApi.downloadPreview(item.id, fallbackName)
         }
+        toast.success("PDF document exported.")
       } catch (error: unknown) {
         const message =
           await getPdfDownloadErrorMessage(
             error,
           )
 
-        alert(
+        toast.error(
           message
           || "Unable to export the official syllabus PDF.",
         )
@@ -2455,14 +2517,16 @@ export default function SyllabusListPage() {
     try {
       setDownloadingWordId(item.id)
       if (original) await syllabusWordApi.downloadOriginal(item.id)
-      else await syllabusWordApi.downloadCurrent(item.id)
+      else await syllabusWordApi.downloadCurrent(item.id,
+        `Syllabus_${String(item.courseCode).replace(/[^a-zA-Z0-9._-]+/g, "_")}_V${item.versionNumber}_Current.docx`)
+      toast.success(original ? "Original Word document downloaded." : "Word document exported.")
     } catch (error: unknown) {
       const blob = (isAxiosError<{ message?: string; error?: string; issues?: SubmissionValidationIssue[] }>(error) ? error.response?.data : undefined)
-      let message = "Word export is available for syllabuses imported from a DOCX source."
+      let message = "Unable to export the Word document. Please try again."
       if (blob instanceof Blob) {
         try { message = JSON.parse(await blob.text())?.message || message } catch { /* keep fallback */ }
       }
-      alert(message)
+      toast.error(message)
     } finally {
       setDownloadingWordId(null)
     }
@@ -2506,7 +2570,7 @@ export default function SyllabusListPage() {
 
   const pageDescription =
     isDeptHead
-      ? "Review syllabus versions within your managed Major, track the Department Head and Dean workflow, inspect review history, and access approved official PDFs."
+      ? "Review syllabus versions within your managed Major, track department review and shared final approval, inspect review history, and access approved official PDFs."
       : isDean
         ? "Monitor syllabus versions, final-review status, official PDFs, and complete review history across the School."
         : isAdmin
@@ -2516,6 +2580,35 @@ export default function SyllabusListPage() {
   return (
     <div data-admin-page="SyllabusListPage" className="min-h-screen -m-6 bg-[#f7faf9] p-6 text-slate-900 md:-m-10 md:p-8">
       <div className="mx-auto max-w-[1550px] space-y-5">
+        {submitFeedback && <div role={submitFeedback.type === "error" ? "alert" : "status"}
+          className={`rounded-xl border p-4 text-sm ${submitFeedback.type === "success" ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-rose-200 bg-rose-50 text-rose-800"}`}>
+          {submitFeedback.message}
+        </div>}
+        {reviewDetails && <SyllabusReviewDetailsDialog syllabus={reviewDetails}
+          syllabusPath={`${basePath}/${reviewDetails.id}`} onClose={() => setReviewDetails(null)} />}
+        <Dialog open={Boolean(submitTarget)} onOpenChange={open => { if (!open && !submitMutation.isPending) setSubmitTarget(null) }}>
+          <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-[#17343d]"><Send className="size-5 text-[#007d84]" />Submit for Department Review</DialogTitle>
+              <DialogDescription className="leading-6">Confirm this syllabus version is ready for academic review. The Department Head will review it before final approval by the Dean or Dean Secretary.</DialogDescription>
+            </DialogHeader>
+            {submitTarget && <dl className="grid grid-cols-2 gap-4 rounded-xl border border-[#d7e5e8] bg-[#f4faf9] p-4 text-sm">
+              <div className="col-span-2"><dt className="text-xs text-slate-500">Course</dt><dd className="mt-1 font-semibold text-[#17343d]">{submitTarget.courseCode} · {submitTarget.courseName}</dd></div>
+              <div><dt className="text-xs text-slate-500">Version</dt><dd className="mt-1 font-semibold">{formatVersionLabel(submitTarget.versionNumber, submitTarget.versionLabel)}</dd></div>
+              <div><dt className="text-xs text-slate-500">Instructor</dt><dd className="mt-1 break-words font-semibold">{submitTarget.responsibleInstructors || submitTarget.createdByUsername || "Not recorded"}</dd></div>
+            </dl>}
+            <p className="rounded-lg border border-amber-100 bg-amber-50 p-3 text-xs leading-5 text-amber-900">After submission, this version will follow the review workflow. Any requested changes will be recorded with reviewer feedback.</p>
+            {submissionError && <p role="alert" className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">{submissionError}</p>}
+            <DialogFooter>
+              <Button variant="outline" disabled={submitMutation.isPending} onClick={() => setSubmitTarget(null)}>Cancel</Button>
+              <Button className="bg-[#007d84] text-white hover:bg-[#006d73]" disabled={submitMutation.isPending} onClick={confirmSubmission}>
+                {submitMutation.isPending ? <LoaderCircle className="size-4 animate-spin" /> : <Send className="size-4" />}
+                {submitMutation.isPending ? "Submitting…" : "Submit Syllabus"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
         <section className="relative overflow-hidden rounded-2xl border border-[#d7e5e8] bg-white shadow-sm">
           <div className="absolute inset-x-0 top-0 h-[3px] bg-gradient-to-r from-[#007d84] via-[#15949a] to-[#f0a72f]" />
 
@@ -2627,7 +2720,7 @@ export default function SyllabusListPage() {
                 </p>
 
                 <p className="mt-1 text-sm text-blue-700">
-                  Use the History action on a syllabus to inspect its approval trail and review comments.
+                  Use View Review on a syllabus to explore submission dates, decisions and reviewer feedback by version.
                 </p>
               </div>
             </div>
@@ -2952,8 +3045,8 @@ export default function SyllabusListPage() {
 
         <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[1470px] text-sm">
-              <thead className="border-b border-slate-200 bg-slate-50 text-[10px] font-bold uppercase tracking-[0.08em] text-slate-500">
+            <table className="w-full text-sm max-lg:block lg:min-w-[1470px]">
+              <thead className="max-lg:sr-only border-b border-slate-200 bg-slate-50 text-[10px] font-bold uppercase tracking-[0.08em] text-slate-500">
                 <tr>
                   <th className="w-14 px-4 py-3 text-center">
                     No.
@@ -2980,7 +3073,7 @@ export default function SyllabusListPage() {
                   </th>
 
                   <th className="px-4 py-3 text-left">
-                    Created / Imported By
+                    Instructor / Created By
                   </th>
 
                   <th className="px-4 py-3 text-left">
@@ -2988,7 +3081,7 @@ export default function SyllabusListPage() {
                   </th>
 
                   <th className="px-4 py-3 text-left">
-                    Final Approval Date
+                    Submission / Final Approval
                   </th>
 
                   <th className="px-4 py-3 text-right">
@@ -2997,7 +3090,7 @@ export default function SyllabusListPage() {
                 </tr>
               </thead>
 
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-slate-100 max-lg:block max-lg:divide-y-0">
                 {catalogRows.length === 0 ? (
                   <tr>
                     <td
@@ -3030,7 +3123,7 @@ export default function SyllabusListPage() {
                       return (
                         <tr
                           key={item.id}
-                          className="transition-colors hover:bg-[#f8fbfb]"
+                          className="transition-colors hover:bg-[#f8fbfb] max-lg:m-4 max-lg:grid max-lg:grid-cols-2 max-lg:gap-4 max-lg:rounded-xl max-lg:border max-lg:border-slate-200 max-lg:p-4 max-lg:shadow-sm max-lg:[&>td]:block max-lg:[&>td]:min-w-0 max-lg:[&>td]:p-0 max-lg:[&>td:first-child]:hidden max-lg:[&>td:nth-child(2)]:col-span-2 max-lg:[&>td:last-child]:col-span-2 max-lg:[&>td:last-child>div]:justify-start"
                         >
                           <td className="w-14 px-4 py-4 text-center font-mono text-xs font-semibold text-slate-500">
                             {index + 1}
@@ -3064,6 +3157,7 @@ export default function SyllabusListPage() {
                           </td>
 
                           <td className="px-4 py-4">
+                            <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-slate-500 lg:hidden">Version</span>
                             <span className="font-medium text-slate-700">
                               {formatVersionLabel(item.versionNumber, item.versionLabel)}
                             </span>
@@ -3076,31 +3170,35 @@ export default function SyllabusListPage() {
                           </td>
 
                           <td className="px-4 py-4">
+                            <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-slate-500 lg:hidden">Program</span>
                             <span className="inline-flex max-w-[300px] rounded-full border border-sky-200 bg-sky-50 px-2.5 py-1 text-xs font-semibold text-sky-700">
                               {displayProgram !== "N/A" ? displayProgram : displayMajor}
                             </span>
                           </td>
 
                           <td className="px-4 py-4">
+                            <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-slate-500 lg:hidden">Cohort</span>
                             <p className="font-medium text-slate-700">
                               {displayCohort}
                             </p>
                           </td>
 
                           <td className="px-4 py-4">
+                            <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-slate-500 lg:hidden">Semester</span>
                             <p className="font-medium text-slate-700">
                               {displaySemester}
                             </p>
                           </td>
 
                           <td className="px-4 py-4">
+                            <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-slate-500 lg:hidden">Instructor / Created By</span>
                             <p className="font-medium text-slate-700">
-                              {item.createdByUsername
-                                || "N/A"}
+                              {item.responsibleInstructors || item.createdByUsername || "Not recorded"}
                             </p>
                           </td>
 
                           <td className="px-4 py-4">
+                            <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-slate-500 lg:hidden">Status</span>
                             <span
                               className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-bold ${getStatusClass(item.status, role)}`}
                             >
@@ -3112,6 +3210,9 @@ export default function SyllabusListPage() {
                           </td>
 
                           <td className="px-4 py-4 text-xs text-slate-600">
+                            <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-slate-500 lg:hidden">Submission / Final Approval</span>
+                            <p className="mb-2 whitespace-nowrap"><span className="font-semibold text-slate-500">Submitted: </span>{item.submittedAt ? formatDateTime(item.submittedAt) : "Not submitted"}</p>
+                            {item.approvedByUsername && <p className="mb-1 text-emerald-700">Reviewed by {item.approvedByUsername}</p>}
                             {itemStatus === "APPROVED"
                               ? (
                                 item.approvedAt
@@ -3152,16 +3253,14 @@ export default function SyllabusListPage() {
                                   variant="outline"
                                   size="sm"
                                   className="h-8 gap-1.5 border-blue-200 bg-blue-50 px-2.5 text-blue-700 hover:bg-blue-100 hover:text-blue-800"
-                                  title={`View history for ${item.courseCode}`}
+                                  title={`View review for ${item.courseCode}`}
                                   onClick={() =>
-                                    navigate(
-                                      `${basePath}/${item.id}#approval-history`,
-                                    )
+                                    setReviewDetails(item)
                                   }
                                 >
                                   <History className="size-3.5" />
                                   <span className="text-xs">
-                                    History
+                                    View Review
                                   </span>
                                 </Button>
                               )}
@@ -3211,22 +3310,22 @@ export default function SyllabusListPage() {
                                 </Button>
                               )}
 
-                              {String(item.sourceType ?? "").toUpperCase() === "IMPORT_DOCX" && <>
+                              {["INSTRUCTOR", "ADMIN", "DEPT_HEAD", "DEAN"].includes(role) && <>
                                 <Button type="button" variant="outline" size="sm"
                                   className="h-8 gap-1.5 border-blue-200 bg-blue-50 px-2.5 text-blue-700 hover:bg-blue-100"
                                   disabled={downloadingWordId !== null}
-                                  title="Export Word using the imported source template"
+                                  title="Export the saved syllabus as an editable Word document"
                                   onClick={() => void handleDownloadWord(item)}>
                                   {downloadingWordId === item.id ? <LoaderCircle className="size-3.5 animate-spin" /> : <Download className="size-3.5" />}
                                   <span className="text-xs">Export Word</span>
                                 </Button>
-                                <Button type="button" variant="ghost" size="sm"
+                                {String(item.sourceType ?? "").toUpperCase() === "IMPORT_DOCX" && <Button type="button" variant="ghost" size="sm"
                                   className="h-8 px-2 text-xs text-blue-700"
                                   disabled={downloadingWordId !== null}
                                   title="Download the untouched imported syllabus snapshot"
                                   onClick={() => void handleDownloadWord(item, true)}>
                                   Original Word
-                                </Button>
+                                </Button>}
                               </>}
 
                               {canSubmit(item) && (
@@ -3234,7 +3333,7 @@ export default function SyllabusListPage() {
                                   type="button"
                                   variant="ghost"
                                   size="sm"
-                                  className="h-8 w-8 p-0 text-blue-600 hover:bg-blue-50 hover:text-blue-700"
+                                  className="h-8 gap-1.5 border-teal-200 bg-teal-50 px-2.5 text-[#007d84] hover:bg-teal-100"
                                   disabled={
                                     submitMutation
                                       .isPending
@@ -3246,7 +3345,8 @@ export default function SyllabusListPage() {
                                     )
                                   }
                                 >
-                                  <Send className="size-4" />
+                                  {submitMutation.isPending ? <LoaderCircle className="size-3.5 animate-spin" /> : <Send className="size-3.5" />}
+                                  <span className="text-xs">Submit</span>
                                 </Button>
                               )}
 

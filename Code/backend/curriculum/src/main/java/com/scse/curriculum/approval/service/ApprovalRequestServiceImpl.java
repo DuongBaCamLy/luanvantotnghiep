@@ -2,6 +2,10 @@ package com.scse.curriculum.approval.service;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.ArrayList;
+import java.util.Comparator;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.LockModeType;
 import com.scse.curriculum.approval.dto.ApprovalHistoryResponse;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,486 +36,513 @@ import lombok.RequiredArgsConstructor;
 @Service
 @RequiredArgsConstructor
 public class ApprovalRequestServiceImpl
-        implements ApprovalRequestService {
+                implements ApprovalRequestService {
 
-    private final ApprovalRequestRepository repository;
+        private final ApprovalRequestRepository repository;
 
-    private final SyllabusRepository syllabusRepository;
+        private final SyllabusRepository syllabusRepository;
 
-    private final UserAccountRepository userRepository;
+        private final UserAccountRepository userRepository;
 
-    private final WorkflowNotificationService workflowNotificationService;
+        private final EntityManager entityManager;
+        private final WorkflowNotificationService workflowNotificationService;
 
-    private final SyllabusAccessService syllabusAccessService;
-private final SyllabusService syllabusService;
-    private final CourseProgramRepository courseProgramRepository;
+        private final SyllabusAccessService syllabusAccessService;
+        private final SyllabusService syllabusService;
+        private final CourseProgramRepository courseProgramRepository;
 
-    private final ClassSectionRepository classSectionRepository;
-    private final com.scse.curriculum.syllabus.history.SyllabusHistoryService syllabusHistoryService;
+        private final ClassSectionRepository classSectionRepository;
+        private final com.scse.curriculum.syllabus.history.SyllabusHistoryService syllabusHistoryService;
 
-    @Override
-    @Transactional
-    public ApprovalResponse review(
-            Integer id,
-            ReviewApprovalRequest request) {
+        @Override
+@Transactional
+public ApprovalResponse review(
+        Integer id,
+        ReviewApprovalRequest request) {
 
-        ApprovalRequest approval = repository.findById(id)
-                .orElseThrow(()
-                        -> new ResourceNotFoundException(
-                        "Approval request not found"));
+    ApprovalRequest approval = repository.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException(
+                    "Approval request not found"));
 
-        /*
-     * Một yêu cầu đã xử lý thì không được duyệt lại.
-         */
-        if (approval.getStatus() != ApprovalStatus.PENDING) {
-            throw new IllegalStateException(
-                    "Yêu cầu phê duyệt này đã được xử lý.");
-        }
+    if (approval.getStatus() != ApprovalStatus.PENDING) {
+        throw new IllegalStateException(
+                "Yêu cầu phê duyệt này đã được xử lý.");
+    }
 
-        /*
-     * Trạng thái gửi lên phải là quyết định cuối,
-     * không được tiếp tục là PENDING.
-         */
-        if (request.getStatus() == null
-        || (request.getStatus() != ApprovalStatus.APPROVED
-        && request.getStatus() != ApprovalStatus.REJECTED)) {
+    if (request == null
+            || (request.getStatus() != ApprovalStatus.APPROVED
+            && request.getStatus() != ApprovalStatus.REJECTED)) {
+        throw new IllegalArgumentException(
+                "Vui lòng chọn APPROVED hoặc REJECTED.");
+    }
 
-    throw new IllegalArgumentException(
-            "Vui lòng chọn APPROVED hoặc REJECTED.");
-}
+    syllabusAccessService.assertCanReview(approval);
 
-        // FR-01.6/FR-05.1: reviewer luôn lấy từ JWT, không tin reviewedById.
-        syllabusAccessService.assertCanReview(approval);
-        UserAccount reviewer = syllabusAccessService.currentUser();
+    UserAccount reviewer = syllabusAccessService.currentUser();
+    if (approval.getStep() == ApprovalStep.STEP2_PROG_COORDINATOR) {
+        throw new IllegalStateException(
+                "Bước Điều phối chương trình là dữ liệu lịch sử.");
+    }
 
-        ApprovalStep currentStep = approval.getStep();
+    boolean isRejected =
+            request.getStatus() == ApprovalStatus.REJECTED;
 
-        /*
-     * Workflow mới chỉ dùng hai cấp:
-     * Trưởng bộ môn và Trưởng khoa.
-         */
-        if (currentStep
-                == ApprovalStep.STEP2_PROG_COORDINATOR) {
+    if (isRejected && (request.getComment() == null
+            || request.getComment().isBlank())) {
+        throw new IllegalArgumentException(
+                "Khi từ chối phải nhập nhận xét.");
+    }
 
-            throw new IllegalStateException(
-                    "Bước Điều phối chương trình không còn được "
-                    + "sử dụng trong workflow hai cấp.");
-        }
+    Syllabus syllabus = approval.getSyllabus();
 
-        /*
-     * Reject hoặc yêu cầu chỉnh sửa bắt buộc có lý do.
-         */
-        boolean isRejected
-        = request.getStatus() == ApprovalStatus.REJECTED;
+    // Lock workflow to prevent concurrent decisions.
+    syllabusRepository.lockWorkflow(syllabus.getId());
 
-        if (isRejected
-                && (request.getComment() == null
-                || request.getComment().isBlank())) {
+    // Refresh after locking to avoid approving an outdated request.
+    entityManager.refresh(
+            syllabus, LockModeType.PESSIMISTIC_WRITE);
+    entityManager.refresh(
+            approval, LockModeType.PESSIMISTIC_WRITE);
 
-            throw new IllegalArgumentException(
-                    "Khi từ chối hoặc yêu cầu chỉnh sửa, "
-                    + "bắt buộc phải nhập nhận xét.");
-        }
+    if (approval.getStatus() != ApprovalStatus.PENDING) {
+        throw new IllegalStateException(
+                "Yêu cầu phê duyệt này đã được xử lý.");
+    }
 
-        Syllabus syllabus = approval.getSyllabus();
-        syllabusRepository.lockWorkflow(syllabus.getId());
-        if (!java.util.Objects.equals(approval.getSyllabusVersionNumber(), syllabus.getVersionNumber())) {
-            throw new IllegalStateException("This approval belongs to an earlier syllabus revision.");
-        }
+    syllabusAccessService.assertCanReview(approval);
+    ApprovalStep currentStep = approval.getStep();
 
-        if (currentStep == ApprovalStep.STEP1_DEPT_HEAD
-                && syllabus.getStatus() != SyllabusStatus.SUBMITTED) {
-            throw new IllegalStateException(
-                    "Đề cương không còn ở trạng thái chờ Trưởng bộ môn duyệt.");
-        }
-        if (currentStep == ApprovalStep.STEP3_DEAN
-                && syllabus.getStatus() != SyllabusStatus.UNDER_REVIEW) {
-            throw new IllegalStateException(
-                    "Đề cương không còn ở trạng thái chờ Trưởng khoa duyệt.");
-        }
+    if (approval.getSyllabusVersionNumber() == null || !java.util.Objects.equals(
+            approval.getSyllabusVersionNumber(),
+            syllabus.getVersionNumber())) {
+        throw new IllegalStateException(
+                "This approval belongs to an earlier syllabus revision.");
+    }
 
-        List<UserAccount> deans = List.of();
-        if (!isRejected && currentStep == ApprovalStep.STEP1_DEPT_HEAD) {
-            deans = java.util.stream.Stream.concat(
-        userRepository
-                .findByRoleAndIsActiveTrue(UserRole.DEAN)
-                .stream(),
-        userRepository
-                .findByRoleAndIsActiveTrue(
-                        UserRole.DEAN_SECRETARY)
-                .stream()
-).distinct().toList();
-            if (deans.isEmpty()) {
-    throw new IllegalStateException(
-            "No active Dean or Dean Secretary account is available for final review.");
-}
-        }
+    boolean isDepartmentReview =
+            currentStep == ApprovalStep.STEP1_DEPT_HEAD;
 
-        /*
-     * Lưu kết quả review hiện tại.
-         */
-        approval.setReviewedBy(reviewer);
-        approval.setStatus(request.getStatus());
-        approval.setComment(request.getComment());
-        approval.setResolvedAt(LocalDateTime.now());
+    boolean isFinalReview =
+            currentStep == ApprovalStep.STEP3_DEAN
+            || currentStep == ApprovalStep.STEP2_DEAN_SECRETARY;
 
-        ApprovalRequest savedApproval
-                = repository.save(approval);
-
-        /*
-     * Trường hợp bị trả về ở bất kỳ cấp nào.
-         */
-       if (isRejected) {
-
-    /*
-     * Keep the same syllabus rejected until the instructor explicitly starts a revision.
-     */
-    syllabus.setStatus(
-            SyllabusStatus.REJECTED);
-
-    syllabus.setUpdatedAt(
-            LocalDateTime.now());
-
-    syllabusRepository
-            .saveAndFlush(syllabus);
-
-    /*
-     * Return the decision against the reviewed revision.
-     */
-    ApprovalResponse response =
-            map(savedApproval);
-
-    syllabusHistoryService.capture(syllabus, "REJECTED", reviewer.getUsername());
-
-    List<UserAccount> departmentHeads =
-            currentStep
-                    == ApprovalStep.STEP3_DEAN
-                    ? List.of(
-                            approval.getRequestedBy())
-                    : List.of();
-
-    workflowNotificationService
-            .notifyRevisionRequested(
-                    syllabus,
-                    reviewer,
-                    request.getComment().trim(),
-                    currentStep,
-                    departmentHeads);
-
-    return response;
-}
-
-        /*
-     * Trưởng bộ môn duyệt:
-     * Chưa APPROVED syllabus.
-     * Chuyển sang chờ Trưởng khoa.
-         */
-        if (currentStep
-                == ApprovalStep.STEP1_DEPT_HEAD) {
-
-            syllabus.setStatus(
-                    SyllabusStatus.UNDER_REVIEW);
-            syllabus.setUpdatedAt(LocalDateTime.now());
-
-            syllabusRepository.save(syllabus);
-
-            ApprovalRequest deanRequest
-                    = ApprovalRequest.builder()
-                            .syllabus(syllabus)
-                            .syllabusVersionNumber(syllabus.getVersionNumber())
-                            .step(ApprovalStep.STEP3_DEAN)
-                            .status(ApprovalStatus.PENDING)
-                            .requestedBy(reviewer)
-                            .reviewedBy(null)
-                            .comment(null)
-                            .createdAt(LocalDateTime.now())
-                            .resolvedAt(null)
-                            .build();
-
-            repository.save(deanRequest);
-            syllabusHistoryService.capture(syllabus, "DEPT_HEAD_APPROVED", reviewer.getUsername());
-
-            workflowNotificationService.notifyDepartmentHeadApproved(
-                    syllabus,
-                    reviewer,
-                    deans);
-
-            return map(savedApproval);
-        }
-
-        /*
-     * Trưởng khoa duyệt:
-     * Đây mới là bước APPROVED cuối cùng.
-         */
-        if (currentStep == ApprovalStep.STEP3_DEAN) {
-
-            syllabus.setStatus(SyllabusStatus.APPROVED);
-            syllabus.setApprovedBy(reviewer);
-            syllabus.setApprovedAt(LocalDateTime.now());
-            syllabus.setIsCurrent(true);
-            syllabus.setUpdatedAt(LocalDateTime.now());
-
-            syllabusRepository.save(syllabus);
-
-            syllabusHistoryService.capture(syllabus, "APPROVED", reviewer.getUsername());
-            List<UserAccount> departmentHeads =
-                    List.of(approval.getRequestedBy());
-
-            workflowNotificationService.notifyFullyApproved(
-                    syllabus,
-                    reviewer,
-                    departmentHeads);
-
-            return map(savedApproval);
-        }
-
+    if (!isDepartmentReview && !isFinalReview) {
         throw new IllegalStateException(
                 "Bước phê duyệt không hợp lệ.");
     }
 
-    @Override
-    @Transactional(readOnly = true)
-    public ApprovalResponse getById(
-            Integer id) {
-
-        ApprovalRequest approval
-                = repository.findById(id)
-                        .orElseThrow(()
-                                -> new ResourceNotFoundException(
-                                "Approval request not found"));
-
-        syllabusAccessService.assertCanAccessApproval(approval);
-        return map(approval);
+    if (isDepartmentReview
+            && syllabus.getStatus() != SyllabusStatus.SUBMITTED) {
+        throw new IllegalStateException(
+                "Đề cương không còn chờ Trưởng bộ môn duyệt.");
     }
 
-    @Override
-    public List<ApprovalResponse> getAll() {
+    if (isFinalReview
+            && syllabus.getStatus() != SyllabusStatus.UNDER_REVIEW) {
+        throw new IllegalStateException(
+                "Đề cương không còn chờ phê duyệt cuối.");
+    }
 
-        return repository.findAll()
-                .stream()
+    // Find all eligible final reviewers before advancing STEP 1.
+    List<UserAccount> finalReviewers = new ArrayList<>();
+
+    if (isDepartmentReview && !isRejected) {
+        finalReviewers.addAll(
+                userRepository.findByRoleAndIsActiveTrue(
+                        UserRole.DEAN));
+
+        finalReviewers.addAll(
+                userRepository.findByRoleAndIsActiveTrue(
+                        UserRole.DEAN_SECRETARY));
+
+        if (finalReviewers.isEmpty()) {
+            throw new IllegalStateException(
+                    "No active Dean or Dean Secretary account "
+                    + "is available for final review.");
+        }
+    }
+
+    approval.setReviewedBy(reviewer);
+    approval.setStatus(request.getStatus());
+    approval.setComment(request.getComment());
+    approval.setResolvedAt(LocalDateTime.now());
+
+    ApprovalRequest savedApproval = repository.save(approval);
+
+    // Rejection by Department Head or final reviewer.
+    if (isRejected) {
+        syllabus.setStatus(SyllabusStatus.REJECTED);
+        syllabus.setUpdatedAt(LocalDateTime.now());
+
+        syllabusRepository.saveAndFlush(syllabus);
+
+        ApprovalResponse response = map(savedApproval);
+
+        syllabusHistoryService.capture(
+                syllabus,
+                "REJECTED",
+                reviewer.getUsername());
+
+        List<UserAccount> departmentHeads = isFinalReview
+                ? findDepartmentHeadReviewersForVersion(syllabus)
+                : List.of();
+
+        workflowNotificationService.notifyRevisionRequested(
+                syllabus,
+                reviewer,
+                request.getComment().trim(),
+                currentStep,
+                departmentHeads);
+
+        return response;
+    }
+
+    // STEP 1: Department Head -> shared final approval queue.
+    if (isDepartmentReview) {
+        syllabus.setStatus(SyllabusStatus.UNDER_REVIEW);
+        syllabus.setUpdatedAt(LocalDateTime.now());
+
+        syllabusRepository.save(syllabus);
+
+        ApprovalRequest finalRequest = ApprovalRequest.builder()
+                .syllabus(syllabus)
+                .syllabusVersionNumber(syllabus.getVersionNumber())
+                .step(ApprovalStep.STEP3_DEAN)
+                .status(ApprovalStatus.PENDING)
+                .requestedBy(reviewer)
+                .reviewedBy(null)
+                .comment(null)
+                .createdAt(LocalDateTime.now())
+                .resolvedAt(null)
+                .build();
+
+        repository.save(finalRequest);
+
+        syllabusHistoryService.capture(
+                syllabus,
+                "DEPT_HEAD_APPROVED",
+                reviewer.getUsername());
+
+        workflowNotificationService.notifyDepartmentHeadApproved(
+                syllabus,
+                reviewer,
+                finalReviewers);
+
+        return map(savedApproval);
+    }
+
+    // Final approval: Dean OR Dean Secretary.
+    // Legacy pending STEP2_DEAN_SECRETARY is also accepted.
+    syllabus.setStatus(SyllabusStatus.APPROVED);
+    syllabus.setApprovedBy(reviewer);
+    syllabus.setApprovedAt(LocalDateTime.now());
+    syllabus.setIsCurrent(true);
+    syllabus.setUpdatedAt(LocalDateTime.now());
+
+    syllabusRepository.save(syllabus);
+
+    syllabusHistoryService.capture(
+            syllabus,
+            "APPROVED",
+            reviewer.getUsername());
+
+    List<UserAccount> departmentHeads =
+            findDepartmentHeadReviewersForVersion(syllabus);
+
+    workflowNotificationService.notifyFullyApproved(
+            syllabus,
+            reviewer,
+            departmentHeads);
+
+    return map(savedApproval);
+}
+        private List<UserAccount> findDepartmentHeadReviewersForVersion(
+                        Syllabus syllabus) {
+
+                if (syllabus == null
+                                || syllabus.getId() == null
+                                || syllabus.getVersionNumber() == null) {
+
+                        return List.of();
+                }
+
+                return repository
+                                .findBySyllabusIdOrderByCreatedAtDesc(
+                                                syllabus.getId())
+                                .stream()
+                                .filter(request -> request.getStep() == ApprovalStep.STEP1_DEPT_HEAD)
+                                .filter(request -> request.getStatus() == ApprovalStatus.APPROVED)
+                                .filter(request -> java.util.Objects.equals(
+                                                request.getSyllabusVersionNumber(),
+                                                syllabus.getVersionNumber()))
+                                .map(ApprovalRequest::getReviewedBy)
+                                .filter(java.util.Objects::nonNull)
+                                .limit(1)
+                                .toList();
+        }
+
+        @Override
+        @Transactional(readOnly = true)
+        public ApprovalResponse getById(
+                        Integer id) {
+
+                ApprovalRequest approval = repository.findById(id)
+                                .orElseThrow(() -> new ResourceNotFoundException(
+                                                "Approval request not found"));
+
+                syllabusAccessService.assertCanAccessApproval(approval);
+                return map(approval);
+        }
+
+        @Override
+        public List<ApprovalResponse> getAll() {
+
+                return repository.findAll()
+                                .stream()
+                                .map(this::map)
+                                .toList();
+        }
+
+        @Override
+@Transactional(readOnly = true)
+public List<ApprovalResponse> getPendingByStep(
+        ApprovalStep step) {
+
+    syllabusAccessService.assertCanOpenPendingStep(step);
+
+    UserAccount currentUser =
+            syllabusAccessService.currentUser();
+
+    List<ApprovalRequest> pending =
+            currentUser.getRole() == UserRole.DEPT_HEAD
+                    ? repository.findPendingByManagedMajor(
+                            step,
+                            ApprovalStatus.PENDING,
+                            syllabusAccessService.currentManagedMajorId(currentUser))
+                    : repository.findByStepAndStatusOrderByCreatedAtAsc(
+                            step,
+                            ApprovalStatus.PENDING);
+
+    // Shared queue for Dean and Dean Secretary.
+    if (step == ApprovalStep.STEP3_DEAN) {
+
+        List<ApprovalRequest> merged = new ArrayList<>(pending);
+
+        // Include old pending requests without changing database history.
+        merged.addAll(
+                repository.findByStepAndStatusOrderByCreatedAtAsc(
+                        ApprovalStep.STEP2_DEAN_SECRETARY,
+                        ApprovalStatus.PENDING));
+
+        return merged.stream()
+                .filter(item -> item.getSyllabusVersionNumber() != null)
+                .filter(item -> item.getSyllabus() != null)
+                .filter(item ->
+                        item.getSyllabus().getStatus()
+                                == SyllabusStatus.UNDER_REVIEW)
+                .filter(item ->
+                        java.util.Objects.equals(
+                                item.getSyllabusVersionNumber(),
+                                item.getSyllabus().getVersionNumber()))
+                .sorted(Comparator.comparing(
+                        ApprovalRequest::getCreatedAt,
+                        Comparator.nullsLast(
+                                Comparator.naturalOrder())))
                 .map(this::map)
                 .toList();
     }
 
-    @Override
-    @Transactional(readOnly = true)
-    public List<ApprovalResponse> getPendingByStep(
-            ApprovalStep step) {
-
-        syllabusAccessService.assertCanOpenPendingStep(step);
-        UserAccount currentUser = syllabusAccessService.currentUser();
-
-        List<ApprovalRequest> pending = currentUser.getRole() == UserRole.DEPT_HEAD
-                ? repository.findPendingByManagedMajor(
-                        step, ApprovalStatus.PENDING,
-                        syllabusAccessService.currentManagedMajorId(currentUser))
-                : repository.findByStepAndStatusOrderByCreatedAtAsc(
-                        step, ApprovalStatus.PENDING);
-
-        return pending
-                .stream()
-                .filter(approval ->
+    if (currentUser.getRole() == UserRole.DEPT_HEAD) {
+        return pending.stream()
+                .filter(item -> item.getSyllabusVersionNumber() != null)
+                .filter(item -> item.getSyllabus() != null)
+                .filter(item -> item.getSyllabus().getStatus() == SyllabusStatus.SUBMITTED)
+                .filter(item -> java.util.Objects.equals(
+                        item.getSyllabusVersionNumber(), item.getSyllabus().getVersionNumber()))
+                .filter(item ->
                         syllabusAccessService.canView(
-                                approval.getSyllabus(),
+                                item.getSyllabus(),
                                 currentUser))
                 .map(this::map)
                 .toList();
     }
-@Override
-@Transactional(readOnly = true)
-public List<ApprovalHistoryResponse> getApprovalHistory(
-        Integer syllabusId) {
 
-
-    Syllabus syllabus =
-            syllabusRepository.findByIdWithRelations(syllabusId)
-                    .orElseThrow(() ->
-                            new ResourceNotFoundException(
-                                    "Syllabus not found"));
-
-
-        syllabusAccessService.assertCanViewHistory(syllabus);
-
-
-
-    return repository
-            .findBySyllabusIdOrderByCreatedAtDesc(syllabusId)
-            .stream()
-            .map(approval ->
-
-
-                    ApprovalHistoryResponse.builder()
-                    .versionNumber(approval.getSyllabusVersionNumber())
-                    .versionLabel(com.scse.curriculum.syllabus.entity.SyllabusVersion.format(approval.getSyllabusVersionNumber()))
-
-                    .id(
-                            approval.getId()
-                    )
-
-
-                    .step(
-                            approval.getStep() == null
-                                    ?
-                                    null
-                                    :
-                                    approval.getStep().name()
-                    )
-
-
-                    .status(
-                            approval.getStatus() == null
-                                    ?
-                                    null
-                                    :
-                                    approval.getStatus().name()
-                    )
-
-
-                    .requestedByUsername(
-                            approval.getRequestedBy() == null
-                                    ?
-                                    null
-                                    :
-                                    approval.getRequestedBy()
-                                            .getUsername()
-                    )
-
-
-                    .reviewedByUsername(
-                            approval.getReviewedBy() == null
-                                    ?
-                                    null
-                                    :
-                                    approval.getReviewedBy()
-                                            .getUsername()
-                    )
-
-
-                    .comment(
-                            approval.getComment()
-                    )
-
-
-                    .createdAt(
-                            approval.getCreatedAt()
-                    )
-
-
-                    .resolvedAt(
-                            approval.getResolvedAt()
-                    )
-
-
-                    .build()
-
-            )
+    return pending.stream()
+            .map(this::map)
             .toList();
-
 }
-    @Override
-    @Transactional(readOnly = true)
-    public List<ApprovalResponse> getBySyllabus(
-            Integer syllabusId) {
 
-        Syllabus syllabus = syllabusRepository.findByIdWithRelations(syllabusId)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException("Syllabus not found"));
-        syllabusAccessService.assertCanView(syllabus);
+        @Override
+        @Transactional(readOnly = true)
+        public List<ApprovalHistoryResponse> getApprovalHistory(
+                        Integer syllabusId) {
 
-        return repository.findBySyllabusId(syllabusId)
-                .stream()
-                .map(this::map)
-                .toList();
-    }
+                Syllabus syllabus = syllabusRepository.findByIdWithRelations(syllabusId)
+                                .orElseThrow(() -> new ResourceNotFoundException(
+                                                "Syllabus not found"));
 
+                syllabusAccessService.assertCanViewHistory(syllabus);
 
-   private ApprovalResponse map(
-        ApprovalRequest approval) {
-    Syllabus syllabus = approval.getSyllabus();
-    CourseProgram courseProgram = courseProgramRepository
-            .findBySyllabus_Id(syllabus.getId()).stream().findFirst().orElse(null);
-    ClassSection classSection = classSectionRepository
-            .findBySyllabusId(syllabus.getId()).stream().findFirst().orElse(null);
-    return ApprovalResponse.builder()
-            .id(approval.getId())
+                return repository
+                                .findBySyllabusIdOrderByCreatedAtDesc(syllabusId)
+                                .stream()
+                                .map(approval ->
 
-            .syllabusId(
-                    approval.getSyllabus().getId())
+                                ApprovalHistoryResponse.builder()
+                                                .versionNumber(approval.getSyllabusVersionNumber())
+                                                .versionLabel(com.scse.curriculum.syllabus.entity.SyllabusVersion
+                                                                .format(approval.getSyllabusVersionNumber()))
 
-            .courseCode(
-                    approval.getSyllabus()
-                            .getCourse()
-                            .getCourseCode())
+                                                .id(
+                                                                approval.getId())
 
-            .courseName(
-                    approval.getSyllabus()
-                            .getCourse()
-                            .getName())
+                                                .step(
+                                                                approval.getStep() == null
+                                                                                ? null
+                                                                                : approval.getStep().name())
 
-            .programCode(courseProgram != null && courseProgram.getProgram() != null
-                    ? courseProgram.getProgram().getCode()
-                    : classSection != null && classSection.getProgram() != null
-                            ? classSection.getProgram().getCode() : null)
-            .programName(courseProgram != null && courseProgram.getProgram() != null
-                    ? courseProgram.getProgram().getName()
-                    : classSection != null && classSection.getProgram() != null
-                            ? classSection.getProgram().getName() : null)
-            .cohortName(courseProgram != null && courseProgram.getCohort() != null
-                    ? courseProgram.getCohort().getName()
-                    : classSection != null && classSection.getCohort() != null
-                            ? classSection.getCohort().getName() : null)
-            .semester(syllabus.getSemester())
-            .instructorUsername(syllabus.getCreatedBy() == null
-                    ? null : syllabus.getCreatedBy().getUsername())
-            .departmentCode(syllabus.getCourse().getDepartment() == null
-                    ? null : syllabus.getCourse().getDepartment().getCode())
-            .departmentName(syllabus.getCourse().getDepartment() == null
-                    ? null : syllabus.getCourse().getDepartment().getName())
+                                                .status(
+                                                                approval.getStatus() == null
+                                                                                ? null
+                                                                                : approval.getStatus().name())
 
-            .versionNumber(
-                    approval.getSyllabusVersionNumber())
+                                                .requestedByUsername(
+                                                                approval.getRequestedBy() == null
+                                                                                ? null
+                                                                                : approval.getRequestedBy()
+                                                                                                .getUsername())
 
-            .versionLabel(
-                    com.scse.curriculum.syllabus.entity.SyllabusVersion.format(approval.getSyllabusVersionNumber()))
+                                                .reviewedByUsername(
+                                                                approval.getReviewedBy() == null
+                                                                                ? null
+                                                                                : approval.getReviewedBy()
+                                                                                                .getUsername())
 
-            .syllabusStatus(
-                    approval.getSyllabus()
-                            .getStatus())
+                                                .comment(
+                                                                approval.getComment())
 
-            .step(approval.getStep())
+                                                .createdAt(
+                                                                approval.getCreatedAt())
 
-            .status(approval.getStatus())
+                                                .resolvedAt(
+                                                                approval.getResolvedAt())
 
-            .requestedById(
-                    approval.getRequestedBy().getId())
+                                                .build()
 
-            .requestedByUsername(
-                    approval.getRequestedBy()
-                            .getUsername())
+                                )
+                                .toList();
 
-            .reviewedById(
-                    approval.getReviewedBy() == null
-                            ? null
-                            : approval.getReviewedBy().getId())
+        }
 
-            .reviewedByUsername(
-                    approval.getReviewedBy() == null
-                            ? null
-                            : approval.getReviewedBy()
-                                    .getUsername())
+        @Override
+        @Transactional(readOnly = true)
+        public List<ApprovalResponse> getBySyllabus(
+                        Integer syllabusId) {
 
-            .comment(approval.getComment())
+                Syllabus syllabus = syllabusRepository.findByIdWithRelations(syllabusId)
+                                .orElseThrow(() -> new ResourceNotFoundException("Syllabus not found"));
+                syllabusAccessService.assertCanView(syllabus);
 
-            .submittedAt(
-                    approval.getCreatedAt())
+                return repository.findBySyllabusId(syllabusId)
+                                .stream()
+                                .map(this::map)
+                                .toList();
+        }
 
-            .createdAt(approval.getCreatedAt())
+        private ApprovalResponse map(
+                        ApprovalRequest approval) {
+                Syllabus syllabus = approval.getSyllabus();
+                CourseProgram courseProgram = courseProgramRepository
+                                .findBySyllabus_Id(syllabus.getId()).stream().findFirst().orElse(null);
+                ClassSection classSection = classSectionRepository
+                                .findBySyllabusId(syllabus.getId()).stream().findFirst().orElse(null);
+                return ApprovalResponse.builder()
+                                .id(approval.getId())
 
-            .resolvedAt(approval.getResolvedAt())
+                                .syllabusId(
+                                                approval.getSyllabus().getId())
 
-            .revisionDraftId(null)
-            .revisionDraftVersionLabel(null)
+                                .courseCode(
+                                                approval.getSyllabus()
+                                                                .getCourse()
+                                                                .getCourseCode())
 
-            .build();
-}
+                                .courseName(
+                                                approval.getSyllabus()
+                                                                .getCourse()
+                                                                .getName())
+
+                                .programCode(courseProgram != null && courseProgram.getProgram() != null
+                                                ? courseProgram.getProgram().getCode()
+                                                : classSection != null && classSection.getProgram() != null
+                                                                ? classSection.getProgram().getCode()
+                                                                : null)
+                                .programName(courseProgram != null && courseProgram.getProgram() != null
+                                                ? courseProgram.getProgram().getName()
+                                                : classSection != null && classSection.getProgram() != null
+                                                                ? classSection.getProgram().getName()
+                                                                : null)
+                                .cohortName(courseProgram != null && courseProgram.getCohort() != null
+                                                ? courseProgram.getCohort().getName()
+                                                : classSection != null && classSection.getCohort() != null
+                                                                ? classSection.getCohort().getName()
+                                                                : null)
+                                .semester(syllabus.getSemester())
+                                .instructorUsername(syllabus.getCreatedBy() == null
+                                                ? null
+                                                : syllabus.getCreatedBy().getUsername())
+                                .departmentCode(syllabus.getCourse().getDepartment() == null
+                                                ? null
+                                                : syllabus.getCourse().getDepartment().getCode())
+                                .departmentName(syllabus.getCourse().getDepartment() == null
+                                                ? null
+                                                : syllabus.getCourse().getDepartment().getName())
+
+                                .versionNumber(
+                                                approval.getSyllabusVersionNumber())
+
+                                .versionLabel(
+                                                com.scse.curriculum.syllabus.entity.SyllabusVersion
+                                                                .format(approval.getSyllabusVersionNumber()))
+
+                                .syllabusStatus(
+                                                approval.getSyllabus()
+                                                                .getStatus())
+
+                                .step(approval.getStep())
+
+                                .status(approval.getStatus())
+
+                                .requestedById(
+                                                approval.getRequestedBy().getId())
+
+                                .requestedByUsername(
+                                                approval.getRequestedBy()
+                                                                .getUsername())
+
+                                .reviewedById(
+                                                approval.getReviewedBy() == null
+                                                                ? null
+                                                                : approval.getReviewedBy().getId())
+
+                                .reviewedByUsername(
+                                                approval.getReviewedBy() == null
+                                                                ? null
+                                                                : approval.getReviewedBy()
+                                                                                .getUsername())
+
+                                .comment(approval.getComment())
+
+                                .submittedAt(
+                                                approval.getCreatedAt())
+
+                                .createdAt(approval.getCreatedAt())
+
+                                .resolvedAt(approval.getResolvedAt())
+
+                                .revisionDraftId(null)
+                                .revisionDraftVersionLabel(null)
+
+                                .build();
+        }
 }

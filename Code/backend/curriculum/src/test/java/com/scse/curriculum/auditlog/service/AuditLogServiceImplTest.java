@@ -140,4 +140,39 @@ void getById_shouldPreserveLegacySystemActorFromSnapshot() {
 
         assertThat(result).isEmpty();
     }
+
+    @Test
+    void pageShouldClampBoundsEscapeWildcardsAndSortNewestFirst() {
+        var pageable = org.springframework.data.domain.PageRequest.of(0, 100,
+                org.springframework.data.domain.Sort.by(
+                        org.springframework.data.domain.Sort.Order.desc("changedAt"),
+                        org.springframework.data.domain.Sort.Order.desc("id")));
+        var log = AuditLog.builder().id(9L).tableName("syllabus").recordId(10)
+                .action(AuditAction.STATUS_CHANGE).changedBy(instructorActor).build();
+        when(repository.searchPage("%a!_!%!!%", AuditAction.STATUS_CHANGE, pageable))
+                .thenReturn(new org.springframework.data.domain.PageImpl<>(List.of(log), pageable, 201));
+        var response = service.getPage(" A_%! ", AuditAction.STATUS_CHANGE, -1, 10000);
+        assertThat(response.number()).isZero();
+        assertThat(response.size()).isEqualTo(100);
+        assertThat(response.totalElements()).isEqualTo(201);
+        assertThat(response.totalPages()).isEqualTo(3);
+        assertThat(response.content()).hasSize(1);
+        assertThat(response.content().get(0).getChangedByUsername()).isEqualTo("nvminh");
+        org.mockito.Mockito.verify(repository).searchPage("%a!_!%!!%", AuditAction.STATUS_CHANGE, pageable);
+        org.mockito.Mockito.verify(repository, org.mockito.Mockito.never()).findAll();
+    }
+
+    @Test
+    void pageShouldAllowEmptySearchAndKeepRequestedPage() {
+        var pageable = org.springframework.data.domain.PageRequest.of(2, 1,
+                org.springframework.data.domain.Sort.by(
+                        org.springframework.data.domain.Sort.Order.desc("changedAt"),
+                        org.springframework.data.domain.Sort.Order.desc("id")));
+        when(repository.searchPage("%%", null, pageable))
+                .thenReturn(new org.springframework.data.domain.PageImpl<>(List.of(), pageable, 0));
+        var response = service.getPage(null, null, 2, 0);
+        assertThat(response.content()).isEmpty();
+        assertThat(response.number()).isEqualTo(2);
+        assertThat(response.size()).isEqualTo(1);
+    }
 }

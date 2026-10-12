@@ -7,6 +7,20 @@ import type {
 
 const BASE = "/api/admin/users"
 
+export interface AssignableInstructor {
+  id: number
+  fullName: string | null
+  username: string
+}
+
+export async function getAssignableInstructors(): Promise<AssignableInstructor[]> {
+  const { data } = await api.get<AssignableInstructor[]>(
+    "/api/class-sections/assignable-instructors",
+  )
+
+  return data
+}
+
 export async function getUsers(): Promise<UserAccountResponse[]> {
   const { data } = await api.get<UserAccountResponse[]>(BASE)
   return data

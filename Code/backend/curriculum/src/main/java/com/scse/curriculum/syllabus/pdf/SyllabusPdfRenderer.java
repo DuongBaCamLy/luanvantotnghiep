@@ -22,6 +22,7 @@ import java.io.ByteArrayOutputStream;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -68,6 +69,19 @@ public class SyllabusPdfRenderer {
     }
 
     public byte[] render(SyllabusPdfDocument data, SyllabusPdfMode mode) {
+        return render(data, mode, null);
+    }
+
+    /** Native paragraphs and tables shared by PDF and editable Word export. */
+    public record LayoutBlock(Element element, Rectangle pageSize) { }
+
+    public List<LayoutBlock> layout(SyllabusPdfDocument data, SyllabusPdfMode mode) {
+        List<LayoutBlock> blocks = new ArrayList<>();
+        render(data, mode, blocks);
+        return List.copyOf(blocks);
+    }
+
+    private byte[] render(SyllabusPdfDocument data, SyllabusPdfMode mode, List<LayoutBlock> blocks) {
         try (ByteArrayOutputStream output = new ByteArrayOutputStream()) {
 
             /*
@@ -79,7 +93,15 @@ public class SyllabusPdfRenderer {
                     38,
                     38,
                     50,
-                    44);
+                    44) {
+                @Override
+                public boolean add(Element element) throws DocumentException {
+                    if (blocks != null) {
+                        blocks.add(new LayoutBlock(element, new Rectangle(getPageSize())));
+                    }
+                    return super.add(element);
+                }
+            };
 
             PdfWriter writer = PdfWriter.getInstance(document, output);
             writer.setPdfVersion(PdfWriter.VERSION_1_7);
@@ -255,17 +277,105 @@ public class SyllabusPdfRenderer {
 
         addIdentityCard(document, data, mode);
         addNew2027GeneralInformation(document, data);
+        addSourceTables(document, data, "1");
         addNew2027Objectives(document, data);
+        addSourceTables(document, data, "2");
         addNew2027Clos(document, data);
+        addSourceTables(document, data, "3");
         addNew2027Content(document, data);
+        addSourceTables(document, data, "4");
         addNew2027CloPlo(document, writer, data);
+        addSourceTables(document, data, "5");
         addNew2027CloLlo(document);
+        addSourceTables(document, data, "6");
         addNew2027Examination(document, data);
+        addSourceTables(document, data, "7");
         addNew2027StudyRequirements(document, data);
+        addSourceTables(document, data, "8");
         addNew2027PlannedActivities(document, data);
+        addSourceTables(document, data, "9");
         addNew2027Assessment(document, data);
+        addSourceTables(document, data, "10");
         addNew2027Rubrics(document, data);
+        addSourceTables(document, data, "11");
         addNew2027Readings(document, data);
+        addSourceTables(document, data, "12");
+    }
+
+    private boolean hasSourceTables(SyllabusPdfDocument data, String section) {
+        JsonNode tables = importedNotes(data).path("sourceSupplementalSections").path(section);
+        return tables.isArray() && !tables.isEmpty();
+    }
+
+    /** The same source table goes to PDF and DOCX; source blanks remain blank. */
+    private void addSourceTables(Document document, SyllabusPdfDocument data, String section) throws DocumentException {
+        for (JsonNode source : importedNotes(data).path("sourceSupplementalSections").path(section)) {
+            if ("11".equals(section) && "DS2026_RUBRIC_GRID_V1".equals(source.path("format").asText())) {
+                addSourceRubricGrid(document, source);
+                continue;
+            }
+            JsonNode headers = source.path("headers");
+            if (!headers.isArray() || headers.isEmpty()) continue;
+            addTextOrEmpty(document, source.path("title").asText(""), "");
+            List<String> pages = new ArrayList<>();
+            source.path("pages").forEach(page -> pages.add(page.asText()));
+            if (!pages.isEmpty()) addTextOrEmpty(document, "Source PDF pages: " + String.join(", ", pages), "");
+            PdfPTable table = new PdfPTable(headers.size());
+            table.setWidthPercentage(100);
+            // Give long source narratives room without turning TT or LO into inferred numbers.
+            float[] widths = new float[headers.size()];
+            java.util.Arrays.fill(widths, 1f);
+            for (int index = 0; index < headers.size(); index++) {
+                String label = headers.get(index).asText().toLowerCase(java.util.Locale.ROOT);
+                if (label.contains("hoạt động") || label.contains("mô tả") || label.contains("tiêu chí") || label.contains("chuẩn đầu ra") || label.contains("topics")) widths[index] = 3f;
+                else if (label.contains("nội dung") || label.equals("tên")) widths[index] = 2f;
+            }
+            if ("12".equals(section) && "DS2026_READING_ROWS_V1".equals(source.path("format").asText()) && widths.length == 2)
+                widths = new float[]{1, 12};
+            table.setWidths(widths);
+            table.setHeaderRows(1);
+            table.setSplitLate(false);
+            table.setSplitRows(true);
+            table.setSpacingAfter(8);
+            headers.forEach(header -> addHeaderCell(table, header.asText("")));
+            for (JsonNode row : source.path("rows"))
+                for (int index = 0; index < headers.size(); index++) addBodyCell(table, row.path(index).asText(""), Element.ALIGN_LEFT);
+            document.add(table);
+        }
+    }
+
+    private void addSourceRubricGrid(Document document, JsonNode source) throws DocumentException {
+        addTextOrEmpty(document, source.path("title").asText(), "");
+        int previousPage = -1;
+        for (JsonNode block : source.path("blocks")) {
+            int page = block.path("page").asInt();
+            if (page != previousPage) addTextOrEmpty(document, "Source PDF page: " + page, "");
+            previousPage = page;
+            if ("text".equals(block.path("kind").asText())) {
+                addTextOrEmpty(document, block.path("text").asText(), "");
+                continue;
+            }
+            JsonNode widths = block.path("widths");
+            if (!widths.isArray() || widths.isEmpty()) continue;
+            PdfPTable table = new PdfPTable(widths.size());
+            float[] values = new float[widths.size()];
+            for (int i = 0; i < values.length; i++) values[i] = (float) widths.get(i).asDouble();
+            table.setWidths(values);
+            table.setWidthPercentage(100);
+            table.setSplitLate(false);
+            table.setSplitRows(true);
+            table.setSpacingAfter(8);
+            for (JsonNode row : block.path("rows")) for (JsonNode cell : row) {
+                PdfPCell rendered = new PdfPCell(fonts.phrase(cell.path("text").asText(""), fonts.regular(7.3f, TEXT)));
+                rendered.setBorderColor(BORDER);
+                rendered.setColspan(cell.path("colSpan").asInt(1));
+                rendered.setRowspan(cell.path("rowSpan").asInt(1));
+                rendered.setVerticalAlignment(Element.ALIGN_TOP);
+                rendered.setPadding(4);
+                table.addCell(rendered);
+            }
+            document.add(table);
+        }
     }
 
     private void addNew2027GeneralInformation(
@@ -286,14 +396,17 @@ public class SyllabusPdfRenderer {
         addGeneralRow(table, "Course Name", data.courseName());
         addGeneralRow(table, "Course Designation", data.courseDesignation());
         addGeneralRow(table, "Course Type", data.courseTypes());
-        addGeneralRow(table, "Semester", data.semester());
+        String sourceSemester = importedNoteText(data, "sourceSemester");
+        addGeneralRow(table, "Semester", sourceSemester.isBlank() ? data.semester() : sourceSemester);
         addGeneralRow(table, "Person Responsible", responsiblePersons(data));
         addGeneralRow(table, "Language", data.language());
-        addGeneralRow(table, "Relation to Curriculum", data.relation());
+        addGeneralRow(table, "Relation to Curriculum", sourceCheckboxText(data.relation()));
         addGeneralRow(table, "Teaching Methods", data.teachingMethods());
-        addGeneralRow(table, "Total Workload", data.workloadTotal());
-        addGeneralRow(table, "Contact Hours", data.workloadContact());
-        addGeneralRow(table, "Self-study Hours", data.workloadPrivate());
+        addGeneralRow(table, importedNotes(data).path("sourceWorkloadEstimated").asBoolean(false)
+                ? "Total Workload (estimated)" : "Total Workload", data.workloadTotal());
+        boolean sourceTiet = "tiết".equals(importedNoteText(data, "sourceWorkloadUnit"));
+        addGeneralRow(table, sourceTiet ? "Contact workload (source unit: tiết)" : "Contact Hours", data.workloadContact());
+        addGeneralRow(table, sourceTiet ? "Self-study workload (source unit: tiết)" : "Self-study Hours", data.workloadPrivate());
         addGeneralRow(table, "Credit Points", importedNoteText(data, "creditPoints"));
         addGeneralRow(table, "Theory / Lecture Credits", importedNoteText(data, "lectureCredits"));
         addGeneralRow(table, "Practice / Laboratory Credits", importedNoteText(data, "laboratoryCredits"));
@@ -307,7 +420,7 @@ public class SyllabusPdfRenderer {
             SyllabusPdfDocument data)
             throws DocumentException {
         addSectionTitle(document, "2. Course Objectives");
-        addTextOrEmpty(document, data.objectives(), "No course objectives are available in the source.");
+        addTextOrEmpty(document, data.objectives(), "No course objectives are available for this syllabus.");
     }
 
     private void addNew2027Clos(
@@ -317,7 +430,7 @@ public class SyllabusPdfRenderer {
         addSectionTitle(document, "3. Course Learning Outcomes (CLO)");
 
         if (data.clos().isEmpty()) {
-            addEmptyState(document, "No course learning outcomes are available in the source.");
+            addEmptyState(document, "No course learning outcomes are available for this syllabus.");
             return;
         }
 
@@ -354,7 +467,8 @@ public class SyllabusPdfRenderer {
             addBodyCell(table, titleCase(clo.competencyLevel()), Element.ALIGN_LEFT);
             addBodyCell(table, clo.code(), Element.ALIGN_CENTER);
             addBodyCell(table, clo.descriptionVn(), Element.ALIGN_LEFT);
-            addBodyCell(table, clo.description(), Element.ALIGN_LEFT);
+            addBodyCell(table, "VI".equals(importedNoteText(data, "sourceCloLanguage")) && Objects.equals(clo.description(), clo.descriptionVn())
+                    ? "" : clo.description(), Element.ALIGN_LEFT);
             addBodyCell(table, mappedPlos, Element.ALIGN_CENTER);
         }
 
@@ -366,15 +480,19 @@ public class SyllabusPdfRenderer {
             SyllabusPdfDocument data)
             throws DocumentException {
         addSectionTitle(document, "4. Course Content");
-
-        if (data.topics().isEmpty()) {
-            addEmptyState(document, "No course-content rows are available in the source.");
+        JsonNode sourceContentRows = importedNotes(data).path("sourceContentRows");
+        String sourceDescription=importedNotes(data).path("contentNote").asText("");
+        if(!sourceDescription.isBlank())addTextOrEmpty(document,sourceDescription,"");
+        boolean hasSourceRows = sourceContentRows.isArray() && sourceContentRows.size() > 0;
+        if (data.topics().isEmpty() && !hasSourceRows) {
+            if(!sourceDescription.isBlank())return;
+            addEmptyState(document, "No course-content rows are available for this syllabus.");
             return;
         }
 
-        PdfPTable table = new PdfPTable(5);
+        PdfPTable table = new PdfPTable(hasSourceRows ? 7 : 5);
         table.setWidthPercentage(100);
-        table.setWidths(new float[]{25, 30, 14, 14, 17});
+        table.setWidths(hasSourceRows ? new float[]{15, 30, 8, 10, 12, 7, 18} : new float[]{25, 30, 14, 14, 17});
         table.setHeaderRows(1);
         table.setSplitLate(false);
         table.setSplitRows(true);
@@ -385,8 +503,27 @@ public class SyllabusPdfRenderer {
         addHeaderCell(table, "Weight");
         addHeaderCell(table, "Level (I/T/U)");
         addHeaderCell(table, "Related CLOs");
+        if (hasSourceRows) { addHeaderCell(table, "Week"); addHeaderCell(table, "Hours"); }
 
-        for (SyllabusPdfDocument.TopicRow topic : data.topics()) {
+        if (hasSourceRows) {
+            addEmptyState(document, "The source content table is shown separately from the weekly activity plan. Week, hours and related CLOs are not inferred for unverified rows.");
+            for (JsonNode row : sourceContentRows) {
+                addBodyCell(table, row.path("nameVn").asText(""), Element.ALIGN_LEFT);
+                addBodyCell(table, "VI".equals(importedNoteText(data, "sourceContentLanguage")) && row.path("name").equals(row.path("nameVn"))
+                        ? "" : row.path("name").asText(""), Element.ALIGN_LEFT);
+                addBodyCell(table, row.path("weight").asText(""), Element.ALIGN_CENTER);
+                addBodyCell(table, row.path("level").asText(""), Element.ALIGN_CENTER);
+                String hours = java.util.stream.Stream.of("teachingHours", "labHours", "selfStudyHours")
+                        .filter(key -> !row.path(key).isMissingNode() && !row.path(key).isNull())
+                        .map(key -> (key.equals("teachingHours") ? "Teaching" : key.equals("labHours") ? "Lab" : "Self-study") + ": " + row.path(key).asText())
+                        .collect(Collectors.joining("; "));
+                List<String> related = new ArrayList<>();
+                row.path("relatedCloCodes").forEach(code -> related.add(code.asText()));
+                addBodyCell(table, String.join(", ", related), Element.ALIGN_CENTER);
+                addBodyCell(table, row.path("weekNumber").asText(""), Element.ALIGN_CENTER);
+                addBodyCell(table, hours, Element.ALIGN_LEFT);
+            }
+        } else for (SyllabusPdfDocument.TopicRow topic : data.topics()) {
             addBodyCell(table, topic.nameVn(), Element.ALIGN_LEFT);
             addBodyCell(table, topic.name(), Element.ALIGN_LEFT);
             addBodyCell(table, topicMetadataText(topic, "contentWeight"), Element.ALIGN_CENTER);
@@ -407,8 +544,30 @@ public class SyllabusPdfRenderer {
             throws DocumentException {
         addSectionTitle(document, "5. Course CLO–PLO Alignment");
 
+        JsonNode sourceNotes = importedNotes(data);
+        JsonNode sourceMatrix = sourceNotes.path("cloPloMatrix");
+        if (sourceNotes.path("sourceAlignmentPreserved").asBoolean(false) && sourceMatrix.isObject() && sourceMatrix.size() > 0) {
+            java.util.Set<String> columns = new java.util.LinkedHashSet<>();
+            sourceNotes.path("ploCodes").forEach(code -> columns.add(code.asText()));
+            sourceMatrix.fields().forEachRemaining(row -> row.getValue().fieldNames().forEachRemaining(columns::add));
+            List<String> orderedColumns = columns.stream().sorted(Comparator.comparingInt(code -> {
+                try { return Integer.parseInt(code.replaceAll("\\D", "")); } catch (NumberFormatException error) { return Integer.MAX_VALUE; }
+            })).toList();
+            PdfPTable raw = new PdfPTable(orderedColumns.size() + 1);
+            raw.setWidthPercentage(100); raw.setHeaderRows(1); raw.setSplitRows(true);
+            raw.setSpacingBefore(6); raw.setSpacingAfter(8);
+            addHeaderCell(raw, "CLO"); for (String column : orderedColumns) addHeaderCell(raw, column);
+            sourceMatrix.fields().forEachRemaining(row -> {
+                addBodyCell(raw, row.getKey(), Element.ALIGN_CENTER);
+                for (String column : orderedColumns) addBodyCell(raw, row.getValue().path(column).asText(""), Element.ALIGN_CENTER);
+            });
+            document.add(raw);
+            addTextOrEmpty(document, "Source alignment marks are preserved verbatim. Numeric marks are not converted to percentages or contribution enums; source-only PLO columns do not activate programme outcomes.", "");
+            return;
+        }
+
         if (data.plos().isEmpty()) {
-            addEmptyState(document, "No source CLO-PLO alignment is available.");
+            addEmptyState(document, "No CLO-PLO alignment data is available for this syllabus.");
             return;
         }
 
@@ -455,7 +614,7 @@ public class SyllabusPdfRenderer {
         addSectionTitle(document, "6. Detailed CLO–LLO Table");
         addEmptyState(
                 document,
-                "No source LLO data is available. LLO values are not generated.");
+                "Structured LLO data has not been verified against the source. No LLO values are generated.");
     }
 
     private void addNew2027Examination(
@@ -463,7 +622,7 @@ public class SyllabusPdfRenderer {
             SyllabusPdfDocument data)
             throws DocumentException {
         addSectionTitle(document, "7. Examination Forms");
-        addTextOrEmpty(document, data.examForms(), "No examination-form data is available in the source.");
+        addTextOrEmpty(document, data.examForms(), "No examination-form data is available for this syllabus.");
     }
 
     private void addNew2027StudyRequirements(
@@ -488,12 +647,15 @@ public class SyllabusPdfRenderer {
             SyllabusPdfDocument data)
             throws DocumentException {
         addSectionTitle(document, "9. Planned Learning Activities and Teaching Methods");
+        if (hasSourceTables(data, "9")) return;
+        if (importedNotes(data).path("sourceWeeklyReviewRequired").asBoolean(false))
+            addEmptyState(document, "Only verified weekly rows are shown. Additional source rows require review; Course Content is preserved independently in Section 4.");
 
         JsonNode planned = importedNotes(data).path("plannedActivities");
         boolean hasImportedPlan = planned.isArray() && planned.size() > 0;
 
         if (!hasImportedPlan && data.topics().isEmpty()) {
-            addEmptyState(document, "No planned-learning-activity data is available in the source.");
+            addEmptyState(document, "No planned-learning-activity data is available for this syllabus.");
             return;
         }
 
@@ -501,7 +663,7 @@ public class SyllabusPdfRenderer {
         table.setWidthPercentage(100);
         table.setWidths(new float[]{8, 31, 11, 18, 18, 14});
         table.setHeaderRows(1);
-        table.setSplitLate(false);
+        table.setSplitLate(true);
         table.setSplitRows(true);
         table.setSpacingAfter(8);
 
@@ -533,8 +695,8 @@ public class SyllabusPdfRenderer {
                         table,
                         joinNonBlank(", ", topic.teachingMethod(), topic.learningActivity()),
                         Element.ALIGN_LEFT);
-                addBodyCell(table, assessmentsForTopic(topic, data.assessments()), Element.ALIGN_LEFT);
-                addBodyCell(table, "", Element.ALIGN_LEFT);
+                addBodyCell(table, topic.assessments(), Element.ALIGN_LEFT);
+                addBodyCell(table, topic.resources(), Element.ALIGN_LEFT);
             }
         }
 
@@ -546,9 +708,10 @@ public class SyllabusPdfRenderer {
             SyllabusPdfDocument data)
             throws DocumentException {
         addSectionTitle(document, "10. Assessment Plan");
+        if (hasSourceTables(data, "10")) return;
 
         if (data.assessments().isEmpty()) {
-            addEmptyState(document, "No assessment-plan data is available in the source.");
+            addEmptyState(document, "No assessment-plan data is available for this syllabus.");
             return;
         }
 
@@ -600,8 +763,12 @@ public class SyllabusPdfRenderer {
         addSectionTitle(document, "11. Assignment Description and Rubric Summary");
 
         String raw = data.rubrics();
+        boolean sourceGrid = false;
+        for (JsonNode source : importedNotes(data).path("sourceSupplementalSections").path("11"))
+            if ("DS2026_RUBRIC_GRID_V1".equals(source.path("format").asText())) sourceGrid = true;
         if (raw == null || raw.isBlank()) {
-            addEmptyState(document, "No assignment/rubric data is available in the source.");
+            if (sourceGrid) return;
+            addEmptyState(document, "No assignment/rubric data is available for this syllabus.");
             return;
         }
 
@@ -609,7 +776,8 @@ public class SyllabusPdfRenderer {
             JsonNode root = objectMapper.readTree(raw);
             JsonNode rubrics = root.path("rubrics");
             if (!rubrics.isArray() || rubrics.isEmpty()) {
-                addTextOrEmpty(document, raw, "No assignment/rubric data is available in the source.");
+                if (sourceGrid && rubrics.isArray() && rubrics.isEmpty()) return;
+                addTextOrEmpty(document, raw, "No assignment/rubric data is available for this syllabus.");
                 return;
             }
 
@@ -627,7 +795,7 @@ public class SyllabusPdfRenderer {
                 JsonNode criteria = rubric.path("criteria");
                 int scaleCount = labels.isArray() ? labels.size() : 0;
                 if (scaleCount == 0 || !criteria.isArray() || criteria.isEmpty()) {
-                    addEmptyState(document, "No rubric criteria are available in the source.");
+                    addEmptyState(document, "No rubric criteria are available for this syllabus.");
                     rubricNumber++;
                     continue;
                 }
@@ -666,7 +834,7 @@ public class SyllabusPdfRenderer {
                 rubricNumber++;
             }
         } catch (Exception ignored) {
-            addTextOrEmpty(document, raw, "No assignment/rubric data is available in the source.");
+            addTextOrEmpty(document, raw, "No assignment/rubric data is available for this syllabus.");
         }
     }
 
@@ -675,9 +843,17 @@ public class SyllabusPdfRenderer {
             SyllabusPdfDocument data)
             throws DocumentException {
         addSectionTitle(document, "12. Reading List");
+        for (JsonNode source : importedNotes(data).path("sourceSupplementalSections").path("12"))
+            if ("DS2026_READING_ROWS_V1".equals(source.path("format").asText())) return;
+
+        String sourceReadingList=importedNotes(data).path("sourceReadingList").asText("");
+        if(!sourceReadingList.isBlank()) {
+            addTextOrEmpty(document,sourceReadingList,"");
+            return;
+        }
 
         if (data.books().isEmpty()) {
-            addEmptyState(document, "No reading-list data is available in the source.");
+            addEmptyState(document, "No reading-list data is available for this syllabus.");
             return;
         }
 
@@ -700,7 +876,8 @@ public class SyllabusPdfRenderer {
             addBodyCell(table, book.author(), Element.ALIGN_LEFT);
             addBodyCell(table, book.year() == null ? "" : String.valueOf(book.year()), Element.ALIGN_CENTER);
             addBodyCell(table, book.publisher(), Element.ALIGN_LEFT);
-            addBodyCell(table, titleCase(book.usageType()), Element.ALIGN_CENTER);
+            addBodyCell(table, "SOURCE_UNSPECIFIED".equals(importedNotes(data).path("readingUsagePolicy").asText())
+                    ? "Not specified in source" : titleCase(book.usageType()), Element.ALIGN_CENTER);
         }
 
         document.add(table);
@@ -734,6 +911,11 @@ public class SyllabusPdfRenderer {
         } catch (Exception ignored) {
             return objectMapper.createObjectNode();
         }
+    }
+
+    private String sourceCheckboxText(String value) {
+        return value == null ? null : value.replace("☒", "[checked]").replace("🗹", "[checked]")
+                .replace("□", "[unchecked]").replace("☐", "[unchecked]");
     }
 
     private String importedNoteText(
@@ -1229,15 +1411,15 @@ public class SyllabusPdfRenderer {
         table.setWidths(
                 new float[]{
                         8,
-                        34,
-                        10,
-                        18,
-                        20,
-                        10
+                        28,
+                        8,
+                        16,
+                        24,
+                        16
                 });
 
         table.setHeaderRows(1);
-        table.setSplitLate(false);
+        table.setSplitLate(true);
         table.setSplitRows(true);
         table.setSpacingAfter(8);
 
@@ -1291,7 +1473,7 @@ public class SyllabusPdfRenderer {
 
             addBodyCell(
                     table,
-                    assessmentsForTopic(topic, data.assessments()),
+                    topic.assessments(),
                     Element.ALIGN_LEFT);
 
             addBodyCell(
@@ -1304,8 +1486,8 @@ public class SyllabusPdfRenderer {
 
             addBodyCell(
                     table,
-                    firstNonBlankOrEmpty(topic.notes(), "1"),
-                    Element.ALIGN_CENTER);
+                    topic.resources(),
+                    Element.ALIGN_LEFT);
         }
 
         document.add(table);
@@ -1835,7 +2017,7 @@ public class SyllabusPdfRenderer {
 
         PdfPCell valueCell =
                 new PdfPCell(
-                        new Phrase(
+                        fonts.phrase(
                                 safe(value),
                                 fonts.regular(
                                         7.9f,
@@ -1877,7 +2059,7 @@ public class SyllabusPdfRenderer {
 
         PdfPCell cell =
                 new PdfPCell(
-                        new Phrase(
+                        fonts.phrase(
                                 safe(value),
                                 fonts.regular(
                                         7.8f,
@@ -1926,7 +2108,7 @@ public class SyllabusPdfRenderer {
 
         PdfPCell cell =
                 new PdfPCell(
-                        new Phrase(
+                        fonts.phrase(
                                 safeForCell(
                                         value),
                                 fonts.regular(
@@ -2040,6 +2222,8 @@ public class SyllabusPdfRenderer {
             Integer theory,
             Integer lab) {
 
+        if (theory == null && lab == null) return "";
+
         int theoryValue =
                 theory == null
                         ? 0
@@ -2139,7 +2323,7 @@ public class SyllabusPdfRenderer {
             }
         }
 
-        return firstNonBlank(data.responsiblePersons(), "Not assigned");
+        return "";
     }
 
     private static String safeNumber(
