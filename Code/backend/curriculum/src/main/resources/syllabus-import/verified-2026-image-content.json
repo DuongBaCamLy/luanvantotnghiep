@@ -1,0 +1,30 @@
+{
+  "sourceSha256": "b24a4b9a0d052f8decc79410b92150415126bb5aabce6fa550bf4706d940f68a",
+  "verification": "Transcribed and visually checked against the original CS2026 PDF. Weight is retained as source weighting; it is not converted to week or hours.",
+  "courses": [
+    {
+      "courseCode": "IT076IU", "startPage": 290, "endPage": 296, "contentPage": 291,
+      "rows": [
+        {"name":"Software development in practice","weight":"3","level":"I"},
+        {"name":"Beginning a project","weight":"3","level":"T, U"},
+        {"name":"Requirements","weight":"7.5","level":"T, U"},
+        {"name":"The user experience","weight":"4.5","level":"T, U"},
+        {"name":"System design","weight":"6","level":"T, U"},
+        {"name":"Program development","weight":"7.5","level":"T, U"},
+        {"name":"Reliability and testing","weight":"6","level":"T, U"},
+        {"name":"The business of software development","weight":"4.5","level":"T, U"},
+        {"name":"Review","weight":"3","level":"I, U"}
+      ]
+    },
+    {
+      "courseCode": "IT177IU", "startPage": 495, "endPage": 501, "contentPage": 496,
+      "rows": [
+        {"name":"Introduction of the internship place","weight":"9","level":"U"},
+        {"name":"Review the existing issues of an assigned project","weight":"9","level":"U"},
+        {"name":"Study and solve some issues in product development","weight":"9","level":"U"},
+        {"name":"Implement some new functions or features for the project product","weight":"9","level":"U"},
+        {"name":"Presentation","weight":"9","level":"U"}
+      ]
+    }
+  ]
+}

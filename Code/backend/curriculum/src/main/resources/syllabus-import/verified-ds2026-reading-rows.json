@@ -1,0 +1,540 @@
+{
+  "sourceSha256" : "fd279731316e301fce93cd25c9231959b1f73631f62c7d38e883d87bfaba1f32",
+  "courses" : [ {
+    "sourceCode" : "EN008IU",
+    "startPage" : 127,
+    "endPage" : 134,
+    "legacyReadingList" : "Textbooks [1] Frazie, L., & Leeming, S. (2013). Lecture ready 3. Oxford: Oxford University Press. [2] Rogers, M., Taylore-Knowles, S., & Taylore-Knowles, J. (2018). Skillful: Listening and speaking 3 (2nd ed.). Macmillan Education. References: [3] Lansford, L., Jeffries, A, Barber, D., Dellar, H, & Walkley, A. (2018). Perspective 3. National Geographic Learning. [4] Authentic lecture videos (TED, EnglishBreakingNews, university lectures)",
+    "sourceCellText" : "Textbooks  \r\n[1] Frazie, L., & Leeming, S. (2013). Lecture ready 3. Oxford: Oxford \r\nUniversity Press.  \r\n[2] Rogers, M., Taylore-Knowles, S., & Taylore-Knowles, J. (2018). \r\nSkillful:  \r\nListening and speaking 3 (2nd ed.). Macmillan Education.  \r\n  \r\nReferences:  \r\n[3] Lansford, L., Jeffries, A, Barber, D., Dellar, H, & Walkley, A. \r\n(2018).  \r\nPerspective 3. National Geographic Learning.  \r\n[4] Authentic lecture videos (TED, EnglishBreakingNews, university \r\nlectures)",
+    "references" : 4,
+    "section12" : [ {
+      "title" : "Textbooks",
+      "headers" : [ "No.", "Reference (source text)" ],
+      "rows" : [ [ "[1]", "Frazie, L., & Leeming, S. (2013). Lecture ready 3. Oxford: Oxford University Press." ], [ "[2]", "Rogers, M., Taylore-Knowles, S., & Taylore-Knowles, J. (2018). Skillful: Listening and speaking 3 (2nd ed.). Macmillan Education." ] ],
+      "pages" : [ 130 ],
+      "format" : "DS2026_READING_ROWS_V1"
+    }, {
+      "title" : "References:",
+      "headers" : [ "No.", "Reference (source text)" ],
+      "rows" : [ [ "[3]", "Lansford, L., Jeffries, A, Barber, D., Dellar, H, & Walkley, A. (2018). Perspective 3. National Geographic Learning." ], [ "[4]", "Authentic lecture videos (TED, EnglishBreakingNews, university lectures)" ] ],
+      "pages" : [ 130 ],
+      "format" : "DS2026_READING_ROWS_V1"
+    } ]
+  }, {
+    "sourceCode" : "EN007IU",
+    "startPage" : 135,
+    "endPage" : 143,
+    "legacyReadingList" : "Textbook [1] Oshima, A., & Hogue, A. (2017). Longman Academic Writing Series, th Level 4: Essays (5 ed.). New Jersey, NJ: Pearson Longman. References [2] Oshima, A., & Hogue, A. (2006). Longman Academic Writing Series, th Level 4: Essays (4 ed.). New Jersey, NJ: Pearson Longman. [3] Bailey, S. (2021). Academic Writing for University Students. London: Routledge.",
+    "sourceCellText" : "Textbook  \r\n[1] Oshima, A., & Hogue, A. (2017). Longman Academic Writing \r\nSeries, th  \r\n Level 4: Essays (5 ed.). New Jersey, NJ: Pearson Longman.  \r\nReferences  \r\n[2] Oshima, A., & Hogue, A. (2006). Longman Academic Writing \r\nSeries, th  \r\n Level 4: Essays (4 ed.). New Jersey, NJ: Pearson Longman.  \r\n[3] Bailey, S. (2021). Academic Writing for University Students. \r\nLondon:  \r\nRoutledge.",
+    "references" : 3,
+    "section12" : [ {
+      "title" : "Textbook",
+      "headers" : [ "No.", "Reference (source text)" ],
+      "rows" : [ [ "[1]", "Oshima, A., & Hogue, A. (2017). Longman Academic Writing Series, th Level 4: Essays (5 ed.). New Jersey, NJ: Pearson Longman." ] ],
+      "pages" : [ 137 ],
+      "format" : "DS2026_READING_ROWS_V1"
+    }, {
+      "title" : "References",
+      "headers" : [ "No.", "Reference (source text)" ],
+      "rows" : [ [ "[2]", "Oshima, A., & Hogue, A. (2006). Longman Academic Writing Series, th Level 4: Essays (4 ed.). New Jersey, NJ: Pearson Longman." ], [ "[3]", "Bailey, S. (2021). Academic Writing for University Students. London: Routledge." ] ],
+      "pages" : [ 137 ],
+      "format" : "DS2026_READING_ROWS_V1"
+    } ]
+  }, {
+    "sourceCode" : "EN012IU",
+    "startPage" : 144,
+    "endPage" : 149,
+    "legacyReadingList" : "[1] Lowe, S, & Pile, L. (2011). Presenting. Singapore: Cengage Learning [2] Comfort, J. (1996). Effective presentations. Oxford: Oxford University Press [3] Lucas, S. (2019). The art of public speaking (13th ed.). New York: McGraw-Hill Education. [4] Suzy Siddons. (2008). The Complete Presentation Skills Handbook, U.S. U.K.",
+    "sourceCellText" : "[1] Lowe, S, & Pile, L. (2011). Presenting. Singapore: Cengage Learning [2] \r\nComfort, J. (1996). Effective presentations. Oxford: Oxford University Press [3] \r\nLucas, S. (2019). The art of public speaking (13th ed.). New York:  \r\nMcGraw-Hill Education.  \r\n[4] Suzy Siddons. (2008). The Complete Presentation Skills Handbook, U.S. U.K.",
+    "references" : 4,
+    "section12" : [ {
+      "title" : "Source Reading List",
+      "headers" : [ "No.", "Reference (source text)" ],
+      "rows" : [ [ "[1]", "Lowe, S, & Pile, L. (2011). Presenting. Singapore: Cengage Learning" ], [ "[2]", "Comfort, J. (1996). Effective presentations. Oxford: Oxford University Press" ], [ "[3]", "Lucas, S. (2019). The art of public speaking (13th ed.). New York: McGraw-Hill Education." ], [ "[4]", "Suzy Siddons. (2008). The Complete Presentation Skills Handbook, U.S. U.K." ] ],
+      "pages" : [ 147 ],
+      "format" : "DS2026_READING_ROWS_V1"
+    } ]
+  }, {
+    "sourceCode" : "EN011IU",
+    "startPage" : 150,
+    "endPage" : 155,
+    "legacyReadingList" : "Textbooks [1] Read, S. H. (2024). Academic writing skills for international students (2nd ed.). Bloomsbury Academic. [2] Hamp-Lyons, L., & Heasley, B. (2006). Study writing. Cambridge Unviersity Press. References [3] Bailey, S. (2018). Academic writing: A handbook for international students (5th ed.). Routledge. [4] Savage, A., & Shafiei, M. (2012). Effective academic writing 3 (2nd ed.). Oxford University Press. [5] Oshima, A., & Hogue, A. (2016). Writing academic English (5th ed.) Pearson.",
+    "sourceCellText" : "Textbooks  \r\n[1] Read, S. H. (2024). Academic writing skills for international students \r\n(2nd ed.). Bloomsbury Academic.   \r\n[2] Hamp-Lyons, L., & Heasley, B. (2006). Study writing. Cambridge \r\nUnviersity Press.   \r\n  \r\nReferences  \r\n[3] Bailey, S. (2018). Academic writing: A handbook for international \r\nstudents (5th ed.). Routledge.   \r\n[4] Savage, A., & Shafiei, M. (2012). Effective academic writing 3 (2nd ed.).  \r\nOxford University Press.   \r\n[5] Oshima, A., & Hogue, A. (2016). Writing academic English (5th ed.) \r\nPearson.",
+    "references" : 5,
+    "section12" : [ {
+      "title" : "Textbooks",
+      "headers" : [ "No.", "Reference (source text)" ],
+      "rows" : [ [ "[1]", "Read, S. H. (2024). Academic writing skills for international students (2nd ed.). Bloomsbury Academic." ], [ "[2]", "Hamp-Lyons, L., & Heasley, B. (2006). Study writing. Cambridge Unviersity Press." ] ],
+      "pages" : [ 153 ],
+      "format" : "DS2026_READING_ROWS_V1"
+    }, {
+      "title" : "References",
+      "headers" : [ "No.", "Reference (source text)" ],
+      "rows" : [ [ "[3]", "Bailey, S. (2018). Academic writing: A handbook for international students (5th ed.). Routledge." ], [ "[4]", "Savage, A., & Shafiei, M. (2012). Effective academic writing 3 (2nd ed.). Oxford University Press." ], [ "[5]", "Oshima, A., & Hogue, A. (2016). Writing academic English (5th ed.) Pearson." ] ],
+      "pages" : [ 153 ],
+      "format" : "DS2026_READING_ROWS_V1"
+    } ]
+  }, {
+    "sourceCode" : "IT178IU",
+    "startPage" : 170,
+    "endPage" : 176,
+    "legacyReadingList" : "R E. Walpole, R H. Myers, S L Myers. Probability and Statistics for Engineers and Scientists 9th ed. Prentice Hall, 2011. S. Ross. Probability and Statistics for Engineers and Scientists, 6th ed. Academic Press, 2021. Practical Statistics for Data Scientists (Bruce & Gedeck, 2nd Edition, 2024).",
+    "sourceCellText" : "R E. Walpole, R H. Myers, S L Myers. Probability and Statistics for \r\nEngineers and Scientists 9th ed. Prentice Hall, 2011. \r\nS. Ross. Probability and Statistics for Engineers and Scientists, 6th ed. \r\nAcademic Press, 2021. \r\nPractical Statistics for Data Scientists (Bruce & Gedeck, 2nd Edition, \r\n2024).",
+    "references" : 3,
+    "section12" : [ {
+      "title" : "Source Reading List",
+      "headers" : [ "No.", "Reference (source text)" ],
+      "rows" : [ [ "", "R E. Walpole, R H. Myers, S L Myers. Probability and Statistics for Engineers and Scientists 9th ed. Prentice Hall, 2011." ], [ "", "S. Ross. Probability and Statistics for Engineers and Scientists, 6th ed. Academic Press, 2021." ], [ "", "Practical Statistics for Data Scientists (Bruce & Gedeck, 2nd Edition, 2024)." ] ],
+      "pages" : [ 172 ],
+      "format" : "DS2026_READING_ROWS_V1"
+    } ]
+  }, {
+    "sourceCode" : "IT151",
+    "startPage" : 177,
+    "endPage" : 186,
+    "legacyReadingList" : "5. Ronald E. Walpole, Probability & Statistics for Engineers & Scientists 9th, 2013 6. github: Python for Probability Statistics and Machine Learning 2E. 7. R. Lyman Ott and Michael T. Longnecker, An Introduction to Statistical Methods and Data Analysis 7th, 2015",
+    "sourceCellText" : "5. Ronald E. Walpole, Probability & Statistics for Engineers & \r\nScientists 9th, 2013 \r\n6. github: Python for Probability Statistics and Machine \r\nLearning 2E. \r\n7. R. Lyman Ott and Michael T. Longnecker, An Introduction \r\nto Statistical Methods and Data Analysis 7th, 2015",
+    "references" : 3,
+    "section12" : [ {
+      "title" : "Source Reading List",
+      "headers" : [ "No.", "Reference (source text)" ],
+      "rows" : [ [ "5.", "Ronald E. Walpole, Probability & Statistics for Engineers & Scientists 9th, 2013" ], [ "6.", "github: Python for Probability Statistics and Machine Learning 2E." ], [ "7.", "R. Lyman Ott and Michael T. Longnecker, An Introduction to Statistical Methods and Data Analysis 7th, 2015" ] ],
+      "pages" : [ 179 ],
+      "format" : "DS2026_READING_ROWS_V1"
+    } ]
+  }, {
+    "sourceCode" : "IT176IU",
+    "startPage" : 187,
+    "endPage" : 196,
+    "legacyReadingList" : "1. Andrew Gelman, John B. Carlin, Hal S. Stern, David B. Dunson, Aki Vehtari, and Donald B. Rubin., Bayesian Data Analysis., CRC Press/Taylor & Francis, 2013, 3rd Edition. ISBN: 9781439840955 2. Kostas Triantafyllopoulos., Bayesian Inference of State Space Models: Kalman Filtering and Beyond (Springer Texts in Statistics) 1st ed. 2021 Edition",
+    "sourceCellText" : "1. Andrew Gelman, John B. Carlin, Hal S. Stern, David B. \r\nDunson, Aki Vehtari, and Donald B. Rubin., Bayesian Data \r\nAnalysis., CRC Press/Taylor & Francis, 2013, 3rd Edition. \r\nISBN: 9781439840955 \r\n2. Kostas Triantafyllopoulos., Bayesian Inference of State Space \r\nModels: Kalman Filtering and Beyond (Springer Texts in \r\nStatistics) 1st ed. 2021 Edition",
+    "references" : 2,
+    "section12" : [ {
+      "title" : "Source Reading List",
+      "headers" : [ "No.", "Reference (source text)" ],
+      "rows" : [ [ "1.", "Andrew Gelman, John B. Carlin, Hal S. Stern, David B. Dunson, Aki Vehtari, and Donald B. Rubin., Bayesian Data Analysis., CRC Press/Taylor & Francis, 2013, 3rd Edition. ISBN: 9781439840955" ], [ "2.", "Kostas Triantafyllopoulos., Bayesian Inference of State Space Models: Kalman Filtering and Beyond (Springer Texts in Statistics) 1st ed. 2021 Edition" ] ],
+      "pages" : [ 189 ],
+      "format" : "DS2026_READING_ROWS_V1"
+    } ]
+  }, {
+    "sourceCode" : "IT120",
+    "startPage" : 197,
+    "endPage" : 204,
+    "legacyReadingList" : "1. Blank, S., & Dorf, B. The Startup Owner's Manual: The Step-By- Step Guide for Building a Great Company. K&S Ranch, 2020. (Textbook) 2. Adisa, A., Slobodan, P., & Roland, C. Sustainable Development Practice – Case Studies for Engineers and Scientists. Wiley, 2004 (References). 3. Scarborough, N. M., & Cornwall, J. R. Essentials of Entrepreneurship and Small Business Management (9th ed.). Pearson, 2019 (References).",
+    "sourceCellText" : "1. Blank, S., & Dorf, B. The Startup Owner's Manual: The Step-By-\r\nStep Guide for Building a Great Company. K&S Ranch, 2020. \r\n(Textbook) \r\n2. Adisa, A., Slobodan, P., & Roland, C. Sustainable Development \r\nPractice – Case Studies for Engineers and Scientists. Wiley, 2004 \r\n(References). \r\n3. Scarborough, N. M., & Cornwall, J. R. Essentials of \r\nEntrepreneurship and Small Business Management (9th ed.). \r\nPearson, 2019 (References).",
+    "references" : 3,
+    "section12" : [ {
+      "title" : "Source Reading List",
+      "headers" : [ "No.", "Reference (source text)" ],
+      "rows" : [ [ "1.", "Blank, S., & Dorf, B. The Startup Owner's Manual: The Step-By- Step Guide for Building a Great Company. K&S Ranch, 2020. (Textbook)" ], [ "2.", "Adisa, A., Slobodan, P., & Roland, C. Sustainable Development Practice – Case Studies for Engineers and Scientists. Wiley, 2004 (References)." ], [ "3.", "Scarborough, N. M., & Cornwall, J. R. Essentials of Entrepreneurship and Small Business Management (9th ed.). Pearson, 2019 (References)." ] ],
+      "pages" : [ 199 ],
+      "format" : "DS2026_READING_ROWS_V1"
+    } ]
+  }, {
+    "sourceCode" : "IT135IU",
+    "startPage" : 205,
+    "endPage" : 215,
+    "legacyReadingList" : "[1] Jeffrey M.Stanton, Introduction to Data Science, Syracuse University, 2013. [2] Cathy O’Neil, Rachel Schutt, Doing Data Science: Straight Talk from the Frontline, O’Reilly Media, 2013. [3] Joel Grus, Data Science from Scratch: First Principles with Python, O’Reilly Media, 2015. [4] Jiawei Han, Micheline Kamber, Data Mining: Concepts and Techniques, 3rd Edition, Morgan Kaufmann, 2011. [5] Matt Harrison, Learning the Pandas Library: Python Tools for Data Munging, Analysis, and Visualization, CreateSpace Independent Publishing Platform, 2016.",
+    "sourceCellText" : "[1] Jeffrey M.Stanton, Introduction to Data Science, Syracuse University, \r\n2013. \r\n[2] Cathy O’Neil, Rachel Schutt, Doing Data Science: Straight Talk from \r\nthe Frontline, O’Reilly Media, 2013. \r\n[3] Joel Grus, Data Science from Scratch: First Principles with Python, \r\nO’Reilly Media, 2015. \r\n[4] Jiawei Han, Micheline Kamber, Data Mining: Concepts and \r\nTechniques, 3rd Edition, Morgan Kaufmann, 2011. \r\n[5] Matt Harrison, Learning the Pandas Library: Python Tools for Data \r\nMunging, Analysis, and Visualization, CreateSpace Independent \r\nPublishing Platform, 2016.",
+    "references" : 5,
+    "section12" : [ {
+      "title" : "Source Reading List",
+      "headers" : [ "No.", "Reference (source text)" ],
+      "rows" : [ [ "[1]", "Jeffrey M.Stanton, Introduction to Data Science, Syracuse University, 2013." ], [ "[2]", "Cathy O’Neil, Rachel Schutt, Doing Data Science: Straight Talk from the Frontline, O’Reilly Media, 2013." ], [ "[3]", "Joel Grus, Data Science from Scratch: First Principles with Python, O’Reilly Media, 2015." ], [ "[4]", "Jiawei Han, Micheline Kamber, Data Mining: Concepts and Techniques, 3rd Edition, Morgan Kaufmann, 2011." ], [ "[5]", "Matt Harrison, Learning the Pandas Library: Python Tools for Data Munging, Analysis, and Visualization, CreateSpace Independent Publishing Platform, 2016." ] ],
+      "pages" : [ 207 ],
+      "format" : "DS2026_READING_ROWS_V1"
+    } ]
+  }, {
+    "sourceCode" : "IT149",
+    "startPage" : 216,
+    "endPage" : 225,
+    "legacyReadingList" : "Eric Matthes, Python Crash Course: A Hands-On, Project-Based Introduction to Programming, 2nd Edition, No Starch Press, 2019",
+    "sourceCellText" : "Eric Matthes, Python Crash Course: A Hands-On, Project-Based \r\nIntroduction to Programming, 2nd Edition, No Starch Press, 2019",
+    "references" : 1,
+    "section12" : [ {
+      "title" : "Source Reading List",
+      "headers" : [ "No.", "Reference (source text)" ],
+      "rows" : [ [ "", "Eric Matthes, Python Crash Course: A Hands-On, Project-Based Introduction to Programming, 2nd Edition, No Starch Press, 2019" ] ],
+      "pages" : [ 218 ],
+      "format" : "DS2026_READING_ROWS_V1"
+    } ]
+  }, {
+    "sourceCode" : "IT069",
+    "startPage" : 226,
+    "endPage" : 235,
+    "legacyReadingList" : "1. Paul J. Deitel (Author), Harvey Deitel (Author), Java How To Program, 11th Edition, Prentice Hall, 2017 2. Matt Weisfeld, The Object-Oriented Thought Process, 3rd Edition, Addison-Wesley, 2009 3. Erich Gamma, Richard Helm, Ralph Johnson and John Vlissides, Design Patterns: Elements of Reusable Object- Oriented Software, Addison-Wesley Professional, 1994 4. Eric Freeman, Bert Bates, Kathy Sierra and Elisabeth Robson, Head First Design Patterns: A Brain-Friendly Guide, O'Reilly Media, 2004",
+    "sourceCellText" : "1. Paul J. Deitel (Author), Harvey Deitel (Author), Java How To \r\nProgram, 11th Edition, Prentice Hall, 2017 \r\n2. Matt Weisfeld, The Object-Oriented Thought Process, 3rd \r\nEdition, Addison-Wesley, 2009 \r\n3. Erich Gamma, Richard Helm, Ralph Johnson and John \r\nVlissides, Design Patterns: Elements of Reusable Object-\r\nOriented Software, Addison-Wesley Professional, 1994 \r\n4. Eric Freeman, Bert Bates, Kathy Sierra and Elisabeth Robson, \r\nHead First Design Patterns: A Brain-Friendly Guide, O'Reilly \r\nMedia, 2004",
+    "references" : 4,
+    "section12" : [ {
+      "title" : "Source Reading List",
+      "headers" : [ "No.", "Reference (source text)" ],
+      "rows" : [ [ "1.", "Paul J. Deitel (Author), Harvey Deitel (Author), Java How To Program, 11th Edition, Prentice Hall, 2017" ], [ "2.", "Matt Weisfeld, The Object-Oriented Thought Process, 3rd Edition, Addison-Wesley, 2009" ], [ "3.", "Erich Gamma, Richard Helm, Ralph Johnson and John Vlissides, Design Patterns: Elements of Reusable Object- Oriented Software, Addison-Wesley Professional, 1994" ], [ "4.", "Eric Freeman, Bert Bates, Kathy Sierra and Elisabeth Robson, Head First Design Patterns: A Brain-Friendly Guide, O'Reilly Media, 2004" ] ],
+      "pages" : [ 228 ],
+      "format" : "DS2026_READING_ROWS_V1"
+    } ]
+  }, {
+    "sourceCode" : "IT013",
+    "startPage" : 236,
+    "endPage" : 244,
+    "legacyReadingList" : "1. Michael T. Goodrich and Roberto Tamassia, Data Structures and Algorithms in Java 6th, 2014 2. Cormen, Thomas H., et al. Introduction to algorithms. MIT press, 2009. 3. Lafore, Robert. Data structures and algorithms in Java. Sams publishing, 2017.",
+    "sourceCellText" : "1. Michael T. Goodrich and Roberto Tamassia, Data \r\nStructures and Algorithms in Java 6th, 2014 \r\n2. Cormen, Thomas H., et al. Introduction to algorithms. \r\nMIT press, 2009. \r\n3. Lafore, Robert. Data structures and algorithms in Java. \r\nSams publishing, 2017.",
+    "references" : 3,
+    "section12" : [ {
+      "title" : "Source Reading List",
+      "headers" : [ "No.", "Reference (source text)" ],
+      "rows" : [ [ "1.", "Michael T. Goodrich and Roberto Tamassia, Data Structures and Algorithms in Java 6th, 2014" ], [ "2.", "Cormen, Thomas H., et al. Introduction to algorithms. MIT press, 2009." ], [ "3.", "Lafore, Robert. Data structures and algorithms in Java. Sams publishing, 2017." ] ],
+      "pages" : [ 238 ],
+      "format" : "DS2026_READING_ROWS_V1"
+    } ]
+  }, {
+    "sourceCode" : "IT079",
+    "startPage" : 245,
+    "endPage" : 253,
+    "legacyReadingList" : "1. Abraham Silberschatz, Henry F. Korth, S. Sudarshan, Database System Concept 7th, 2020 2. Jeffrey A. Hoffer, Ramesh Venkataraman, Heikki Topi, Modern Database Management 13th, 2019 1. Ramez Elmasri, Shamkant Navathe, Fundamentals of Database Systems 7th, 2016",
+    "sourceCellText" : "1. Abraham Silberschatz, Henry F. Korth, S. Sudarshan, Database \r\nSystem Concept 7th, 2020 \r\n2. Jeffrey A. Hoffer, Ramesh Venkataraman, Heikki Topi, Modern \r\nDatabase Management 13th, 2019 \r\n1. Ramez Elmasri, Shamkant Navathe, Fundamentals of Database \r\nSystems 7th, 2016",
+    "references" : 3,
+    "section12" : [ {
+      "title" : "Source Reading List",
+      "headers" : [ "No.", "Reference (source text)" ],
+      "rows" : [ [ "1.", "Abraham Silberschatz, Henry F. Korth, S. Sudarshan, Database System Concept 7th, 2020" ], [ "2.", "Jeffrey A. Hoffer, Ramesh Venkataraman, Heikki Topi, Modern Database Management 13th, 2019" ], [ "1.", "Ramez Elmasri, Shamkant Navathe, Fundamentals of Database Systems 7th, 2016" ] ],
+      "pages" : [ 247 ],
+      "format" : "DS2026_READING_ROWS_V1"
+    } ]
+  }, {
+    "sourceCode" : "IT159",
+    "startPage" : 254,
+    "endPage" : 265,
+    "legacyReadingList" : "[1] Stuart Russell and Peter Norvig, “Artificial Intelligence: A Modern Approach”, Fourth Edition, 2020. [2] David L. Poole and Alan K. Mackworth, “Artificial Intelligence Foundations of Computational Agents”, Second Edition, 2017.",
+    "sourceCellText" : "[1] Stuart Russell and Peter Norvig, “Artificial Intelligence: A\r\nModern Approach”, Fourth Edition, 2020. \r\n[2] David L. Poole and Alan K. Mackworth, “Artificial Intelligence\r\nFoundations of Computational Agents”, Second Edition, 2017.",
+    "references" : 2,
+    "section12" : [ {
+      "title" : "Source Reading List",
+      "headers" : [ "No.", "Reference (source text)" ],
+      "rows" : [ [ "[1]", "Stuart Russell and Peter Norvig, “Artificial Intelligence: A Modern Approach”, Fourth Edition, 2020." ], [ "[2]", "David L. Poole and Alan K. Mackworth, “Artificial Intelligence Foundations of Computational Agents”, Second Edition, 2017." ] ],
+      "pages" : [ 257 ],
+      "format" : "DS2026_READING_ROWS_V1"
+    } ]
+  }, {
+    "sourceCode" : "IT140",
+    "startPage" : 266,
+    "endPage" : 275,
+    "legacyReadingList" : "1. William Stallings, Cryptography and Network Security 7th, 2016",
+    "sourceCellText" : "1. William Stallings, Cryptography and Network Security 7th, \r\n2016",
+    "references" : 1,
+    "section12" : [ {
+      "title" : "Source Reading List",
+      "headers" : [ "No.", "Reference (source text)" ],
+      "rows" : [ [ "1.", "William Stallings, Cryptography and Network Security 7th, 2016" ] ],
+      "pages" : [ 268 ],
+      "format" : "DS2026_READING_ROWS_V1"
+    } ]
+  }, {
+    "sourceCode" : "IT137IU",
+    "startPage" : 276,
+    "endPage" : 285,
+    "legacyReadingList" : "1. Anil Maheshwari, Data Analytics, 2022 2. Migrant & Seasonal Head Start Technical Asistance Center. Introduction to Data Analysis Handbook, non-commercial ues only.",
+    "sourceCellText" : "1. Anil Maheshwari, Data Analytics, 2022 \r\n2. Migrant & Seasonal Head Start Technical Asistance Center. Introduction to \r\nData Analysis Handbook, non-commercial ues only.",
+    "references" : 2,
+    "section12" : [ {
+      "title" : "Source Reading List",
+      "headers" : [ "No.", "Reference (source text)" ],
+      "rows" : [ [ "1.", "Anil Maheshwari, Data Analytics, 2022" ], [ "2.", "Migrant & Seasonal Head Start Technical Asistance Center. Introduction to Data Analysis Handbook, non-commercial ues only." ] ],
+      "pages" : [ 278 ],
+      "format" : "DS2026_READING_ROWS_V1"
+    } ]
+  }, {
+    "sourceCode" : "IT136",
+    "startPage" : 286,
+    "endPage" : 295,
+    "legacyReadingList" : "1. Michael H. Kutner, Christopher J Nachtsheim, John Neter, Applied Linear Regression Models, 4th, 2004 2. Montgomery, D. C., Peck, E. A., and Vining, G., Introduction to Linear Regression Analysis, 5th, 2012",
+    "sourceCellText" : "1. Michael H. Kutner, Christopher J Nachtsheim, John Neter, \r\nApplied Linear Regression Models, 4th, 2004 \r\n2. Montgomery, D. C., Peck, E. A., and Vining, G., Introduction to \r\nLinear Regression Analysis, 5th, 2012",
+    "references" : 2,
+    "section12" : [ {
+      "title" : "Source Reading List",
+      "headers" : [ "No.", "Reference (source text)" ],
+      "rows" : [ [ "1.", "Michael H. Kutner, Christopher J Nachtsheim, John Neter, Applied Linear Regression Models, 4th, 2004" ], [ "2.", "Montgomery, D. C., Peck, E. A., and Vining, G., Introduction to Linear Regression Analysis, 5th, 2012" ] ],
+      "pages" : [ 288 ],
+      "format" : "DS2026_READING_ROWS_V1"
+    } ]
+  }, {
+    "sourceCode" : "IT138",
+    "startPage" : 296,
+    "endPage" : 305,
+    "legacyReadingList" : "[1] Edward R. Tufte, The Visual Display of Quantitative Information 2nd, 2001 [2] Tamara Munzner, Visualization Analysis and Design 1st, 2014 [3] Colin Ware, Visual Thinking for Design 1st, 2004 [4] Scott Murray, Interactive Data Visualization for the Web 1st, 2013 [5] Alberto Cairo, The Functional Art: An introduction to information graphics and visualization 1st, 2012 [6] Cole Nussbaumer Knaflic, Storytelling with Data: A Data Visualization Guide for Business Professionals 1st, 2015",
+    "sourceCellText" : "[1] Edward R. Tufte, The Visual Display of Quantitative Information 2nd, \r\n2001 \r\n[2] Tamara Munzner, Visualization Analysis and Design 1st, 2014 \r\n[3] Colin Ware, Visual Thinking for Design 1st, 2004 \r\n[4] Scott Murray, Interactive Data Visualization for the Web 1st, 2013 \r\n[5] Alberto Cairo, The Functional Art: An introduction to information \r\ngraphics and visualization 1st, 2012 \r\n[6] Cole Nussbaumer Knaflic, Storytelling with Data: A Data \r\nVisualization Guide for Business Professionals 1st, 2015",
+    "references" : 6,
+    "section12" : [ {
+      "title" : "Source Reading List",
+      "headers" : [ "No.", "Reference (source text)" ],
+      "rows" : [ [ "[1]", "Edward R. Tufte, The Visual Display of Quantitative Information 2nd, 2001" ], [ "[2]", "Tamara Munzner, Visualization Analysis and Design 1st, 2014" ], [ "[3]", "Colin Ware, Visual Thinking for Design 1st, 2004" ], [ "[4]", "Scott Murray, Interactive Data Visualization for the Web 1st, 2013" ], [ "[5]", "Alberto Cairo, The Functional Art: An introduction to information graphics and visualization 1st, 2012" ], [ "[6]", "Cole Nussbaumer Knaflic, Storytelling with Data: A Data Visualization Guide for Business Professionals 1st, 2015" ] ],
+      "pages" : [ 298 ],
+      "format" : "DS2026_READING_ROWS_V1"
+    } ]
+  }, {
+    "sourceCode" : "IT139IU",
+    "startPage" : 306,
+    "endPage" : 315,
+    "legacyReadingList" : "3. G. Coulouris, J. Dollimore, T. Kindberg, G. Blair, Distributed Systems: Concepts and Design 5th, 2011 4. T. White, Hadoop: The Definitive Guide 4th, 2015 5. A.S. Tanenbaum, M.V. Steen, Distributed Systems: Principles and Paradigms 2nd, 2007",
+    "sourceCellText" : "3. G. Coulouris, J. Dollimore, T. Kindberg, G. Blair, \r\nDistributed Systems: Concepts and Design 5th, 2011 \r\n4. T. White, Hadoop: The Definitive Guide 4th, 2015 \r\n5. A.S. Tanenbaum, M.V. Steen, Distributed Systems: \r\nPrinciples and Paradigms 2nd, 2007",
+    "references" : 3,
+    "section12" : [ {
+      "title" : "Source Reading List",
+      "headers" : [ "No.", "Reference (source text)" ],
+      "rows" : [ [ "3.", "G. Coulouris, J. Dollimore, T. Kindberg, G. Blair, Distributed Systems: Concepts and Design 5th, 2011" ], [ "4.", "T. White, Hadoop: The Definitive Guide 4th, 2015" ], [ "5.", "A.S. Tanenbaum, M.V. Steen, Distributed Systems: Principles and Paradigms 2nd, 2007" ] ],
+      "pages" : [ 308 ],
+      "format" : "DS2026_READING_ROWS_V1"
+    } ]
+  }, {
+    "sourceCode" : "IT160IU",
+    "startPage" : 316,
+    "endPage" : 323,
+    "legacyReadingList" : "[1] Jiawei Han, Micheline Kamber, Data Mining: Concepts and Techniques, 3rd Edition, 2011. [2] Ian H.Witten, Eibe Frank, Mark A. Hall, and Christopher J. Pal, Data Mining: Practical Machine Learning Tools and Techniques, Fourth Edition, Morgan Kaufmann, 2016. [3] A. Lawrynowicz, Semantic Data Mining: An Ontology-based Approach (Studies on the Semantic Web), IOS Press (April 15, 2017), ISBN-10 1614997454.",
+    "sourceCellText" : "[1] Jiawei Han, Micheline Kamber, Data Mining: Concepts and \r\nTechniques, 3rd Edition, 2011. \r\n[2] Ian H.Witten, Eibe Frank, Mark A. Hall, and Christopher J. Pal, \r\nData Mining: Practical Machine Learning Tools and Techniques, \r\nFourth Edition, Morgan Kaufmann, 2016. \r\n[3] A. Lawrynowicz, Semantic Data Mining: An Ontology-based \r\nApproach (Studies on the Semantic Web), IOS Press (April 15, 2017), \r\nISBN-10 1614997454.",
+    "references" : 3,
+    "section12" : [ {
+      "title" : "Source Reading List",
+      "headers" : [ "No.", "Reference (source text)" ],
+      "rows" : [ [ "[1]", "Jiawei Han, Micheline Kamber, Data Mining: Concepts and Techniques, 3rd Edition, 2011." ], [ "[2]", "Ian H.Witten, Eibe Frank, Mark A. Hall, and Christopher J. Pal, Data Mining: Practical Machine Learning Tools and Techniques, Fourth Edition, Morgan Kaufmann, 2016." ], [ "[3]", "A. Lawrynowicz, Semantic Data Mining: An Ontology-based Approach (Studies on the Semantic Web), IOS Press (April 15, 2017), ISBN-10 1614997454." ] ],
+      "pages" : [ 318 ],
+      "format" : "DS2026_READING_ROWS_V1"
+    } ]
+  }, {
+    "sourceCode" : "IT157IU",
+    "startPage" : 324,
+    "endPage" : 334,
+    "legacyReadingList" : "[1] Ian Goodfellow, Yoshua Bengio and Aaron Courville, Deep Learning, The MIT Press 2021, ISBN: 978-0262035613. [2] Aston Zhang, Zachary C. Lipton, Mu Li, and Alexander J. Smola., Dive Into Deep Learning.",
+    "sourceCellText" : "[1] Ian Goodfellow, Yoshua Bengio and Aaron Courville, Deep \r\nLearning, The MIT Press 2021, ISBN: 978-0262035613.  \r\n[2] Aston Zhang, Zachary C. Lipton, Mu Li, and Alexander J. Smola., \r\nDive Into Deep Learning.",
+    "references" : 2,
+    "section12" : [ {
+      "title" : "Source Reading List",
+      "headers" : [ "No.", "Reference (source text)" ],
+      "rows" : [ [ "[1]", "Ian Goodfellow, Yoshua Bengio and Aaron Courville, Deep Learning, The MIT Press 2021, ISBN: 978-0262035613." ], [ "[2]", "Aston Zhang, Zachary C. Lipton, Mu Li, and Alexander J. Smola., Dive Into Deep Learning." ] ],
+      "pages" : [ 327 ],
+      "format" : "DS2026_READING_ROWS_V1"
+    } ]
+  }, {
+    "sourceCode" : "IT172IU",
+    "startPage" : 335,
+    "endPage" : 345,
+    "legacyReadingList" : "[1] Jerome H. Friedman, Robert Tibshirani, and Trevor Hastie., The Elements of Statistical Learning: Data Mining, Inference, and Prediction, Second Edition (Springer Series in Statistics). [2] Christopher M. Bishop., Pattern Recognition and Machine Learning (Information Science and Statistics). [3] Kevin P. Murphy., Machine Learning: A Probabilistic Perspective (Adaptive Computation and Machine Learning series). [4] Michael Berthold, David J. Hand, \"Intelligent Data Analysis”, Springer, 2007.",
+    "sourceCellText" : "[1] Jerome H. Friedman, Robert Tibshirani, and Trevor Hastie., The \r\nElements of Statistical Learning: Data Mining, Inference, and \r\nPrediction, Second Edition (Springer Series in Statistics). \r\n[2] Christopher M. Bishop., Pattern Recognition and Machine \r\nLearning (Information Science and Statistics).\n[3] Kevin P. Murphy., Machine Learning: A Probabilistic Perspective \r\n(Adaptive Computation and Machine Learning series). \r\n[4] Michael Berthold, David J. Hand, \"Intelligent Data Analysis”, \r\nSpringer, 2007.",
+    "references" : 4,
+    "section12" : [ {
+      "title" : "Source Reading List",
+      "headers" : [ "No.", "Reference (source text)" ],
+      "rows" : [ [ "[1]", "Jerome H. Friedman, Robert Tibshirani, and Trevor Hastie., The Elements of Statistical Learning: Data Mining, Inference, and Prediction, Second Edition (Springer Series in Statistics)." ], [ "[2]", "Christopher M. Bishop., Pattern Recognition and Machine Learning (Information Science and Statistics)." ], [ "[3]", "Kevin P. Murphy., Machine Learning: A Probabilistic Perspective (Adaptive Computation and Machine Learning series)." ], [ "[4]", "Michael Berthold, David J. Hand, \"Intelligent Data Analysis”, Springer, 2007." ] ],
+      "pages" : [ 337, 338 ],
+      "format" : "DS2026_READING_ROWS_V1"
+    } ]
+  }, {
+    "sourceCode" : "IT173IU",
+    "startPage" : 346,
+    "endPage" : 356,
+    "legacyReadingList" : "[1] Viktor Mayer-Schönberger, Kenneth Cukier., Big Data: A Revolution That Will Transform How We Live, Work, and Think., Harper Business; Reprint edition. [2] Sumit Pal., SQL on Big Data: Technology, Architecture, and Innovation., Apress; 1st edition. [3] Nandhini Abirami R, Seifedine Kadry, Amir H. Gandomi, Balamurugan Balusamy., Big Data: Concepts, Technology, and Architecture., Wiley; 1st edition. [4] Bill Chambers, Matei Zaharia., Spark: The Definitive Guide: Big Data Processing Made Simple., O'Reilly Media; 1st edition.",
+    "sourceCellText" : "[1] Viktor Mayer-Schönberger, Kenneth Cukier., Big Data: A \r\nRevolution That Will Transform How We Live, Work, and Think., \r\nHarper Business; Reprint edition.  \r\n[2] Sumit Pal., SQL on Big Data: Technology, Architecture, and \r\nInnovation., Apress; 1st edition. \r\n[3] Nandhini Abirami R, Seifedine Kadry, Amir H. Gandomi, \r\nBalamurugan Balusamy., Big Data: Concepts, Technology, and \r\nArchitecture., Wiley; 1st edition. \r\n[4] Bill Chambers, Matei Zaharia., Spark: The Definitive Guide: Big \r\nData Processing Made Simple., O'Reilly Media; 1st edition.",
+    "references" : 4,
+    "section12" : [ {
+      "title" : "Source Reading List",
+      "headers" : [ "No.", "Reference (source text)" ],
+      "rows" : [ [ "[1]", "Viktor Mayer-Schönberger, Kenneth Cukier., Big Data: A Revolution That Will Transform How We Live, Work, and Think., Harper Business; Reprint edition." ], [ "[2]", "Sumit Pal., SQL on Big Data: Technology, Architecture, and Innovation., Apress; 1st edition." ], [ "[3]", "Nandhini Abirami R, Seifedine Kadry, Amir H. Gandomi, Balamurugan Balusamy., Big Data: Concepts, Technology, and Architecture., Wiley; 1st edition." ], [ "[4]", "Bill Chambers, Matei Zaharia., Spark: The Definitive Guide: Big Data Processing Made Simple., O'Reilly Media; 1st edition." ] ],
+      "pages" : [ 349 ],
+      "format" : "DS2026_READING_ROWS_V1"
+    } ]
+  }, {
+    "sourceCode" : "IT169IU",
+    "startPage" : 357,
+    "endPage" : 366,
+    "legacyReadingList" : "1. Box, G.E.P., Jenkins, G.M. and Reinsel, G.C. (1994). Time Series Analysis: Forecasting and Control, 3rd Edition, Prentice Hall, New Jersey. 2. Chatfield, C. (1996). The Analysis of Time Series, 5th edition, Chapman and Hall, New York. 3. Shumway, R.H., Stoffer, D.S. (2006). Time Series Analysis and Its Applications (with R examples). Springer-Verlag, New York. 4. James D. Hamilton (1994). Time Series Analysis, 1st Edition, Princeton University Press, 5. Galit Shmueli and Kenneth C. Lichtendahl Jr (2016). Practical Time Series Forecasting with R: A Hands-On Guide, 2nd Edition, Axelrod Schnall Publishers.",
+    "sourceCellText" : "1. Box, G.E.P., Jenkins, G.M. and Reinsel, G.C. (1994). Time Series \r\nAnalysis: Forecasting and Control, 3rd Edition, Prentice Hall, New \r\nJersey. \r\n2. Chatfield, C. (1996). The Analysis of Time Series, 5th edition, \r\nChapman and Hall, New York. \r\n3. Shumway, R.H., Stoffer, D.S. (2006). Time Series Analysis and Its \r\nApplications (with R examples). Springer-Verlag, New York. \r\n4. James D. Hamilton (1994). Time Series Analysis, 1st Edition, \r\nPrinceton University Press, \r\n5. Galit Shmueli and Kenneth C. Lichtendahl Jr (2016). Practical \r\nTime Series Forecasting with R: A Hands-On Guide, 2nd Edition, \r\nAxelrod Schnall Publishers.",
+    "references" : 5,
+    "section12" : [ {
+      "title" : "Source Reading List",
+      "headers" : [ "No.", "Reference (source text)" ],
+      "rows" : [ [ "1.", "Box, G.E.P., Jenkins, G.M. and Reinsel, G.C. (1994). Time Series Analysis: Forecasting and Control, 3rd Edition, Prentice Hall, New Jersey." ], [ "2.", "Chatfield, C. (1996). The Analysis of Time Series, 5th edition, Chapman and Hall, New York." ], [ "3.", "Shumway, R.H., Stoffer, D.S. (2006). Time Series Analysis and Its Applications (with R examples). Springer-Verlag, New York." ], [ "4.", "James D. Hamilton (1994). Time Series Analysis, 1st Edition, Princeton University Press," ], [ "5.", "Galit Shmueli and Kenneth C. Lichtendahl Jr (2016). Practical Time Series Forecasting with R: A Hands-On Guide, 2nd Edition, Axelrod Schnall Publishers." ] ],
+      "pages" : [ 359 ],
+      "format" : "DS2026_READING_ROWS_V1"
+    } ]
+  }, {
+    "sourceCode" : "IT150",
+    "startPage" : 367,
+    "endPage" : 376,
+    "legacyReadingList" : "[1] Arvind Narayanan, Joseph Bonneau, Edward Felten, Andrew Miller, and Steven Goldfeder. Bitcoin and Cryptocurrency Technologies: A Comprehensive Introduction. Princeton, 2016 [2] Andreas M. Antonopoulos, and Gavin Wood Ph. D. Mastering Ethereum: Building Smart Contracts and DApps. O'Reilly Media, 2018 [3] Xiwei Xu, Ingo Weber, and Mark Staples. Architecture for Blockchain Applications. Springer, 2019.",
+    "sourceCellText" : "[1] Arvind Narayanan, Joseph Bonneau, Edward Felten, Andrew \r\nMiller, and Steven Goldfeder. Bitcoin and Cryptocurrency \r\nTechnologies: A Comprehensive Introduction. Princeton, 2016 \r\n[2] Andreas M. Antonopoulos, and Gavin Wood Ph. D. Mastering \r\nEthereum: Building Smart Contracts and DApps. O'Reilly Media, 2018 \r\n[3] Xiwei Xu, Ingo Weber, and Mark Staples. Architecture for \r\nBlockchain Applications. Springer, 2019.",
+    "references" : 3,
+    "section12" : [ {
+      "title" : "Source Reading List",
+      "headers" : [ "No.", "Reference (source text)" ],
+      "rows" : [ [ "[1]", "Arvind Narayanan, Joseph Bonneau, Edward Felten, Andrew Miller, and Steven Goldfeder. Bitcoin and Cryptocurrency Technologies: A Comprehensive Introduction. Princeton, 2016" ], [ "[2]", "Andreas M. Antonopoulos, and Gavin Wood Ph. D. Mastering Ethereum: Building Smart Contracts and DApps. O'Reilly Media, 2018" ], [ "[3]", "Xiwei Xu, Ingo Weber, and Mark Staples. Architecture for Blockchain Applications. Springer, 2019." ] ],
+      "pages" : [ 369 ],
+      "format" : "DS2026_READING_ROWS_V1"
+    } ]
+  }, {
+    "sourceCode" : "IT076",
+    "startPage" : 377,
+    "endPage" : 386,
+    "legacyReadingList" : "1. Ian Sommerville, Software Engineering 10th, 2019. 2. Hyrum Wright, Titus Winters, and Tom Manshreck. Software Engineering at Google, 2020 3. Hans van Vliet, Software Engineering: Principles and Practice 3rd, 2008",
+    "sourceCellText" : "1. Ian Sommerville, Software Engineering 10th, 2019. \r\n2. Hyrum Wright, Titus Winters, and Tom Manshreck. Software \r\nEngineering at Google, 2020 \r\n3. Hans van Vliet, Software Engineering: Principles and Practice \r\n3rd, 2008",
+    "references" : 3,
+    "section12" : [ {
+      "title" : "Source Reading List",
+      "headers" : [ "No.", "Reference (source text)" ],
+      "rows" : [ [ "1.", "Ian Sommerville, Software Engineering 10th, 2019." ], [ "2.", "Hyrum Wright, Titus Winters, and Tom Manshreck. Software Engineering at Google, 2020" ], [ "3.", "Hans van Vliet, Software Engineering: Principles and Practice 3rd, 2008" ] ],
+      "pages" : [ 379 ],
+      "format" : "DS2026_READING_ROWS_V1"
+    } ]
+  }, {
+    "sourceCode" : "IT170IU",
+    "startPage" : 387,
+    "endPage" : 395,
+    "legacyReadingList" : "1. Daniel Jurafsky, James H. Martin. (2018). Speech and Language Processing, 2rd Edition. Prentice Hall. 2. Daniel Jurafsky, James H. Martin. (2023 ed. draft). Speech and Language Processing, 3rd Edition. 3. Additional research papers and online resources provided during the course",
+    "sourceCellText" : "1. Daniel Jurafsky, James H. Martin. (2018). Speech and Language \r\nProcessing, 2rd Edition. Prentice Hall. \r\n2. Daniel Jurafsky, James H. Martin. (2023 ed. draft). Speech and \r\nLanguage Processing, 3rd Edition. \r\n3. Additional research papers and online resources provided during the \r\ncourse",
+    "references" : 3,
+    "section12" : [ {
+      "title" : "Source Reading List",
+      "headers" : [ "No.", "Reference (source text)" ],
+      "rows" : [ [ "1.", "Daniel Jurafsky, James H. Martin. (2018). Speech and Language Processing, 2rd Edition. Prentice Hall." ], [ "2.", "Daniel Jurafsky, James H. Martin. (2023 ed. draft). Speech and Language Processing, 3rd Edition." ], [ "3.", "Additional research papers and online resources provided during the course" ] ],
+      "pages" : [ 389 ],
+      "format" : "DS2026_READING_ROWS_V1"
+    } ]
+  }, {
+    "sourceCode" : "IT093",
+    "startPage" : 402,
+    "endPage" : 407,
+    "legacyReadingList" : "1. Dave Wolf and A.J. Henley. “Java EE Web Application Primer Building Bullhorn: A Messaging App with JSP, Servlets, JavaScript, Bootstrap and Oracle”, 2017. 2. Prem Kumar Karunakaran. “Java Web Application Development”, second edition, 2020. 3. Laura Ubelhor and Christian Hur. “Developing Business Application for the Web With HTML, CSS, JSP, PHP, ASP.NET and JavaScript”, 2017. 4. Refer VN book: N.V.Sinh, N.T.T.Sang, T.M.Hà “Xây dựng ứng dụng Web cho Thương mại điện tử trên Netbeans”, Nhà xuất bản Xây dựng 2017",
+    "sourceCellText" : "1. Dave Wolf and A.J. Henley. “Java EE Web Application Primer  \r\nBuilding Bullhorn: A Messaging App with JSP, Servlets, JavaScript, \r\nBootstrap and Oracle”, 2017. \r\n2. Prem Kumar Karunakaran. “Java Web Application Development”, \r\nsecond edition, 2020.\n3. Laura Ubelhor and Christian Hur. “Developing Business Application \r\nfor the Web With HTML, CSS, JSP, PHP, ASP.NET and JavaScript”, \r\n2017. \r\n4. Refer VN book: N.V.Sinh, N.T.T.Sang, T.M.Hà “Xây dựng ứng dụng \r\nWeb cho Thương mại điện tử trên Netbeans”, Nhà xuất bản Xây dựng \r\n2017",
+    "references" : 4,
+    "section12" : [ {
+      "title" : "Source Reading List",
+      "headers" : [ "No.", "Reference (source text)" ],
+      "rows" : [ [ "1.", "Dave Wolf and A.J. Henley. “Java EE Web Application Primer Building Bullhorn: A Messaging App with JSP, Servlets, JavaScript, Bootstrap and Oracle”, 2017." ], [ "2.", "Prem Kumar Karunakaran. “Java Web Application Development”, second edition, 2020." ], [ "3.", "Laura Ubelhor and Christian Hur. “Developing Business Application for the Web With HTML, CSS, JSP, PHP, ASP.NET and JavaScript”, 2017." ], [ "4.", "Refer VN book: N.V.Sinh, N.T.T.Sang, T.M.Hà “Xây dựng ứng dụng Web cho Thương mại điện tử trên Netbeans”, Nhà xuất bản Xây dựng 2017" ] ],
+      "pages" : [ 403, 404 ],
+      "format" : "DS2026_READING_ROWS_V1"
+    } ]
+  }, {
+    "sourceCode" : "IT146",
+    "startPage" : 428,
+    "endPage" : 436,
+    "legacyReadingList" : "1. David Easley and Jon Kleinberg, Networks, Crowds, and Markets: Reasoning about a Highly Connected World 1st, 2010 2. Thomas W. Miller, Web and Network Data Science: Modeling Techniques in Predictive Analytics 1st, 2014 3. James Kurose and Keith Ross, Computer networking: A top- down approach 7th, 2016",
+    "sourceCellText" : "1. David Easley and Jon Kleinberg, Networks, Crowds, and \r\nMarkets: Reasoning about a Highly Connected World 1st, 2010 \r\n2. Thomas W. Miller, Web and Network Data Science: Modeling \r\nTechniques in Predictive Analytics 1st, 2014 \r\n3. James Kurose and Keith Ross, Computer networking: A top-\r\ndown approach 7th, 2016",
+    "references" : 3,
+    "section12" : [ {
+      "title" : "Source Reading List",
+      "headers" : [ "No.", "Reference (source text)" ],
+      "rows" : [ [ "1.", "David Easley and Jon Kleinberg, Networks, Crowds, and Markets: Reasoning about a Highly Connected World 1st, 2010" ], [ "2.", "Thomas W. Miller, Web and Network Data Science: Modeling Techniques in Predictive Analytics 1st, 2014" ], [ "3.", "James Kurose and Keith Ross, Computer networking: A top- down approach 7th, 2016" ] ],
+      "pages" : [ 430 ],
+      "format" : "DS2026_READING_ROWS_V1"
+    } ]
+  }, {
+    "sourceCode" : "IT056",
+    "startPage" : 437,
+    "endPage" : 447,
+    "legacyReadingList" : "1. Kathy Schwalbe, IT Project Management - 9th Edition, 2019 2. Stellman and Greene, Applied Software Project Management, O’Reilly Media, 2006. 3. Marchewka, J.T., Information Technology Project Management Providing Measureable Organizational Value 5th, 2016",
+    "sourceCellText" : "1. Kathy Schwalbe, IT Project Management - 9th Edition, 2019 \r\n2. Stellman and Greene, Applied  Software  Project  Management, \r\nO’Reilly Media, 2006. \r\n3. Marchewka, J.T., Information Technology Project Management \r\nProviding Measureable Organizational Value 5th, 2016",
+    "references" : 3,
+    "section12" : [ {
+      "title" : "Source Reading List",
+      "headers" : [ "No.", "Reference (source text)" ],
+      "rows" : [ [ "1.", "Kathy Schwalbe, IT Project Management - 9th Edition, 2019" ], [ "2.", "Stellman and Greene, Applied Software Project Management, O’Reilly Media, 2006." ], [ "3.", "Marchewka, J.T., Information Technology Project Management Providing Measureable Organizational Value 5th, 2016" ] ],
+      "pages" : [ 439 ],
+      "format" : "DS2026_READING_ROWS_V1"
+    } ]
+  }, {
+    "sourceCode" : "IT094",
+    "startPage" : 448,
+    "endPage" : 456,
+    "legacyReadingList" : "1. Kenneth C. Laudon, Jane P. Laudon, Management Information Systems: Managing the Digital Firm 14th, 2016 2. Kenneth C. Laudon and Jane Laudon, Essentials of Management Information Systems 11th, 2015",
+    "sourceCellText" : "1. Kenneth C. Laudon, Jane P. Laudon, Management Information \r\nSystems: Managing the Digital Firm 14th, 2016 \r\n2. Kenneth C. Laudon and Jane Laudon, Essentials of Management \r\nInformation Systems 11th, 2015",
+    "references" : 2,
+    "section12" : [ {
+      "title" : "Source Reading List",
+      "headers" : [ "No.", "Reference (source text)" ],
+      "rows" : [ [ "1.", "Kenneth C. Laudon, Jane P. Laudon, Management Information Systems: Managing the Digital Firm 14th, 2016" ], [ "2.", "Kenneth C. Laudon and Jane Laudon, Essentials of Management Information Systems 11th, 2015" ] ],
+      "pages" : [ 450 ],
+      "format" : "DS2026_READING_ROWS_V1"
+    } ]
+  }, {
+    "sourceCode" : "IT164IU",
+    "startPage" : 457,
+    "endPage" : 466,
+    "legacyReadingList" : "1. Rountree, Derrick, and Ileana Castrillo. The basics of cloud computing: Understanding the fundamentals of cloud computing in theory and practice. Newnes, 2013. 2. Patterson, Scott. Learn AWS Serverless Computing: A Beginner's Guide to Using AWS Lambda, Amazon API Gateway, and Services from Amazon Web Services. Packt Publishing Ltd, 2019.",
+    "sourceCellText" : "1. Rountree, Derrick, and Ileana Castrillo. The basics of cloud \r\ncomputing: Understanding the fundamentals of cloud \r\ncomputing in theory and practice. Newnes, 2013. \r\n2. Patterson, Scott. Learn AWS Serverless Computing: A \r\nBeginner's Guide to Using AWS Lambda, Amazon API \r\nGateway, and Services from Amazon Web Services. Packt \r\nPublishing Ltd, 2019.",
+    "references" : 2,
+    "section12" : [ {
+      "title" : "Source Reading List",
+      "headers" : [ "No.", "Reference (source text)" ],
+      "rows" : [ [ "1.", "Rountree, Derrick, and Ileana Castrillo. The basics of cloud computing: Understanding the fundamentals of cloud computing in theory and practice. Newnes, 2013." ], [ "2.", "Patterson, Scott. Learn AWS Serverless Computing: A Beginner's Guide to Using AWS Lambda, Amazon API Gateway, and Services from Amazon Web Services. Packt Publishing Ltd, 2019." ] ],
+      "pages" : [ 459 ],
+      "format" : "DS2026_READING_ROWS_V1"
+    } ]
+  }, {
+    "sourceCode" : "IT163",
+    "startPage" : 467,
+    "endPage" : 476,
+    "legacyReadingList" : "1. Stephen P. Boyd and Lieven Vandenberghe. Convex optimization. Cambridge university press, 2004. 2. Robert J. Vanderbei. Linear programming: foundations and extensions, 5th edition. Springer Nature, 2020.",
+    "sourceCellText" : "1. Stephen P. Boyd and Lieven Vandenberghe. Convex \r\noptimization. Cambridge university press, 2004. \r\n2. Robert J. Vanderbei. Linear programming: foundations and \r\nextensions, 5th edition. Springer Nature, 2020.",
+    "references" : 2,
+    "section12" : [ {
+      "title" : "Source Reading List",
+      "headers" : [ "No.", "Reference (source text)" ],
+      "rows" : [ [ "1.", "Stephen P. Boyd and Lieven Vandenberghe. Convex optimization. Cambridge university press, 2004." ], [ "2.", "Robert J. Vanderbei. Linear programming: foundations and extensions, 5th edition. Springer Nature, 2020." ] ],
+      "pages" : [ 469 ],
+      "format" : "DS2026_READING_ROWS_V1"
+    } ]
+  }, {
+    "sourceCode" : "IT153",
+    "startPage" : 477,
+    "endPage" : 487,
+    "legacyReadingList" : "1. Kenneth H. Rosen, Discrete Mathematics and Its Applications 8th edition, 2019. 2. Oscar Levin, Discrete mathematics An Open Introduction. 3rd edition, 2019. 3. Vietnamese book: N.V.Sinh, T.M.Hà, N.T.T.Sang, N.M.Quân, “Nền tảng Toán học trong Công nghệ Thông tin”, NXB - Đại học Quốc gia TPHCM, ISBN: 978-604-73-6518-0, 2018.",
+    "sourceCellText" : "1. Kenneth H. Rosen, Discrete Mathematics and Its Applications \r\n8th edition, 2019. \r\n2. Oscar Levin, Discrete mathematics An Open Introduction. 3rd \r\nedition, 2019. \r\n3. Vietnamese book: N.V.Sinh, T.M.Hà, N.T.T.Sang, N.M.Quân, \r\n“Nền tảng Toán học trong Công nghệ Thông tin”, NXB - Đại \r\nhọc Quốc gia TPHCM, ISBN: 978-604-73-6518-0, 2018.",
+    "references" : 3,
+    "section12" : [ {
+      "title" : "Source Reading List",
+      "headers" : [ "No.", "Reference (source text)" ],
+      "rows" : [ [ "1.", "Kenneth H. Rosen, Discrete Mathematics and Its Applications 8th edition, 2019." ], [ "2.", "Oscar Levin, Discrete mathematics An Open Introduction. 3rd edition, 2019." ], [ "3.", "Vietnamese book: N.V.Sinh, T.M.Hà, N.T.T.Sang, N.M.Quân, “Nền tảng Toán học trong Công nghệ Thông tin”, NXB - Đại học Quốc gia TPHCM, ISBN: 978-604-73-6518-0, 2018." ] ],
+      "pages" : [ 479 ],
+      "format" : "DS2026_READING_ROWS_V1"
+    } ]
+  }, {
+    "sourceCode" : "IT177IU",
+    "startPage" : 488,
+    "endPage" : 496,
+    "legacyReadingList" : "By on the suggestion of the company or business",
+    "sourceCellText" : "By on the suggestion of the company or business",
+    "references" : 1,
+    "section12" : [ {
+      "title" : "Source Reading List",
+      "headers" : [ "No.", "Reference (source text)" ],
+      "rows" : [ [ "", "By on the suggestion of the company or business" ] ],
+      "pages" : [ 490 ],
+      "format" : "DS2026_READING_ROWS_V1"
+    } ]
+  }, {
+    "sourceCode" : "IT083",
+    "startPage" : 497,
+    "endPage" : 504,
+    "legacyReadingList" : "Related works and books",
+    "sourceCellText" : "Related works and books",
+    "references" : 1,
+    "section12" : [ {
+      "title" : "Source Reading List",
+      "headers" : [ "No.", "Reference (source text)" ],
+      "rows" : [ [ "", "Related works and books" ] ],
+      "pages" : [ 498 ],
+      "format" : "DS2026_READING_ROWS_V1"
+    } ]
+  }, {
+    "sourceCode" : "IT058",
+    "startPage" : 505,
+    "endPage" : 513,
+    "legacyReadingList" : "Books and papers.",
+    "sourceCellText" : "Books and papers.",
+    "references" : 1,
+    "section12" : [ {
+      "title" : "Source Reading List",
+      "headers" : [ "No.", "Reference (source text)" ],
+      "rows" : [ [ "", "Books and papers." ] ],
+      "pages" : [ 507 ],
+      "format" : "DS2026_READING_ROWS_V1"
+    } ]
+  } ]
+}

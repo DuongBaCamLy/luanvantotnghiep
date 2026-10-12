@@ -500,11 +500,12 @@ CREATE TABLE assessment_clo (
 CREATE TABLE approval_request (
   id            INT  NOT NULL AUTO_INCREMENT COMMENT 'Mã yêu cầu phê duyệt',
   syllabus_id   INT  NOT NULL                COMMENT 'Đề cương cần phê duyệt',
-  step          ENUM(
-                  'STEP1_DEPT_HEAD',        -- Bước 1: Trưởng Bộ môn xem xét
-                  'STEP2_PROG_COORDINATOR', -- Bước 2: Điều phối CTĐT xem xét
-                  'STEP3_DEAN'              -- Bước 3: Trưởng Khoa phê duyệt
-                ) NOT NULL                  COMMENT 'Bước phê duyệt hiện tại',
+    step          ENUM(
+                  'STEP1_DEPT_HEAD',         -- Bước 1: Trưởng Bộ môn xem xét
+                  'STEP2_PROG_COORDINATOR',  -- Legacy: Điều phối CTĐT, chỉ giữ để đọc lịch sử
+                  'STEP2_DEAN_SECRETARY',    -- Bước 2: Thư ký Khoa chuyển lên Trưởng Khoa
+                  'STEP3_DEAN'               -- Bước 3: Trưởng Khoa phê duyệt
+                ) NOT NULL                   COMMENT 'Bước phê duyệt hiện tại',
   status        ENUM(
                   'PENDING',            -- Chờ xem xét
                   'APPROVED',           -- Đã phê duyệt bước này
@@ -525,7 +526,7 @@ CREATE TABLE approval_request (
   CONSTRAINT fk_ar_requested_by FOREIGN KEY (requested_by) REFERENCES user_account(id),
   CONSTRAINT fk_ar_reviewed_by FOREIGN KEY (reviewed_by) REFERENCES user_account(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-  COMMENT = 'Nhật ký phê duyệt đề cương — workflow 3 bước: Bộ môn → CTĐT → Trưởng Khoa';
+  COMMENT = 'Nhật ký phê duyệt đề cương — workflow 3 bước: Bộ môn → Thư ký Khoa → Trưởng Khoa';
 
 
 -- =============================================================================
